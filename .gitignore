@@ -4,7 +4,7 @@
 *.zip
 re/rom/
 re/out/*
-!re/out/assets/
+#!re/out/assets/
 # The Rust port's probe and harness outputs (same rule as re/out/)
 dino-rs/re/out/*
 re/ghidra/proj/
@@ -14,7 +14,7 @@ re/ghidra/log*.txt
 *.npy
 *.png
 *.bin
-!re/out/assets/**
+#!re/out/assets/**
 # Raw disassembly / decompiler dumps of the original program
 re/specs/**/*_dis.txt
 re/specs/enemy/c2.txt
