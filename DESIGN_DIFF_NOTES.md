@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：约 4240 行、22 轮、41 张 mermaid 图、附录 A（含 A.8 核验回执 / A.9 引用一致性核验）。§0–§29 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：约 4420 行、23 轮、43 张 mermaid 图、附录 A（含 A.8 核验回执 / A.9 引用一致性核验）。§0–§30 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -40,6 +40,7 @@
 | 二十 | §27 | 搓招 / 指令技（独立三态时间窗 FSM vs 每角色主状态机入口 / `cmd_flag` / `RKey1`） | 有效 |
 | 二十一 | §28 | 同屏预算与波次编排（人头 vs 权重 / 7200 帧预算 / 超时清场 / 相机门闩 / 64 条上限） | 有效 |
 | 二十二 | §29 | 受击后的恢复链（14+ 反应分派 / 按角色查表无敌 / 起身决策 / 眩晕五重门与全局限流） | 有效 |
+| 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
@@ -56,6 +57,7 @@
 - 搓招 / 指令技 / 输入序列 → **§27（`player_command_fsm` 三态时间窗 / `cmd_flag` 结果位 / wof `RKey1` 符号三态）**
 - 关卡 / 波次 / 同屏预算 / 背压 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**
 - 受击恢复 / 倒地 / 起身 / 无敌 / 眩晕 → **§29（`b.act` 14+ 分支 / `invuln[16]` 查表 / `enemy_getup_or_die` / `dizzy_prev` 全局限流 / wof `+0x78`）**
+- 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**
 - "dino 更成熟"逐条落地 → §6.1（7 条已全部展开）
 - data 待核项结清 / Boss class 实现 → §18.1、§18.2
 - 工程断言的当前文件核验 / 帧存档 dump 时机桥接点 → 附录 A.8（A.8.3）
@@ -81,6 +83,7 @@
 - §27.6「`player_command_move_entry` / 各角色主状态机全文 / `0x1CAEC` 跳表 / 马上·载具下搓招」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - §28.7「各关组表逐项数值 / 全部 `type` 命令 / `0x53B02` 与 `0x1066C` 逐字节 / 波次超时玩家侧提示」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - §29.8「`player_knockdown` / `player_getup` 逐函数 / `invuln[16]` 与 `DIZZY_ROW` 表数值 / wof 倒地字段组完整状态机」→ 本轮新增时即明列为**保留、不扩张**，非欠账
+- §30.7「`flow_*` 各 mode 全文 / `0x42C2` 后续链 / `A5+0x188` 全部消费点 / wof 续关与结局路径」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - 用户最初「硬件中断 → 函数执行次数不确定」→ §26.4 给出反馈层的因果闭环，并与 §19 / §20 / 附录 A.5 / A.8.3 四处切面串联
 
 **主线（§14.5，§20.6 闭合）**：四大主题共享同一个设计习惯——把「这一帧做什么、下一帧读什么」做成显式结构（固定顺序 + 状态字节 + `prev` 快照）。§20 证明这个习惯从顶层任务机（5 任务 slot / `Scene` sleep / lag 记账）一路贯到碰撞 pass，不是某个子系统的局部技巧；也直答了用户最初的「硬件中断 / 函数执行次数」问题。
@@ -2484,21 +2487,21 @@ wof **也有**难度索引、`hpBand`、`defense`、随机伤害表——不是"
 
 ## A.9 全笔记引用一致性核验（11-06，本轮新增）
 
-> 触发：Stop hook `Verify every requirement and constraint against current files, tool results, artifacts`。在写完 §21–§29、多轮导航更新后，对**笔记自身**做一次可重跑的一致性核验，避免压缩后出现悬空引用。
+> 触发：Stop hook `Verify every requirement and constraint against current files, tool results, artifacts`。在写完 §21–§30、多轮导航更新后，对**笔记自身**做一次可重跑的一致性核验，避免压缩后出现悬空引用。
 
 | 检查项 | 方法 | 结果 |
 |---|---|---|
-| 结构完整性 | PowerShell 逐行统计（§29 + 导航同步后重跑） | 4237 行；代码栅栏 250（偶数：41 个 mermaid 开栅栏 + 209 个闭合栅栏，成对）；mermaid 开 41 / 闭 41、无未闭合；表格行 793 |
-| 章节引用 | `[regex] §(\d+)` 对比 `^## N.` 标题（加 `(?m)` 多行选项） | 引用号 `0, 2..29`（+ 外部 `§73`）全部有定义标题；已定义 `0..29` |
+| 结构完整性 | PowerShell 逐行统计（§30 + 导航同步后重跑） | 4419 行；代码栅栏 260（偶数：43 个 mermaid 开栅栏 + 217 个闭合栅栏，成对）；mermaid 开 43 / 闭 43、无未闭合；表格行 823 |
+| 章节引用 | `[regex] §(\d+)` 对比 `^## N.` 标题（加 `(?m)` 多行选项） | 引用号 `0, 2..30`（+ 外部 `§73`）全部有定义标题；已定义 `0..30` |
 | 定义但未被引用 | 同上 | 仅 `§1`（总览对照）——导航按轮次索引，正常 |
 | 疑似悬空 `§73` | Grep 定位 | `DESIGN_DIFF_NOTES.md:1078` 的 `SPEC §73-86` = `re/specs/enemy/SPEC.md` 的章节范围，**外部文档引用**，非本笔记章节；非损坏 |
 | 三态清单 | 顶部「三条状态标记」逐条对照正文 | ⚠️ 作废（§9.1 / §10.1 / §10.4、`A5-0x3E` 全局档位）→ §11 已更正；✅ 保留（表字节 data、§11 后只读 repo 章节）→ 正文一致；⏳ 仍开放 → 仅"发行先后" + 按 §11.0 不主动追的 data 项 |
-| 待办回执 | 顶部「旧待办回执」逐条 | §11.6 / §13.5 / §14.5 / §15 / §16 / §17 / §18.1 / §22.4 / §23.1 / §24.1 / §25.1 / §26.4 / §27.6 / §28.7 / §29.8 均已闭合，或明列为"保留、不扩张" |
+| 待办回执 | 顶部「旧待办回执」逐条 | §11.6 / §13.5 / §14.5 / §15 / §16 / §17 / §18.1 / §22.4 / §23.1 / §24.1 / §25.1 / §26.4 / §27.6 / §28.7 / §29.8 / §30.7 均已闭合，或明列为"保留、不扩张" |
 | 历史关键 `file:line` | PowerShell 按行抽查 8 处 | `STATUS.md:37`、`final.txt:20`、`record.lua:115`、`mod.rs:349`、`enemy_combat.rs:569`、`flow/scene.rs:31`、`camera.rs:150`、`Cps1Collision.cs:4882` **全部命中**，无行号漂移 |
-| 新增章节 `file:line` | PowerShell 按行抽查 §21–§29 的 57 处 | §21–§25 的 14 处（见上一版：`item.rs:24` … `Cps1PlayerLogic.cs:10690`）+ §26 的 7 处（`hud.rs:14/453/526/809`、`Cps1HudRuntime.cs:3`、`Cps1EventObjectRuntime.cs:369`、`Cps1Item.cs:127`）+ §27 的 9 处逐行（`player.rs:918/925/960/1005/1255/3489`、`Cps1PlayerZhaoyun1CA46.cs:104/147`、`Cps1PlayerMulti.cs:44`）+ §28 的 13 处逐行（`spawn.rs:195/227/258`、`prop.rs:573/604`、`boss.rs:250`、`flow.rs:430`、`Cps1LevelScript.cs:40/455/1080/1189/1230`、`Cps1EnemySpawn.cs:47`）+ §29 的 14 处逐行（`player.rs:139/491/854/1082/1581/2659`、`enemy_combat.rs:1284/1310/1343/1360`、`Cps1Collision.cs:1390/3600`、`Cps1Types.cs:314`、`Cps1EnemyAI.cs:44`）**57/57 命中**；另 Grep 精确定位 `player.rs:927/929/961/963`、`Cps1PlayerMulti.cs:49`、`Cps1PlayerZhaoyun1CA46.cs:146/172/190`，确认 §27–§29 的范围引用均覆盖真实符号，无行号漂移 |
-| 导航规模 | 顶部规模行 vs 实测 | 约 4240 行 / 22 轮 / 41 图 / §0–§29 / 附录 A（A.1–A.9）— 与实测（4237 行）一致 |
+| 新增章节 `file:line` | PowerShell 按行抽查 §21–§30 的 72 处 | §21–§25 的 14 处（见上一版：`item.rs:24` … `Cps1PlayerLogic.cs:10690`）+ §26 的 7 处（`hud.rs:14/453/526/809`、`Cps1HudRuntime.cs:3`、`Cps1EventObjectRuntime.cs:369`、`Cps1Item.cs:127`）+ §27 的 9 处逐行（`player.rs:918/925/960/1005/1255/3489`、`Cps1PlayerZhaoyun1CA46.cs:104/147`、`Cps1PlayerMulti.cs:44`）+ §28 的 13 处逐行（`spawn.rs:195/227/258`、`prop.rs:573/604`、`boss.rs:250`、`flow.rs:430`、`Cps1LevelScript.cs:40/455/1080/1189/1230`、`Cps1EnemySpawn.cs:47`）+ §29 的 14 处逐行（`player.rs:139/491/854/1082/1581/2659`、`enemy_combat.rs:1284/1310/1343/1360`、`Cps1Collision.cs:1390/3600`、`Cps1Types.cs:314`、`Cps1EnemyAI.cs:44`）+ §30 的 15 处逐行（`flow.rs:490/498/822/831/838/863`、`Cps1EnemyAI.cs:8532/8542/8547/30045`、`Cps1EventObjectRuntime.cs:229`、`Cps1EnemySpawn.cs:2954`、`Cps1SystemProcessQueue.cs:15`、`Cps1Actor27Runtime.cs:2163`、`Cps1StageProgressRuntime.cs:1180`）**72/72 命中**；另 Grep 精确定位 `player.rs:927/929/961/963`、`Cps1PlayerMulti.cs:49`、`Cps1PlayerZhaoyun1CA46.cs:146/172/190`，确认 §27–§30 的范围引用均覆盖真实符号，无行号漂移 |
+| 导航规模 | 顶部规模行 vs 实测 | 约 4420 行 / 23 轮 / 43 图 / §0–§30 / 附录 A（A.1–A.9）— 与实测（4419 行）一致 |
 
-**结论**：笔记自包含，无悬空章节引用；唯一 `§73` 是外部 spec 范围而非缺陷。§21–§29 与附录 A.8 的断言均由当前文件复核过（A.8.1–A.8.4、§21–§29 各轮取证行）。仍开放项按 §11.0「ROM 只补 data、不审 repo」与用户「不过度怀疑 rep 侧」保持不变；本回执只记录核验结果，不宣称目标终止。
+**结论**：笔记自包含，无悬空章节引用；唯一 `§73` 是外部 spec 范围而非缺陷。§21–§30 与附录 A.8 的断言均由当前文件复核过（A.8.1–A.8.4、§21–§30 各轮取证行）。仍开放项按 §11.0「ROM 只补 data、不审 repo」与用户「不过度怀疑 rep 侧」保持不变；本回执只记录核验结果，不宣称目标终止。
 
 > 可重跑：本节检查是纯文本统计，不依赖构建 / 外部服务；后续会话再追加章节后，重跑上面两条 PowerShell 即可复核。
 
@@ -4230,6 +4233,185 @@ stateDiagram-v2
 - **未做（保留，不扩张）**：`player_knockdown` / `player_getup` / `player_thrown` / `player_burn` 逐函数全文；`invuln[16]` 与 `DIZZY_ROW` / `DIZZY_END` 表逐项数值；wof `+0x99 / +0x9B / +0xA7 / +0xB5` 各字段的完整状态机与 9 项反应逐条对照；两游戏"起身无敌时长是否按角色不同"（dino 已确认查表，wof 不臆断）。
 - **未新增 ROM 取证**，全部以两份 repo 源码为准（§11.0）；**未考证发行先后**，沿用用户给定前提。
 - 按 §0 边界，wof 侧宿主调试开关与逐帧对拍修正未纳入设计对照；本轮不据此评价 rep 侧实现。
+
+---
+
+# 第二十三轮：关卡结束 / 过关 / 续关 —— 顶层流程的下半段
+
+> 视角：只谈**游戏逻辑本意**（用户 11-06）。§20 写了顶层 5 个协作任务怎么按 slot 跑，本轮补它的**下半段**：Boss 倒下之后，整局状态怎么走到过关 / 续关 / game over / 结局。
+> 边界：repo 侧为主，**不新增 ROM 取证**（§11.0）。wof 侧 `收尾对白量子链_无对应ASM`、`ResetPool` 孤儿调用、调试开关等宿主层事实按 §0 剥掉；只描述原机侧的 `0x42C2` 出口、`A5+0x188` 信号与收尾对白对象。**不据此断言 wof 原机没有集中流程状态机**（按 §11.0 不扩大，不过度怀疑 rep 侧），只对照"repo 侧呈现出来的组织方式"。
+> 取证：`dino-rs/.../game/flow.rs:2-15, 80, 118, 150, 171, 182, 185, 316, 350-353, 387, 428, 490-507, 522, 539, 575, 822-877, 893, 941-946, 990`；`wt1/wof_cs/src/Cps1EnemyAI.cs:3160-3161, 8524-8550, 30034-30045`、`Cps1EventObjectRuntime.cs:226-243`、`Cps1EnemySpawn.cs:2951-2955`、`Cps1SystemProcessQueue.cs:6-24`、`Cps1Actor27Runtime.cs:2163-2166`、`Cps1Actor1BRuntime.cs:133-134`、`Cps1StageProgressRuntime.cs:1180`。
+
+## 30.1 一句话对照
+
+「Boss 倒下 → 这一局怎么收尾」两边组织方式不同：dino 有**一个显式 `flow.mode` 状态机**把整局切成 8 个态，过关是其中一次 mode 迁移；wof repo 侧呈现的是**多个 Boss 类共用的一个公共出口 `0x42C2` + 一个全局信号 `A5+0x188` + 收尾对白对象 + 清池**，由对象与信号接力，而不是一个 mode 变量的分支。
+
+| | dino | wof |
+|---|---|---|
+| 顶层容器 | `flow.mode` 字节，`flow_frame` 每帧 `match` 分派（`flow.rs:490-502`） | 系统调度层是 16 任务槽的 68K 骨架（`Cps1SystemProcessQueue.cs:6-24`），与游戏流程分层 |
+| 过关入口 | **唯一** `flow_boss_defeated`（0xACEE，`flow.rs:822`） | **共享出口** `0x42C2`，李典 / 夏侯敦 / ObjId 0x1B / 0x27 / 0x15 等各自 `jmp` 进去 |
+| 入口动作 | 一次写 7 个字段：慢动作 / 清场 / 记 killer / HUD 清理 / 结局标志 | 只写 `A5+0x188 = 0xFF` 等少量信号，后续交给别的环节 |
+| 续关 / 无续关 | `mode 0x10` 是 continue 分支；`G.$4D7` 显式记录"DIP 或最终关清完 → 禁续关" | 本轮未展开，不臆断 |
+| 收尾演出 | speed=4 慢动作 + `hud_clear_idle_blocks` + `flow_lag(1)` | `A5-0x60 == 0x1C` 时生成收尾对白对象 `ObjId=0x03 / OBJ26=0x000A` |
+
+## 30.2 dino：一个 mode 字节管完整局
+
+`flow.rs:490-502` 的 `flow_frame` 是整局的分派表：
+
+```mermaid
+stateDiagram-v2
+    [*] --> start_0x00
+    start_0x00 --> select_0x04: 初始化完成
+    select_0x04 --> story_0x08: 选人完成
+    story_0x08 --> ingame_0x0C: 过场播完
+    ingame_0x0C --> continue_0x10: 全员倒地且允许续关
+    ingame_0x0C --> boss击破: flow_boss_defeated / 0xACEE
+    boss击破 --> ingame_0x0C: 收尾演出后 stage++
+    boss击破 --> ending_0x1C: stage == 7 且 b4d7 / b4db 置位
+    continue_0x10 --> ingame_0x0C: 续关
+    continue_0x10 --> gameover_0x14: 倒计时归零
+    ingame_0x0C --> gameover_0x14: 无续关
+    gameover_0x14 --> gameover_0x18: 清屏 + lag
+    gameover_0x18 --> attract: 回吸引模式
+    ending_0x1C --> [*]
+```
+
+注意 `0x1C => flow_ending_mode`（0xAC48）与 `0x14 | 0x18 => flow_game_over` 是**同一个 mode 变量的不同取值**，不是三套独立流程；`_ => flow_game_over()` 兜底。这与 §2 的 `mode/sub/act/step` 四层状态字节是同一种习惯，只是抬到了整局层。
+
+`flow_boss_defeated`（`flow.rs:822-835`）尤其能说明"过关不是一次事件，而是一组状态的原子迁移"：
+
+```
+w.stage_clear = 1
+flow.speed    = 4                    # 慢动作演出
+g.b4d5        = 1                    # stage clear in progress（§28）
+g.killer      = boss
+g.kill_all    = 1                    # 与 §29 的 kill_all=2（超时清场）对照
+flow.sub      = 2
+rank_speed_add(1)                    # §25 rank 时间链
+hud_clear_idle_blocks()              # §26 HUD
+if w.stage == 7: b4d7 = 1; b4db = 1 # 最终关：禁续关 + 结局标志
+```
+
+一次 Boss 击破同时改了**演出速度、关卡标志、记分归属、rank 时间、HUD、整局后续走向**六个系统——这正是 §20.6 主线「把这一帧做什么、下一帧读什么写成显式结构」在整局层的形态。
+
+`flow.rs:150, 171, 182, 185` 的字段注释把续关也收进同一套结构：`G.$4D7 no continue (DIP, or the last stage was cleared)`、`G.$510 game mode saved while the continue screen (mode 0x10) runs`、`G.$5CC continue screen state`、`join_task: Scene`。也就是说"能不能续关"是**一个显式标志 + 一个 mode 分支 + 一个 `Scene` 任务**，不是散落在 UI 代码里的判断。
+
+## 30.3 game over 的跨帧：lag 被显式记账
+
+`flow_game_over`（`flow.rs:838-877`）是用户最初「硬件中断 → 函数执行次数不确定」在整局层最直白的一处：
+
+- `cont.exit_wait` 倒计时分多帧走；
+- `0x14 → 0x18` 迁移时 `flow_clear_screen()` 那一帧**超出预算**，于是代码显式 `flow_lag(1)`，并注释"one lag frame: no task runs"；
+- `flow.resume = true` 表示同一 pass 继续（0xAC26），`:503-507` 又处理"mode 里设的 speed 从本游戏帧起算"。
+
+§20 已证明 dino 把顶层任务机、`Scene` sleep、`lag` / `game_clock` 记账全部显式建模；这里看到它连"清屏那一帧没有任务跑"都写进了流程。这不是模拟器细节，而是**原机流程本身的时序**被做成数据。
+
+## 30.4 wof：共享出口 + 信号 + 场景对象接力
+
+`Cps1EnemyAI.cs:8542-8550` 给出的 `0x42C2` 是"通用「BOSS 被击败 → 通知关卡结束」出口"，与调用者无关：
+
+```
+0x42C2..0x42DC:
+    move.b $29(a0),d0 / bne $42da
+    move.w #$c,$e322(a5)
+    clr.b -$56(a5)
+    addq.b #2,$29(a0)
+    st.b $188(a5)                  # 关卡结束/退场信号 = 0xFF
+$42da: jmp $15bc                   # 加入渲染
+```
+
+多个 Boss / 敌人类在**自己的状态分派里**跳进这个公共出口：李典 `A=04` 经 `0x25C5E`（`Cps1EnemyAI.cs:8524-8535`）、ObjId 0x1B 经 `0x4253E`（`Cps1Actor27Runtime.cs:2163-2166`）、`Cps1Actor1BRuntime.cs:133-134`、夏侯敦经 `0x2DED4`（`Cps1EnemyAI.cs:24244-24246`），`Cps1Actor15Runtime.cs:25` 的表项注释也写 `04 → 0x3936A（jmp $42C2 通知关卡结束）`。这与 §16「Boss 层 = 共享零件 + 每类自己的分派」是同一个形状：**连"过关"这件事，wof 也是共享出口 + 各对象自己决定何时跳**。
+
+出口之后由三样东西接力：
+1. **信号字节** `A5+0x188 = 0xFF`（`Cps1EnemyAI.cs:3160-3161, 30034-30045` 多处 `st.b`），注释明写"关卡结束/退场信号"；
+2. **场景态** `A5-0x60 == 0x1C` 表示第一关收尾对白（`Cps1StageProgressRuntime.cs:1180`）；
+3. **收尾对白对象** `生成第一关收尾对白_对应ASM_1552C`（`Cps1EventObjectRuntime.cs:229-243`）分配 `ObjId=0x0003 / OBJ22=0x0005 / OBJ24=0x009C / OBJ26=0x000A`，注释说明它"不经过关卡脚本 type1C"，且 `ObjId03` 在下一轮对象 pass 才锁 `1AA`。
+
+`Cps1EnemySpawn.cs:2951-2955` 的 `ResetPool` 是"过关清池"直译，但 repo 自己注明"全源码零调用者（孤儿）"，属宿主层事实，按 §0 剥掉，不写成设计结论。
+
+`Cps1SystemProcessQueue.cs:6-24` 是 68K 系统调度层骨架（0x0700 扫描 `A5-0x2A00` 的 16 个任务槽，状态达 4 进 0x0786 跳表），**与游戏流程分层**。按 §11.0 不扩大：本轮只说 repo 侧没有把「过关 / 续关 / 结局」收成一个 `flow.mode` 式的枚举，**不据此断言 wof 原机没有集中流程状态机**。
+
+```mermaid
+flowchart TB
+    subgraph dino
+        B1[Boss HP 0] --> F1[flow_boss_defeated 0xACEE]
+        F1 --> M1[写 stage_clear / speed=4 / killer / kill_all / sub / b4d7 / b4db]
+        M1 --> D1[flow.mode 迁移 → 下一关 / ending / game over]
+    end
+    subgraph wof
+        B2[Boss HP 0] --> C2{各 Boss 类自己的 A=04 分派}
+        C2 --> E2[公共出口 0x42C2]
+        E2 --> S2[A5+0x188 = 0xFF]
+        S2 --> O2[A5-0x60==0x1C 收尾对白对象 0x1552C]
+        O2 --> N2[后续 pass 锁 1AA / 清池 / 场景推进]
+    end
+```
+
+## 30.5 逐项对照
+
+| 维度 | dino | wof |
+|---|---|---|
+| 整局状态 | `flow.mode` 单字节 8 态，`flow_frame` 每帧分派 | 系统调度层 16 任务槽 + 场景态 `A5-0x60` + 信号 `A5+0x188`（repo 侧呈现） |
+| 过关入口 | 唯一 `flow_boss_defeated`（0xACEE） | 共享 `0x42C2`，多类各自 `jmp` |
+| 入口职责 | 演出 / 记分 / rank / HUD / 后续走向一次写完 | 写信号 + 加渲染，后续由对象接力 |
+| 慢动作 | `flow.speed = 4` + `rank_speed_add(1)` | 本轮未展开，不臆断 |
+| 清场 | `kill_all = 1`（记 killer）vs `=2`（超时，§28） | `ResetPool` 为宿主孤儿调用，按 §0 剥掉 |
+| 续关 | `mode 0x10` + `G.$4D7` 禁续关标志 + `join_task: Scene` | 本轮未展开，不臆断 |
+| 最终关 | `stage==7 → b4d7 / b4db`，`mode 0x1C` ending | 本轮未展开，不臆断 |
+| 收尾对白 | 过场脚本系统（§4.1 / §19） | `0x1552C` 分配 `ObjId=0x03`，不经过关卡脚本 type1C |
+| game over | `0x14 → 0x18`，`exit_wait` + `flow_lag(1)` + `resume` | 本轮未展开，不臆断 |
+| 跨帧续算 | `Scene::wait(n, next)` 把醒来行号写成数据（§20） | 协作式任务内核 + 对象 pass（§19 / §20） |
+
+## 30.6 伪代码
+
+```
+# dino 整局分派（flow.rs:490-502）
+flow_frame():
+    match flow.mode:
+        0x00: flow_mode_start()          # 初始化 4 帧
+        0x04: flow_select_mode()
+        0x08: flow_story_mode()          # 0xD898
+        0x0C: game_frame(); flow_ingame_switch()
+        0x10: flow_continue_mode()
+        0x14|0x18: flow_game_over()      # exit_wait / flow_lag(1) / resume
+        0x1C: flow_ending_mode()         # 0xAC48
+        _:    flow_game_over()
+
+# dino 过关（0xACEE）
+flow_boss_defeated(boss):
+    w.stage_clear = 1; flow.speed = 4
+    g.b4d5 = 1; g.killer = boss; g.kill_all = 1; flow.sub = 2
+    rank_speed_add(1); hud_clear_idle_blocks()
+    if w.stage == 7: flow.b4d7 = 1; flow.b4db = 1
+
+# wof：Boss 类各自分派 → 公共出口
+case A=04: jmp 0x42C2                   # 0x25C5E / 0x4253E / 0x2DED4 / ...
+0x42C2:
+    A5-0x1CDE = 0x000C; A5-0x56 = 0
+    obj.ActStatB += 2
+    st.b 0x188(A5)                       # 0xFF 关卡结束/退场信号
+    jmp 0x15BC                           # 加入渲染
+if A5-0x60 == 0x1C: 生成第一关收尾对白_1552C()   # ObjId 03 / OBJ26 000A
+```
+
+## 30.7 主线闭环与本轮边界
+
+| 出处 | 本轮对应 |
+|---|---|
+| §20 顶层流程任务机 | 补上下半段：`flow.mode` 8 态、过关迁移、game over 的 `flow_lag(1)` |
+| §16 Boss 层 | wof「共享出口 + 每类自己分派」在"过关"这件事上再次复现 |
+| §19 脚本系统全景 | wof 收尾对白对象不经过关卡脚本 type1C，是另一条对象驱动路径 |
+| §25 动态难度 / rank | `rank_speed_add(1)`：过关直接改 rank 时间链 |
+| §26 HUD / 分数 | `hud_clear_idle_blocks`；`killer` / `kill_all=1` 与击杀加分链同源 |
+| §28 同屏预算 | `b4d5`（stage clear in progress）与 `kill_all=1/2` 同属 `spawn::Globals` |
+| §29 受击恢复链 | Boss 死亡 → `flow_boss_defeated`，与杂兵死亡记 `kills` / 重掷 aggression 是两条不同出口 |
+| 用户最初「执行次数不确定」 | `flow_game_over` 显式 `flow_lag(1)` + `resume`：连"哪一帧没有任务跑"都被写成流程数据 |
+
+结论：整局收尾在 dino 里是**一个 mode 状态机的一次迁移**——`flow_boss_defeated` 把演出、记分、rank、HUD、后续走向一次性写成新状态，之后由 `flow_frame` 每帧分派；wof repo 侧呈现的是**共享出口 `0x42C2` + 全局信号 + 场景态 + 收尾对白对象**的接力，各 Boss 类自己决定何时跳进公共出口。两者都把"过关"做成跨帧过程而非瞬时事件，差别仍在**状态收在哪里**：一个收进整局枚举，一个散在对象与信号。按 §11.0 不扩大，本轮不据此断言 wof 原机缺少集中流程状态机。
+
+- **未做（保留，不扩张）**：`flow_*` 各 mode 全文与 `Scene` 逐场景脚本；`0x42C2` 之后 `0x15BC` 链与 `A5+0x188` 的全部消费点；wof 续关 / game over / 结局路径；`A5-0x60` 其他取值；`ResetPool` 与收尾对白量子链的宿主补偿（按 §0 剥掉）。
+- **未新增 ROM 取证**，全部以两份 repo 源码为准（§11.0）；**未考证发行先后**，沿用用户给定前提。
+- 按 §0 / §11.0 边界，不把 repo 侧"未呈现集中 mode"写成 wof 原机缺陷；本轮只对照组织方式。
 
 
 
