@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：7516 行、50 轮、72 张 mermaid 图、1449 表格行、附录 A（A.1–A.19：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执（§46 后）/ A.15 §37–§46 约束合规审计 / A.16 §47–§50 约束合规审计与规模进度回执 / A.17 §51–§52 约束合规审计与规模进度回执 / A.18 §53–§54 约束合规审计与规模进度回执 / A.19 §55 约束合规审计与规模进度回执；A.8–A.13 位于 §33 之后、A.14 / A.15 位于 §47 之前、A.16 位于 §50 后、A.17 位于 §52 后、A.18 位于 §54 后、A.19 位于文末）。§0–§55 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：7612 行、51 轮、73 张 mermaid 图、1462 表格行、附录 A（A.1–A.19：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执（§46 后）/ A.15 §37–§46 约束合规审计 / A.16 §47–§50 约束合规审计与规模进度回执 / A.17 §51–§52 约束合规审计与规模进度回执 / A.18 §53–§54 约束合规审计与规模进度回执 / A.19 §55 约束合规审计与规模进度回执；A.8–A.13 位于 §33 之后、A.14 / A.15 位于 §47 之前、A.16 位于 §50 后、A.17 位于 §52 后、A.18 位于 §54 后、A.19 位于 §55 后、§56 位于文末）。§0–§56 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -43,8 +43,8 @@
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
 | 二十五 | §32 | 地形与载具（例程表按类别分入口 / dino Cadillac 4 态复合主体 / wof 6 槽马池 + 玩家骑马分支） | 有效 |
-| 二十六~三十六 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 / §42 / §43 / §44 / §45 / §46 / §47 / §48 / §49 / §50 / §51 / §52 / §53 / §54 / §55 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态）；生成帧跨帧契约（`spawn_script_tick` 帧最后 / 首帧 AI 下一帧 / wof `0x1082E` 在 `0x22D8E` 之后 / 宿主 pending 按 §0 隔离）；离场与回收（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）；纵深空间与跳跃（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）；渲染优先级与遮挡（`(depth,handle)` 单键排序 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序）；一次攻击的数据表示（8 字段 `AttackRecord` 聚合 / 玩家·敌人共用 vs wof 一个 ID 散在多张表 `0xE4F02` / `0x1C20` / `0x7E68`）；一帧完整调度链（`tick` 三层 / `game_frame` 8 步 / `objects_update` 14 调用 / wof 帧首 `0x050E` 与帧末 `0x18B12`）；一次挥击的判定窗口（`attack_serial` G.$67BE / `+$5E` 双向去重 / `combat_lists_reset` 拷 `0x69BA` 上一帧 hurt list vs wof `+0x79` 相位锁 + `HitMeObj`）；判定盒的数据与开关（`+$44` 可切换表基址 + `+$48/+$49` 索引 / frame record 逐帧重载 / `attack_box=0` 关盒 vs wof `0xE4F02` 全局表 + `+0x6C/6E/70` 偏移 / `AtkBoxId=0` 是合法表项）；对象池总表（players+5 池精确常量 / `slot_of` 地址即身份 / LIFO free 栈·`alloc=None` 背压 / 更新分池·绘制全池 / pool D 被 B 借用 vs wof 容器+`ObjId` 跳表）；RNG 单流全景（`w.rng` 一个全局种子 / `rand()` 取值直接当值 vs wof `& 0x1F + offset` 扰动 `0x1C20` 查表 / 取几次即帧契约·不取也被单测钉死 / 宿主 RNG 诊断按 §0 隔离）；摄像机（`Scroll2` 控制器 / 全体玩家 `max_x60/min_x64` 包围盒 / `push50` 人数分档·限速 6px / `lock78` 三态 + 事件 + `go` / wof 单玩家相机用上一帧 X 算边界 + Scroll2/Scroll3 拆分）；动画帧状态机（frame record 自带时长·链接·终止位 / `tick_anim` 返回「播完」事件 vs wof 序列表项 + `AniLeft` 计时门 + `AniStat` 状态位回调 / 主·副·强制装载多入口）；对象间引用与归属（dino `who`/`attacker`/`partner`/`serial` 语义分字段 vs wof `HitObj1`/`HitMeObj` 地址对 + `+0x79` 相位）；续关跨系统契约（保留 hero·score·RNG·不取 RNG / `wave_timer+600` / rank 时间+速度补偿 / HUD 倒计时 scripted·hold·mode 门 / `flow.sub` 0·2·4·6 四态） | 有效 |
-| 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执 / A.15 §37–§46 约束合规审计 / A.16 §47–§50 约束合规审计与规模进度回执 / A.17 §51–§52 约束合规审计与规模进度回执 / A.18 §53–§54 约束合规审计与规模进度回执 / A.19 §55 约束合规审计与规模进度回执（A.14 / A.15 位于 §47 之前、A.16 位于 §50 后、A.17 位于 §52 后、A.18 位于 §54 后、A.19 位于文末）** — 非设计正文 | 隔离存档 |
+| 二十六~三十六 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 / §42 / §43 / §44 / §45 / §46 / §47 / §48 / §49 / §50 / §51 / §52 / §53 / §54 / §55 / §56 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态）；生成帧跨帧契约（`spawn_script_tick` 帧最后 / 首帧 AI 下一帧 / wof `0x1082E` 在 `0x22D8E` 之后 / 宿主 pending 按 §0 隔离）；离场与回收（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）；纵深空间与跳跃（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）；渲染优先级与遮挡（`(depth,handle)` 单键排序 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序）；一次攻击的数据表示（8 字段 `AttackRecord` 聚合 / 玩家·敌人共用 vs wof 一个 ID 散在多张表 `0xE4F02` / `0x1C20` / `0x7E68`）；一帧完整调度链（`tick` 三层 / `game_frame` 8 步 / `objects_update` 14 调用 / wof 帧首 `0x050E` 与帧末 `0x18B12`）；一次挥击的判定窗口（`attack_serial` G.$67BE / `+$5E` 双向去重 / `combat_lists_reset` 拷 `0x69BA` 上一帧 hurt list vs wof `+0x79` 相位锁 + `HitMeObj`）；判定盒的数据与开关（`+$44` 可切换表基址 + `+$48/+$49` 索引 / frame record 逐帧重载 / `attack_box=0` 关盒 vs wof `0xE4F02` 全局表 + `+0x6C/6E/70` 偏移 / `AtkBoxId=0` 是合法表项）；对象池总表（players+5 池精确常量 / `slot_of` 地址即身份 / LIFO free 栈·`alloc=None` 背压 / 更新分池·绘制全池 / pool D 被 B 借用 vs wof 容器+`ObjId` 跳表）；RNG 单流全景（`w.rng` 一个全局种子 / `rand()` 取值直接当值 vs wof `& 0x1F + offset` 扰动 `0x1C20` 查表 / 取几次即帧契约·不取也被单测钉死 / 宿主 RNG 诊断按 §0 隔离）；摄像机（`Scroll2` 控制器 / 全体玩家 `max_x60/min_x64` 包围盒 / `push50` 人数分档·限速 6px / `lock78` 三态 + 事件 + `go` / wof 单玩家相机用上一帧 X 算边界 + Scroll2/Scroll3 拆分）；动画帧状态机（frame record 自带时长·链接·终止位 / `tick_anim` 返回「播完」事件 vs wof 序列表项 + `AniLeft` 计时门 + `AniStat` 状态位回调 / 主·副·强制装载多入口）；对象间引用与归属（dino `who`/`attacker`/`partner`/`serial` 语义分字段 vs wof `HitObj1`/`HitMeObj` 地址对 + `+0x79` 相位）；续关跨系统契约（保留 hero·score·RNG·不取 RNG / `wave_timer+600` / rank 时间+速度补偿 / HUD 倒计时 scripted·hold·mode 门 / `flow.sub` 0·2·4·6 四态）；调色板与淡入淡出（dino Fade 顶层异步任务 16 步·sleep 续算点·mask=0 轮询 / 按 (stage,area) 二维查表 / 亮度 nibble / pal.latch 一帧延迟 vs wof 对象级 profile 调色板 + 0x42DE 出场淡出） | 有效 |
+| 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执 / A.15 §37–§46 约束合规审计 / A.16 §47–§50 约束合规审计与规模进度回执 / A.17 §51–§52 约束合规审计与规模进度回执 / A.18 §53–§54 约束合规审计与规模进度回执 / A.19 §55 约束合规审计与规模进度回执（A.14 / A.15 位于 §47 之前、A.16 位于 §50 后、A.17 位于 §52 后、A.18 位于 §54 后、A.19 位于 §55 后、§56 位于文末）** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
 - 状态机 → §2、§14、§15、§16.3、**§20（顶层流程任务机）**、**§21（非角色对象）**、§22（受击态）、§23（显示延迟）、**§24（跨两对象）**、**§25（跨整局）**、**§26（反馈层）**、**§41（Front 多 Scene / 选人记录状态机）**、**§53（动画帧状态机 / frame record 自带时长·链接·终止位 / `tick_anim` 返回「播完」事件 vs wof 序列表项 + `AniLeft` 计时门 + `AniStat` 状态位回调 / 主·副·强制装载多入口）**、**§54（对象间引用与归属 / dino `who`·`attacker`·`partner`·`serial` 语义分字段 vs wof `HitObj1`·`HitMeObj` 地址对 + `+0x79` 相位 / 引用住在对象头·跨帧持有）**
@@ -62,7 +62,7 @@
 - 受击恢复 / 倒地 / 起身 / 无敌 / 眩晕 → **§29（`b.act` 14+ 分支 / `invuln[16]` 查表 / `enemy_getup_or_die` / `dizzy_prev` 全局限流 / wof `+0x78`）**
 - 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**、**§55（续关跨系统契约 / 保留 hero·score·RNG·不取 RNG / `wave_timer+600` / rank 时间+速度补偿 / HUD 倒计时三类暂停门 / `flow.sub` 0·2·4·6 四态）**；一关内部的空间分段 / 区域推进 / 段切换 → **§34（`area` 字节 / 相机 `mode/sub` FSM / `0xAA0E` 批量重置 / wof `trigger <= cameraX` + 门闩）**；非角色对象 / 可破坏物 / 关卡推进器 → **§35（一个 pool B + 共享契约 vs 多池 `ObjId` 跳表 / 波次控制器本身是对象）**；跨帧时序 / `prev` 快照 / 执行次数 → **§36（7 个 dino 实例全表 + wof 队列·shadow 并排 / §20.6 主线封顶）**；完整一帧调度链 / 执行次数 / 两套循环 → **§47（`tick` 三层固定序列 / `game_frame` 8 步 / `objects_update` 14 调用 / 帧首 `latch` 与帧末 `spawn_script_tick` vs wof `0x050E` VBlank + `0x18B12` 复位三表）**；一次挥击判定窗口 / 命中去重 / 候选列表跨帧 → **§48（`attack_serial` 去重 / `combat_lists_reset` 一帧延迟 hurt list / §36 跨帧清单延伸）**；判定盒的数据 / 逐帧开关 → **§49（`+$48/+$49` 随动画帧重载 / `0` 在两边含义相反 / §46→§49→§48 判定链）**
 - 角色差异化 / 可选角色 / 按角色查表 → **§31（`PlayerData` 表族 `ch` 索引 / `invuln[d0+ch]` / wof 5 武将各自主状态机入口）**
-- 地形 / 载具 / 骑马 / 空间约束 → **§32（`0x12CB4` 例程表 / `0x26AA` 每类自调 / `car_mode` 4 态 / 6 槽马池 `ActStatA`）**；纵深空间 / 跳跃 / 地形数据 → **§44（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）**；渲染优先级 / 遮挡 / 绘制队列 → **§45（`(depth,handle)` 单键排序 / `0x13FA6` 全池一张表 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序 + 三组背景优先级）**
+- 地形 / 载具 / 骑马 / 空间约束 → **§32（`0x12CB4` 例程表 / `0x26AA` 每类自调 / `car_mode` 4 态 / 6 槽马池 `ActStatA`）**；纵深空间 / 跳跃 / 地形数据 → **§44（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）**；渲染优先级 / 遮挡 / 绘制队列 → **§45（`(depth,handle)` 单键排序 / `0x13FA6` 全池一张表 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序 + 三组背景优先级）**；调色板 / 淡入淡出 / 显示延迟 → **§56（Fade 顶层异步任务 / 按 (stage,area) 二维查表 / 亮度 nibble 16 步 / pal.latch 一帧延迟 vs wof 对象级 profile 调色板 + 0x42DE 出场淡出）**
 - 多人协作 / 活跃位图 / 目标玩家 / 玩家数 / 友军伤害 / 记分归属 → **§33（`A5-0x3E` / `0x3E62` / `A5+0x3E1C` 三槽 / `players_minus_one` / census；§11 勘误主线）**、**§38（`pass_10664` 玩家互伤 / 伤害 1 保底 1 HP / `hud_hit` 归攻击者）**
 - "dino 更成熟"逐条落地 → §6.1（7 条已全部展开）
 - data 待核项结清 / Boss class 实现 → §18.1、§18.2
@@ -7507,6 +7507,102 @@ flowchart TD
 - 仍开放项按 §11.0 / §30.7 与用户「不过度怀疑 rep 侧」保持不变：两游戏发行先后未考证；`0x22DB0` region set 不主动追；`Cps1LidianFinaleRuntime.cs` / `Cps1HardResetRuntime.cs` 抽样不主动扩大；§30.7 / §55.8 的「未做（保留，不扩张）」不是欠账。
 - **本回执不宣称 `长时间自主推进` 终止**，也不把「0 硬残留 / 骨架 ~99%」当作分析完成；继续按「repo 侧为主、ROM 主要为 data 且仅在 `wof_cs` 非常可疑时才查 ROM、不过度怀疑 rep 侧、每块一提交」推进。
 - 可重跑：A.19.1 三组模式对 L7362–7444 分区 Grep + A.19.4 原口径统计 + A.19.3 约束清单逐条对照；后续每追加一批设计节照例新开回执，不回改 A.13 / A.15 / A.16 / A.17 / A.18 / A.19。
+
+---
+
+## 56. 调色板与淡入淡出：显示状态怎么跟着游戏状态走
+
+> 边界：纯 repo 侧，未新增 ROM 取证（§11.0 / §11.6）。本节只谈「显示状态怎么被游戏逻辑排队、查表、延迟生效」，不把 Rust/C#、typed struct / WRAM 字节映像、端序这类实现表相当作设计结论。wof 侧只登记 repo 呈现的组织方式，**不臆断其缺全屏淡入淡出**（§11.0）；宿主层 `_无对应ASM` / 诊断日志按 §0 隔离。音频按 §0 边界外。
+
+### 56.1 一句话
+
+两边都把**调色板当数据表**：按关卡 / 区域 / 对象查表装入，且改动都**延迟一帧才上屏**（§23 / §36）。差别在「淡入淡出」被放在哪一层：dino 把它做成**顶层任务机里的一个异步任务**——`Fade` 控制块（G.$44A）+ task slot 0x40 的 `FadeTask{fade_in, sleep, started}`，16 步、步间可 sleep、跑完把 `mask` 清零供调用者轮询；wof repo 侧呈现的是**对象级调色板配置**（每个敌人按 profile 表查 `+0x17` → `+0x5F`）与**对象出场淡出**（`ActStatA=0x04 → 0x42DE`，§43），不是全屏 fade 任务。
+
+### 56.2 共同底座：调色板是数据，改动延迟一帧生效
+
+- dino `PaletteRam`（`vram.rs:62`）是 4 个 bank（OBJ / scroll1 / scroll2 / scroll3）× 32 调色板 × 16 色；`vram.rs:67` 明写「屏幕显示的是**上一帧**的调色板，视频硬件在 VBlank 才把调色板内存拷过去」，并有单测 `the_screen_shows_the_palette_one_frame_late`（`vram.rs:123`）；`mod.rs:345` 的 `pal.latch()` 就是这一个延迟提交点。
+- 这与 §23 的 `VIDEO_LATENCY` / VBlank shadow、§36 的「这一帧写、下一帧读」是同一条规律：**游戏逻辑写一帧、显示硬件下一帧才读**，所以「换调色板」不是瞬时动作，而是一个可被逐帧对拍的状态。
+- wof 侧同样把卷轴 / 调色板类改动挂在 VBlank shadow 时机（§23 / §52），repo 注释里自带 ROM 逐指令与 FBA 实证；本节不新增 ROM 取证。
+
+### 56.3 dino：Fade 是顶层任务机里的一个异步任务
+
+`Fade` 控制块（`palette.rs:8`，G.$44A）：
+
+| 字段 | 语义 |
+|---|---|
+| `mask`（+0） | bank 掩码：bit0 OBJ / bit1 scroll1 / bit2 scroll2 / bit3 scroll3；**`0` = idle，调用者轮询它** |
+| `steps`（+1） | 剩余步数 |
+| `delay`（+2） | 步间 sleep 帧数 |
+| `task` | 异步 fade 任务（task slot 0x40），`None` = 没在跑 |
+
+`FadeTask`（`palette.rs:20`）只有 `fade_in` / `sleep` / `started` 三个字段；`start_fade_task`（`palette.rs:99`）固定写 `steps = 16, delay = 1`（**调用者设的 delay 会被覆盖**），`run_fade_task`（`palette.rs:106`）由 `tick` 的 task phase 每帧跑一次：
+
+```text
+run_fade_task():
+    t = fade.task or return                  # 没任务就什么都不做
+    if not t.started:
+        t.started = true
+        if mask == 0 或 delay == 0 或 steps == 0:
+            mask = 0; task = None; return   # 参数不全则直接收工
+    if t.sleep > 0:
+        t.sleep -= 1
+        if t.sleep > 0: task = t; return    # 续算点：这一帧只睡，不推进
+    fade_step(t.fade_in)                    # 对 mask 里每个 bank 走一步
+    steps -= 1
+    if steps == 0: mask = 0; task = None; return   # 完成 → 置空闲供轮询
+    t.sleep = delay; task = t
+```
+
+- 这正是 §20 顶层 5 个协作任务 / `Scene{...sleep...}` 的**同一套模型**：一个显式 `started` 标志、一个 `sleep` 续算点、一个「跑完把状态字清零」的收尾，且 `mask == 0` 就是「空闲」信号。淡入淡出不是渲染层的特效调用，而是**排队进任务机的游戏逻辑动作**。
+- `fade_step`（`palette.rs:89`）按 OBJ → scroll1 → scroll2 → scroll3 的固定顺序走，`fade_bank_step`（`palette.rs:77`）只测 colour 0 的亮度半字节作探针，然后给该 bank **每个字 ±0x1000**：16 步正好把 4-bit 亮度从 `0` 走到 `F`（`brightness_full` / `brightness_low`，`palette.rs:53` / `:68`）。「淡入淡出」= 逐帧改调色板字的高 4 位，不改 RGB。
+
+### 56.4 调色板按 (stage, area) 二维查表
+
+- `load_obj_palettes 0x8E4C`（`palette.rs:31`）：`key = (w.stage, cam.s2.area)` → `obj_palette_sets[key]` → 装 OBJ 调色板槽。
+- `load_all_palettes 0x8A44`（`palette.rs:42`）：OBJ + scroll1 + 该 area 的 scroll2 / scroll3 调色板 + `priority_masks` 一起装（§45 的三组背景优先级）。
+- 于是 §34 的「改 `area` → 装地图 / 调色板 → 淡入」有了具体落点：**换区域 = 换一张按 (关卡, 区域) 索引的调色板集合**，配合 56.3 的 fade 任务做「先淡出再换数据再淡入」。敌人配色另有按关卡查表的分支（`enemy.rs:438`），`enemy.rs:1260` 还把单步 fade 拷进对象调色板 —— 怪物策略的配置层也落在同一套调色板数据上。
+
+### 56.5 wof：repo 呈现的对象级调色板配置与出场淡出
+
+- 多个 `Cps1ActorNNRuntime.cs` 用 `ProfilePaletteTable + rb(obj+0x17)` 查表，把结果写到 `obj+0x5F`（`Cps1Actor20Runtime.cs:229` / `Cps1Actor25Runtime.cs:155` 等，每个兵种一张自己的 profile 表）：**调色板是「每个对象按自己类型查表」的配置**，不是全局按 (stage, area) 换一套。
+- 出场调色板由 `对象_加载出场调色板_对应ASM_3B5A(ref obj, TBL_xxx)` 按兵种给表（`Cps1Actor18Runtime.cs:242` / `Cps1Actor17Runtime.cs:177` 等），与 §31「5 武将 / 各兵种各带表」的组织方式一致。
+- 「淡出」在 repo 里是**对象出场回收态** `ActStatA = 0x04 → 出场淡出与回收_对应ASM_42DE`（`Cps1Actor1CRuntime.cs:182`，§43 已记），不是全屏亮度任务。**不据此推断 wof 没有全屏淡入淡出**（§11.0），只登记 repo 呈现的这一层。
+
+### 56.6 对照表与流程图
+
+| 维度 | dino | wof（repo 呈现） |
+|---|---|---|
+| 调色板索引 | `(stage, area)` 二维表 → 整套装 OBJ / scroll1/2/3 | 每个对象按兵种 profile 表查 `+0x17` → `+0x5F` |
+| 淡入淡出 | 顶层任务机里的异步 `FadeTask`（16 步 / 步间 sleep / `mask=0` 供轮询） | 对象级出场淡出 `0x42DE`（§43）；全屏形态按 §11.0 保留 |
+| 亮度实现 | 调色板字高 4 位 ±0x1000，16 步走完 | 本节未展开，按 §11.0 保留 |
+| 生效时机 | `pal.latch()` 一帧延迟（`vram.rs:67` / `:123` 单测） | VBlank shadow 时机（§23 / §52） |
+| 优先级 | `priority_masks` 随 area 装入（`palette.rs:49`） | 三组背景优先级（§45） |
+
+```mermaid
+flowchart TD
+  A["区域/场景切换请求"] --> B["start_fade_task 淡出<br/>steps=16 delay=1 mask=0x0F"]
+  B --> C["tick task phase: run_fade_task<br/>每帧一步 · sleep 续算点"]
+  C --> D{"steps == 0 ?"}
+  D -- 否 --> C
+  D -- 是 --> E["mask=0 task=None 置空闲<br/>调用者轮询到才继续"]
+  E --> F["改 area → load_all_palettes<br/>按 (stage,area) 换整套 + priority_masks"]
+  F --> G["start_fade_task 淡入"]
+  G --> C
+  H["pal.latch 一帧延迟"] -.-> I["屏幕显示上一帧的调色板"]
+```
+
+### 56.7 与既有章节的关系 / "更成熟"落点（带收敛限定）
+
+§20 的顶层协作任务机、`Scene` sleep 续算点，在 `run_fade_task` 里又得到一个独立实例；§23 / §36 的显示延迟在 `vram.rs` 单测里被钉死；§34 的区域切换「淡出 → 换数据 → 淡入」补齐了「换数据」的具体内容；§45 的三组背景优先级落在 `priority_masks`；§43 的 wof 出场淡出是同一词在对象层的用法。dino 把「淡入淡出」做成**可被轮询、可 sleep、有明确完成信号的顶层任务**，因此区域切换、Boss 战、整局流程都能复用同一条排队协议；wof repo 侧呈现的是对象级调色板配置与出场淡出。这是**两种组织层次**，不据此断言 wof 缺全屏淡入淡出或缺亮度任务（§11.0），也不做设计优劣判断。
+
+### 56.8 未做（保留，不扩张）
+
+- wof 全屏淡入淡出 / 亮度任务是否存在、调色板 bank 与 VBlank 提交的逐指令对照：repo 已有命名但按 §11.0 不主动扩大、不臆断。
+- dino `fade_bank_step` 的 colour-0 探针原机怪癖、`obj_palette_sets` 全量表内容、各兵种 profile 调色表逐项：保留不扩张。
+- 音频 / 服务菜单按 §0 边界外；两游戏发行先后未考证。
+- ROM 主要为 data，本节未触发「`wof_cs` 非常可疑」条件，**0 次新增 ROM 取证**（§11.6）。
+
+**结论**：§56 把「显示状态」收成一条设计主线——调色板是按 (关卡, 区域) / 按兵种查表的数据，改动一律延迟一帧生效；dino 进一步把淡入淡出做成顶层任务机里的异步 `FadeTask`（16 步 + sleep 续算点 + `mask=0` 完成信号），补齐 §34「换数据」的落点与 §20 任务机模型的又一实例；wof 侧收敛为 repo 呈现的对象级调色板配置与出场淡出，按 §11.0 不臆断缺失；`长时间自主推进` 仍是开放目标，本节不宣称终止。
 
 ---
 
