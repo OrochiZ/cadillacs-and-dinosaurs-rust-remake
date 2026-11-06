@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：6521 行、43 轮、64 张 mermaid 图、1233 表格行、附录 A（A.1–A.15：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执（§46 后）/ A.15 §37–§46 约束合规审计；A.8–A.13 位于 §33 之后、A.14 / A.15 位于文末）。§0–§48 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：6613 行、44 轮、65 张 mermaid 图、1242 表格行、附录 A（A.1–A.15：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执（§46 后）/ A.15 §37–§46 约束合规审计；A.8–A.13 位于 §33 之后、A.14 / A.15 位于文末）。§0–§49 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -43,12 +43,12 @@
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
 | 二十五 | §32 | 地形与载具（例程表按类别分入口 / dino Cadillac 4 态复合主体 / wof 6 槽马池 + 玩家骑马分支） | 有效 |
-| 二十六~三十六 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 / §42 / §43 / §44 / §45 / §46 / §47 / §48 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态）；生成帧跨帧契约（`spawn_script_tick` 帧最后 / 首帧 AI 下一帧 / wof `0x1082E` 在 `0x22D8E` 之后 / 宿主 pending 按 §0 隔离）；离场与回收（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）；纵深空间与跳跃（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）；渲染优先级与遮挡（`(depth,handle)` 单键排序 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序）；一次攻击的数据表示（8 字段 `AttackRecord` 聚合 / 玩家·敌人共用 vs wof 一个 ID 散在多张表 `0xE4F02` / `0x1C20` / `0x7E68`）；一帧完整调度链（`tick` 三层 / `game_frame` 8 步 / `objects_update` 14 调用 / wof 帧首 `0x050E` 与帧末 `0x18B12`）；一次挥击的判定窗口（`attack_serial` G.$67BE / `+$5E` 双向去重 / `combat_lists_reset` 拷 `0x69BA` 上一帧 hurt list vs wof `+0x79` 相位锁 + `HitMeObj`） | 有效 |
+| 二十六~三十六 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 / §42 / §43 / §44 / §45 / §46 / §47 / §48 / §49 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态）；生成帧跨帧契约（`spawn_script_tick` 帧最后 / 首帧 AI 下一帧 / wof `0x1082E` 在 `0x22D8E` 之后 / 宿主 pending 按 §0 隔离）；离场与回收（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）；纵深空间与跳跃（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）；渲染优先级与遮挡（`(depth,handle)` 单键排序 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序）；一次攻击的数据表示（8 字段 `AttackRecord` 聚合 / 玩家·敌人共用 vs wof 一个 ID 散在多张表 `0xE4F02` / `0x1C20` / `0x7E68`）；一帧完整调度链（`tick` 三层 / `game_frame` 8 步 / `objects_update` 14 调用 / wof 帧首 `0x050E` 与帧末 `0x18B12`）；一次挥击的判定窗口（`attack_serial` G.$67BE / `+$5E` 双向去重 / `combat_lists_reset` 拷 `0x69BA` 上一帧 hurt list vs wof `+0x79` 相位锁 + `HitMeObj`）；判定盒的数据与开关（`+$44` 可切换表基址 + `+$48/+$49` 索引 / frame record 逐帧重载 / `attack_box=0` 关盒 vs wof `0xE4F02` 全局表 + `+0x6C/6E/70` 偏移 / `AtkBoxId=0` 是合法表项） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执 / A.15 §37–§46 约束合规审计（后两节位于文末）** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
 - 状态机 → §2、§14、§15、§16.3、**§20（顶层流程任务机）**、**§21（非角色对象）**、§22（受击态）、§23（显示延迟）、**§24（跨两对象）**、**§25（跨整局）**、**§26（反馈层）**、**§41（Front 多 Scene / 选人记录状态机）**
-- 打击逻辑 → §3、§9.3、§12、§17、§21.5/§21.6（武器攻击几何）、**§22（受击反应）**、**§24（投技）**；一次攻击的数据表示 / 招式表 → **§46（8 字段 `AttackRecord` 聚合 / 5 个消费者 / 玩家·敌人共用 vs wof 一个 ID 散在多张表 / 按 pass 约定读字节）**；一次挥击的判定窗口 / 命中去重 / 候选列表跨帧 → **§48（全局 `attack_serial` G.$67BE / `+$5E` 攻击者持号·被击者记「被哪个号打过」 / `combat_lists_reset` 拷 `0x69BA` 上一帧 hurt list vs wof `+0x79` 相位锁 + `HitMeObj` 地址）**
+- 打击逻辑 → §3、§9.3、§12、§17、§21.5/§21.6（武器攻击几何）、**§22（受击反应）**、**§24（投技）**；一次攻击的数据表示 / 招式表 → **§46（8 字段 `AttackRecord` 聚合 / 5 个消费者 / 玩家·敌人共用 vs wof 一个 ID 散在多张表 / 按 pass 约定读字节）**；一次挥击的判定窗口 / 命中去重 / 候选列表跨帧 → **§48（全局 `attack_serial` G.$67BE / `+$5E` 攻击者持号·被击者记「被哪个号打过」 / `combat_lists_reset` 拷 `0x69BA` 上一帧 hurt list vs wof `+0x79` 相位锁 + `HitMeObj` 地址）**；判定盒的数据表示 / 逐帧开关 → **§49（frame record 载盒 ID / dino `+$44` 表基址+`+$49` 索引·`0`=关盒 vs wof `0xE4F02`+`+0x70` 偏移·`0`=合法表项 / §46→§49→§48 三段判定链）**
 - 事件脚本 → §4、§9.4、§12.4、§14、**§19（5 套脚本全景）**、**§26（加分事件队列）**
 - 怪物策略 → §5、§9.5、§11.5、§13、§16、§18.2、**§25（动态难度 / 概率门）**
 - 道具 / 武器生命周期 → **§21（12 class / 拾取双向迁移 / 空枪降级 / 一帧延迟列表）**
@@ -60,7 +60,7 @@
 - 搓招 / 指令技 / 输入序列 / 连击 → **§27（`player_command_fsm` 三态时间窗 / `cmd_flag` 结果位 / wof `RKey1` 符号三态）**、**§39（`combo_t` 时间窗 / 4 段链 / finisher 接投技 vs wof `ComboLev` 查表）**
 - 关卡 / 波次 / 同屏预算 / 背压 / 生成帧时序 / 离场回收 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**、**§42（`spawn_script_tick` 帧最后 / 首帧 AI 落下一帧 / wof `0x1082E` 在 `0x22D8E` 之后）**、**§43（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）**
 - 受击恢复 / 倒地 / 起身 / 无敌 / 眩晕 → **§29（`b.act` 14+ 分支 / `invuln[16]` 查表 / `enemy_getup_or_die` / `dizzy_prev` 全局限流 / wof `+0x78`）**
-- 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**；一关内部的空间分段 / 区域推进 / 段切换 → **§34（`area` 字节 / 相机 `mode/sub` FSM / `0xAA0E` 批量重置 / wof `trigger <= cameraX` + 门闩）**；非角色对象 / 可破坏物 / 关卡推进器 → **§35（一个 pool B + 共享契约 vs 多池 `ObjId` 跳表 / 波次控制器本身是对象）**；跨帧时序 / `prev` 快照 / 执行次数 → **§36（7 个 dino 实例全表 + wof 队列·shadow 并排 / §20.6 主线封顶）**；完整一帧调度链 / 执行次数 / 两套循环 → **§47（`tick` 三层固定序列 / `game_frame` 8 步 / `objects_update` 14 调用 / 帧首 `latch` 与帧末 `spawn_script_tick` vs wof `0x050E` VBlank + `0x18B12` 复位三表）**；一次挥击判定窗口 / 命中去重 / 候选列表跨帧 → **§48（`attack_serial` 去重 / `combat_lists_reset` 一帧延迟 hurt list / §36 跨帧清单延伸）**
+- 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**；一关内部的空间分段 / 区域推进 / 段切换 → **§34（`area` 字节 / 相机 `mode/sub` FSM / `0xAA0E` 批量重置 / wof `trigger <= cameraX` + 门闩）**；非角色对象 / 可破坏物 / 关卡推进器 → **§35（一个 pool B + 共享契约 vs 多池 `ObjId` 跳表 / 波次控制器本身是对象）**；跨帧时序 / `prev` 快照 / 执行次数 → **§36（7 个 dino 实例全表 + wof 队列·shadow 并排 / §20.6 主线封顶）**；完整一帧调度链 / 执行次数 / 两套循环 → **§47（`tick` 三层固定序列 / `game_frame` 8 步 / `objects_update` 14 调用 / 帧首 `latch` 与帧末 `spawn_script_tick` vs wof `0x050E` VBlank + `0x18B12` 复位三表）**；一次挥击判定窗口 / 命中去重 / 候选列表跨帧 → **§48（`attack_serial` 去重 / `combat_lists_reset` 一帧延迟 hurt list / §36 跨帧清单延伸）**；判定盒的数据 / 逐帧开关 → **§49（`+$48/+$49` 随动画帧重载 / `0` 在两边含义相反 / §46→§49→§48 判定链）**
 - 角色差异化 / 可选角色 / 按角色查表 → **§31（`PlayerData` 表族 `ch` 索引 / `invuln[d0+ch]` / wof 5 武将各自主状态机入口）**
 - 地形 / 载具 / 骑马 / 空间约束 → **§32（`0x12CB4` 例程表 / `0x26AA` 每类自调 / `car_mode` 4 态 / 6 槽马池 `ActStatA`）**；纵深空间 / 跳跃 / 地形数据 → **§44（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）**；渲染优先级 / 遮挡 / 绘制队列 → **§45（`(depth,handle)` 单键排序 / `0x13FA6` 全池一张表 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序 + 三组背景优先级）**
 - 多人协作 / 活跃位图 / 目标玩家 / 玩家数 / 友军伤害 / 记分归属 → **§33（`A5-0x3E` / `0x3E62` / `A5+0x3E1C` 三槽 / `players_minus_one` / census；§11 勘误主线）**、**§38（`pass_10664` 玩家互伤 / 伤害 1 保底 1 HP / `hud_hit` 归攻击者）**
@@ -6514,6 +6514,98 @@ flowchart TD
 - 音频（命中音）按 §0 边界外；「两游戏一次挥击最长几帧」不做量化对比。
 
 **结论**：§48 把 §3 / §12 / §22 / §29 之间「一次挥击怎么保证不重复命中」这层补上，并把 §36 的跨帧清单延伸到碰撞候选列表；`长时间自主推进` 仍是开放目标，本节不宣称终止。
+
+## 49. 判定盒的数据与开关：动画帧怎么决定「这一帧有没有盒」
+
+> 触发：§3 讲 `boxes_hit` 三轴几何怎么算重叠，§46 讲命中后读哪条 `AttackRecord`，§48 讲一次挥击怎么不重复命中——但**「这一帧到底开没开攻击盒、盒子数据存在哪、谁把它写上去的」**从未独立成节。一次挥击跨多帧（§48），判定盒必然逐帧变，这层正好补在 §46 与 §48 之间。
+> 归属：设计正文（§0–§49），按"轮次线性追加"接在 §48 之后。纯 repo 侧，未新增 ROM 取证（§11.0）。
+> 边界：用户 11-06 授权「ROM 主要为调查 data，仅 `wof_cs` 非常可疑时可查 ROM」；本节 wof 侧 `0xE4F02` / `0x848E` / `0x247C` 的注释自带 `rom_read` 逐字节与 FBA 实证，**未触发可疑条件**，故不查 ROM。分工上 §3 只讲几何、§21 讲武器对象自带盒，本节讲"盒 ID 的载体与逐帧开关"。
+
+### 49.1 一句话
+
+两边都**不把判定矩形写死在招式代码里**，而是把「这一帧用哪个盒」编成**动画帧记录里的一个 ID**，由动画播放器每帧加载进对象头，碰撞 pass 再拿这个 ID 去查一张共享盒表。差别在「ID 怎么定位一张表」：dino 是**对象头自带可切换的表基址 + 表内索引**（双参数，且 `0` = 关盒），wof 是**全局固定大表 `0xE4F02` + 绝对字节偏移**（单参数，且 `0` = 合法的表第 0 项）。
+
+### 49.2 共同底座：盒 ID 住在 frame record 里，随换帧重载
+
+- dino `body.rs:193-211` 的 `load_frame`（`0x1236` 10 字节 / `0x143E` 12 字节记录）每次换帧把 `f.body_box` / `f.attack_box` 写进 `+$48` / `+$49`，同时写 `param_a/param_b/kind/timer`；`body.rs:213-230` 的 `tick_anim` / `start_anim` 在计时到 0 或起手时调它。即**"这一帧开什么盒"是动画数据，不是状态机代码**。
+- wof `Cps1Subs.cs:761-768`（`0x247C` 加载动画帧）：`boxIdWord = rw(sprite-2)`、`boxes = rd(sprite-6)`，然后 `BeheldBoxId = boxIdWord`、`HurtBoxId = boxes>>16`、`AtkBoxId = boxes`，再 `ww(Addr+0x6C)` / `wd(Addr+0x6E)` 写回对象头；`Cps1Subs.cs:842-846` 另一条路径同构。**盒 ID 就放在 sprite 帧记录头部 6 字节里**，`Program.cs:6155` 的「首帧 AniB=08；Spr 87520 的 AtkBox=0CA0」正是帧号与盒 ID 的绑定实例。
+- 所以「起手帧 / 判定帧 / 收招帧」的差别，两边都是**靠动画推进换记录 → 换盒 ID** 实现的，而非招式函数里 `if (frame==3)` 开盒。§25 的 rank、§39 的 combo 链都建立在"动画记录自带时长与盒"这一层之上。
+
+### 49.3 dino：可切换表基址 + 两个索引 + 一帧多盒
+
+- 对象头四项（`body.rs:86-91`）：`+$44 box_table`（盒表 ROM 基址）、`+$4A multi_box`（单盒 / 多盒）、`+$48 body_box`（被击盒索引）、`+$49 attack_box`（攻击 / 探测盒索引）。
+- 盒表本身（`sprites.rs:91-100`）：一个 `HitBox` 是 **6 个 i16 = 12 字节的三轴盒**（`zoff/zsize/xoff/xsize/yoff/ysize`）；`sprites.rs:102-145` 的 `HitBoxBank` 用 `single(table,index) = table + 12*index`，`multi(table,index)` 支持**一帧返回多个盒**，`try_single` 对越界 / 陈旧指针返回 `None`。
+- 查表入口（`collide.rs:8-14`）：`boxes(s,b,index)` 取 `b.box_table & 0xFF_FFFF`（68000 24 位地址，pool E 对象把标志位塞在最高字节，查表要忽略），按 `multi_box` 走 `multi` 或 `try_single`；`collide.rs:36-48` 的 `boxes_hit(s,a,ia,b,ib)` 里 `ia` 通常就是 `+$49`、`ib` 是 `+$48`，返回第一对重叠盒给 spark（§3）。
+- **表基址可被状态机改**：`enemy/class10.rs:96` 显式 `e.b.box_table = 0x103000` 换整套盒表；`item/weapon.rs:408`、`item/blast.rs:659`、`prop.rs:234` 在状态推进里直接覆写 `attack_box`（`-=0` 关盒、`=0xC9` 指定盒）。即"用哪张表 / 用哪个盒"两层都可在运行时重定向。
+- **哪些对象的帧记录带盒是显式区分的**：`effect.rs:226-234` 的 `fx_load`（`0x160A`）注释直说 *"copying only +$2C..+$2F (no boxes, no extra bytes)"*；`effect.rs:236-246` 的 `fx_load_sprite_frame`（`0x1236`）才多拷 `+$48/+$49` 两个盒字节；`effect.rs:266-278` 池 C 对象同理。特效 / 纯显示对象与可碰撞对象走不同的 frame loader。
+
+### 49.4 wof：全局单表 + 三个绝对偏移
+
+- `Cps1Types.cs:309`：`OBJ+0x70 AtkBoxId`（配套 `+0x6C BeheldBoxId`、`+0x6E HurtBoxId`）；`Cps1DebugRenderer.cs:2` 注释「红=攻击 AtkBox(0x70)，蓝=被击 HurtBox(0x6E)」。
+- `Cps1Collision.cs:21` `HITBOX_ROM_BASE = 0xE4F02` 是**全局唯一基址**；`:68-76` `HitboxGet(id,...)` 直接 `baseAddr = 0xE4F02 + id` 读 4 个 word = `(valX, radX, valY, radY)`，注释明写「OBJ+6C/6E/70 保存的已是相对 A6=0xE4F02 的**字节偏移**」。`:51-66` 的 `HitboxBoxWidthX(id)` 还从 `id-2` 取 X 框宽，推出表项实际是 10 字节布局 `[X框宽, valX, radX, valY, radY]`；`:2740` 的 `861A A3 = 0xE4F02 + (0x6E,A1)` 是另一处取表。
+- 即 wof 的盒 ID 是**大表内的绝对偏移**，不是"某张小表 + 索引"；`Cps1Collision.cs:4588-4623` 的 `0x848E` 装载攻击框把 `(valX,radX,valY,radY)` 加上面朝镜像与 `PosX/PosY/PosZ/PosZ2` 变成屏幕矩形（`atkX/atkW/atkY/atkH`），并注明全工程 8 处调用点都按此形参序。
+- 武器走同一张表、只是换了取 ID 的入口：`Cps1Collision.cs:1948` 的 `0x91FA` 用 `+0x70` 从武器对象取 `AtkBoxId`（§21 的线 B），`Program.cs:3833` 记「ROM 0xE4F02+0x78 = {X=0,Y=0x23}，位于 0x0AF8 攻击框」——都是同一全局表的偏移。
+
+### 49.5 最容易误读的一处：`0` 在两边含义相反
+
+这是本节最有设计意味、也最容易被"用另一边的直觉读这一边"带偏的地方：
+
+- **dino：`attack_box == 0` = 这一帧没有攻击盒（关盒）**。`player_combat.rs:195,272,340`、`enemy_combat.rs:42,122,491,739` 等几乎所有攻击 pass 都以 `if ab.attack_box == 0 { return/continue }` 开头；关盒是**显式写 0**（`prop.rs:234`）。收招帧 / 非判定帧就是靠动画记录给 `attack_box=0` 表示"这帧不打人"。
+- **wof：`AtkBoxId == 0` = 表第 0 项，合法且有实体矩形**。`Cps1Collision.cs:4588-4614` 的 `0x848E` 注释给出 `rom_read` 核实的表第 0 项 `valX=FFFD(-3) radX=0024(36) valY=FFEB(-21) radY=0000`，并逐指令说明 `0x848E..84B6` **没有任何前置门**、调用点 `0x922E` 也不检查 D0。宿主 C# 曾加 `AtkBoxId == 0 -> return false` 与 `radX<=0 || radY<=0 -> return false` 两道门，实测**两道都拦住了 f=6361 的玩家近战**（火花 / 事件 / 派生对象全缺），已按"ROM 直译"删除；`:1991-2006`（`0x91FA` 武器）记同族**第三次复发**，`:5621-5624` 记**第四次复发**。wof 的"这帧不打人"不靠 0，而靠动画帧不给攻击阶段 / `+0x62` 一类的门（§37 / §48）。
+
+> 这条不是实现 bug 记账，而是**设计语义差异**：同一个数值 0，在一边是"关"，在另一边是"第 0 号盒"。把 dino 的写 0 习惯带进 wof，或把 wof 的"0 合法"带进 dino，都会静默改掉打击手感。按 §11.0 立场，这里只陈述两份 repo 呈现的组织方式，不臆断哪边"缺"了什么。
+
+### 49.6 流程图与对照表
+
+```mermaid
+flowchart TD
+    subgraph 共同底座
+        A[动画帧记录] -->|每次换帧| B[帧加载器<br/>dino load_frame 0x1236<br/>wof 0x247C]
+        B --> C[对象头盒字段]
+    end
+    subgraph dino
+        C --> D["+$44 box_table 表基址<br/>+$48 body_box / +$49 attack_box 索引<br/>+$4A multi_box"]
+        D --> E["boxes 查 HitBoxBank<br/>table + 12*index 或 multi"]
+        E --> F["三轴 HitBox<br/>zoff/zsize/xoff/xsize/yoff/ysize"]
+        F --> G{attack_box == 0?}
+        G -->|是| H[关盒: pass 直接 return]
+        G -->|否| I[boxes_hit 三轴 overlap]
+    end
+    subgraph wof
+        C --> J["+0x6C/6E/70 三个字节偏移"]
+        J --> K["HitboxGet: 0xE4F02 + id"]
+        K --> L["二维矩形<br/>valX/radX/valY/radY"]
+        L --> M["0 是表第 0 项, 合法<br/>不设 ==0 门"]
+        M --> N["0x848E 加坐标 → 屏幕框"]
+    end
+```
+
+| 维度 | dino | wof |
+|---|---|---|
+| 盒 ID 载体 | frame record 的 `body_box` / `attack_box` 字节，换帧重载（`body.rs:193-211`） | sprite 帧记录头部 `spr-6` / `spr-2`，换帧重载（`Cps1Subs.cs:761-768`） |
+| 定位方式 | 双参数：`+$44` 表基址 + 表内索引，基址可换（`class10.rs:96`） | 单参数：全局 `0xE4F02` + 绝对字节偏移（`Cps1Collision.cs:21,68-76`） |
+| 对象头字段 | `+$48 body_box` / `+$49 attack_box` / `+$4A multi_box` | `+0x6C BeheldBoxId` / `+0x6E HurtBoxId` / `+0x70 AtkBoxId` |
+| 盒数据 | 12 字节三轴（z/x/y 各 off+size），一帧可多盒（`sprites.rs:91-145`） | 8~10 字节二维（valX/radX/valY/radY）+ Z 另算（`Cps1Collision.cs:51-76`） |
+| `0` 的含义 | 关盒，攻击 pass 显式判 0 早退（`player_combat.rs:195`） | 合法表项，禁止 `==0` 门（`Cps1Collision.cs:4588-4614`） |
+| 谁决定换盒 | 动画记录换帧 + 状态机可覆写表基址 / 盒字节 | 动画记录换帧，武器另从 `+0x70` 取（`Cps1Collision.cs:1948`） |
+| 与相邻节接口 | `boxes_hit`（§3）→ `AttackRecord`（§46）→ serial 去重（§48） | hitbox 表 → 9 项反应分派（§12 / §22）→ 相位锁去重（§48） |
+
+### 49.7 "更成熟"落在哪（只谈设计本意，带收敛限定）
+
+1. **双层可重定向**：dino 把"用哪张盒表"和"用表里第几项"拆成对象头的两个字段，武器 / 变身 / 特殊对象可以整表替换而复用同一套 `boxes_hit`（`class10.rs:96`）；wof 用一张全局表 + 偏移，最直接但盒数据与全局表地址绑死。这是**组织方式**差异，不据此断言 wof 不能表达等价几何。
+2. **多盒与三轴进同一结构**：`multi_box` + 12 字节三轴盒让"一帧多个判定区""纵深判定"（§44）成为盒表的自然属性；wof 侧本笔记只登记 repo 呈现的二维矩形 + 独立 Z 处理，按 §11.0 不臆断其缺少多盒 / 三轴能力。
+3. **关盒是一等状态**：dino 的 `attack_box=0` 把"这帧无判定"写成数据而非分支，于是所有 pass 共用同一道早退、起收招帧只需换记录；配合 §49.5，wof 把 0 用作合法项、把开关放在别处——两种都自洽，但 dino 的"0 = 关"让判定窗口和动画数据在同一个字节里闭合。
+4. **与 §46 / §48 串成完整链**：`+$58` 选攻击记录（§46，命中后读什么）← `+$49` 决定这帧有没有盒（§49）← `+$5E` 决定这一挥击打过谁（§48）。三者是对象头三个不同字节、三条不同时间尺度的契约，没有混在一个字段里。
+
+### 49.8 未做（保留，不扩张）
+
+- 两游戏盒表的总容量 / 逐项数值穷举、`BeheldBoxId`（`+0x6C`）的精确语义（repo 未完全展开，按 §11.0 不臆断）。
+- dino `multi_box` 逐类用例、`HitBoxBank::try_at` 陈旧指针的具体来源（§3 已覆盖几何，不逐类展开）。
+- wof `0x848E` 之外 8 处调用点逐条、`0x247C` 正负路径 A6 自减的逐指令（repo 已有 `rom_read` / FBA 实证，不逐条 ROM 对照）。
+- **ROM 核查未触发**：按用户 11-06 授权，仅 `wof_cs` 非常可疑时才查 ROM；本节 wof 侧盒表与门控均自带 ROM 字节与 FBA 实证，故保持纯 repo 侧（§11.0 / §11.6）。
+- 音频（命中音）按 §0 边界外；「两游戏一帧最多几个盒」不做量化对比。
+
+**结论**：§49 把 §46（攻击记录）与 §48（挥击去重）之间「判定盒本身是什么数据、由哪一帧打开」补上，并给出两条最容易混淆的语义分界（双参数 vs 单参数、`0`=关盒 vs `0`=合法项）；`长时间自主推进` 仍是开放目标，本节不宣称终止。
 
 
 
