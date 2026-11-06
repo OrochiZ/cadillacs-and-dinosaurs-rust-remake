@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：5230 行、29 轮、51 张 mermaid 图、1031 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§36 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：5382 行、30 轮、53 张 mermaid 图、1049 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§37 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -43,7 +43,7 @@
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
 | 二十五 | §32 | 地形与载具（例程表按类别分入口 / dino Cadillac 4 态复合主体 / wof 6 槽马池 + 玩家骑马分支） | 有效 |
-| 二十六~二十九 | §33 / §34 / §35 / §36 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶） | 有效 |
+| 二十六~三十 | §33 / §34 / §35 / §36 / §37 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计（文末）** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
@@ -52,7 +52,7 @@
 - 事件脚本 → §4、§9.4、§12.4、§14、**§19（5 套脚本全景）**、**§26（加分事件队列）**
 - 怪物策略 → §5、§9.5、§11.5、§13、§16、§18.2、**§25（动态难度 / 概率门）**
 - 道具 / 武器生命周期 → **§21（12 class / 拾取双向迁移 / 空枪降级 / 一帧延迟列表）**
-- 受击 / 硬直 / 眩晕 / 反击 → **§22（dino 12 张表族 / wof 9 项跳表 + 每兵种段表）**
+- 受击 / 硬直 / 眩晕 / 反击 / 命中停顿 / 屏幕震动 → **§22（dino 12 张表族 / wof 9 项跳表 + 每兵种段表）**、**§37（两条独立反馈状态机 / `step_shake` 幅度递减方波 / `+0x62` 一字节三用）**
 - 卷轴 / 摄像机 / 硬件时序 → **§23（`VIDEO_LATENCY` / VBlank shadow 提交 / 与 A.8 dump 点闭合）**
 - 投技 / 抓取 / 挣扎 / 投掷 → **§24（双向互检协议 / 释放即落地 / 投掷多步状态机）**
 - 动态难度 / rank / 时间驱动 → **§25（`rank_tick` / `RANK_PERIOD` / Markov aggression / wof `A5-0x5A`）**
@@ -5223,6 +5223,158 @@ flowchart LR
 **结论**：审计通过——零硬残留、零正文改写、零行号漂移，误读风险由 4 处警示 + 1 处约定说明覆盖。仍开放项按 §11.0 与用户「不过度怀疑 rep 侧」保持不变。**本回执只记录审计与防护结果，不宣称目标终止**；`长时间自主推进` 仍是开放目标。
 
 > 可重跑：两组 Grep 模式见 A.13.1；后续若再改 §9–§10 原文，重跑本审计并复核 5 处警示是否仍在。
+
+---
+
+## 37. 命中反馈层：停顿与震动是两条独立的状态机，不是命中帧的一个字段
+
+> 触发：§17 / §22 / §29 记录的是"命中帧写了哪些字段"（`reaction / stun / hitstop / knock`），没回答"写完之后谁推进、谁复位、作用到哪一层"。本轮把 `hitstop` 与屏幕震动单独拎出来看它们**各自的状态机形态**——这是战斗节奏怎么被组织，不是 Rust/C# 或 WRAM 布局差异。
+> 归属：设计正文（§0–§37），按"轮次线性追加"接在 A.13 之后；物理位置在附录 A 之后，与 §34–§36 同例。结论全部以两份 repo 源码为准，未新增 ROM 取证（§11.0）。
+> 边界：特效对象状态机（pool C / `Cps1HitEffectRuntime`）在 §21.8 / §35.5 已登记"保留、不扩张"；音频触发按 §0 边界外。本节只把命中链"创建特效对象"记为挂接点，不展开。
+
+### 37.1 分工：命中结算 vs 反馈推进
+
+| | §17 / §22 已写 | 本节补 |
+|---|---|---|
+| 时段 | 碰撞 pass 命中当帧 | 命中**之后**若干帧 |
+| 问题 | 写了哪些字段、写几处（攻击方 / 被击方 / 合体技 partner） | 这些字段由谁递减、递减时谁被门控、何时复位 |
+| 屏幕震动 | 未展开 | 相机级 / 全局级两套完整形态 |
+
+一句话：dino 把"停顿"放在**每个对象的对象头**、把"震动"放在**相机控制器的一个子状态机**，两条线互不相干；wof 把"停顿"压进**一个 `+0x62` 字节**（兼硬直门 / 闪烁 / 群体命中锁），把"震动"交给**全局计数器 + 偏移表 + VBlank shadow**。
+
+### 37.2 dino：对象头 `hitstop` 与相机 `step_shake`
+
+**A. 停顿——对象头字段 + 状态机入口门**
+
+命中帧 `e.hitstop = attacker.hitstop = rec.hit_stop`，合体技连 partner 也写（§22.3，`DESIGN_DIFF_NOTES.md:3159`）。之后它不由一个全局计时器统一推进，而是**每个对象在自己的状态机里自查**：
+
+```rust
+// player.rs:1835-1842
+fn player_hitstop_wait(&mut self, i: usize) -> bool {
+    let p = &mut self.players[i];
+    if p.b.hitstop != 0 { p.b.hitstop -= 1; return true; }  // 本帧跳过该玩家后续状态推进
+    false
+}
+```
+
+`player_hitstop_wait` 在 run / attack 等状态分支入口被反复调用（`player.rs:1668 / 1698 / 1717 / 1754 / 1797`），另有 `player.rs:1309 / 1398 / 1427 / 1468 / 1508 / 1552 / 1605` 直接 `hitstop != 0` 门控；特定动作直接写 `p.b.hitstop = 0x10`（`player.rs:889`），初始化清零（`player.rs:256`）。即 **hitstop 是"本帧该对象不推进"的分布式门，不是全局冻结**——与 §20 顶层任务机 `flow_lag` 是两回事。
+
+**B. 震动——相机控制器的显式子状态机（`0x222D6`）**
+
+7 个字段都在逐帧 trace 里（`trace.rs:1731-1739`：`shake_state / shake_req / shake_strength / shake_timer / shake_sign / shake_amp / shake_scroll1_y`），是验收字段。`screen_shake`（`camera.rs:1727-1729`）每帧调 `step_shake`：
+
+```rust
+// camera.rs:208-254，0x222D6 / 0x222EE / 0x22316
+fn step_shake(&mut self, scroll1: bool) {
+    if state == 0 { strength = req;
+                    if strength == 0 { scroll1_y = cam1_y; return; }   // 空闲：只同步显示 Y
+                    state = 2; req = 0; timer = 0; amp = strength; sign = -1; }
+    // 运行中可被更强请求覆盖；保留 timer 相位（camera.rs:1731-1735 注释）
+    if req != 0 && (req as i8) > (strength as i8) { strength = req; amp = req; sign = -1; }
+    req = 0;
+    off = sign < 0 ? -amp : amp;
+    display_y = (scroll1 ? cam1_y : s2.cam_y) + off;        // 只写显示 Y
+    (timer, borrow) = timer - 1;                              // 每 3 帧换向
+    if borrow { timer = 2; sign = -sign;
+                if sign < 0 { amp -= 1; strength -= 1;
+                              if strength == 0 { scroll1_y = cam1_y + dy1; state = 0; } } }
+}
+```
+
+形态是**幅度递减的方波**：每 3 帧换向，负半周把幅度减 1，减到 0 收尾并回到 `state 0`。单测 `shake_duration_decay_and_layer_selection`（`camera.rs:1794-1832`）逐帧断言 `shake_dy2 / shake_timer / shake_sign`，包括 `req = 0xFF` 按有符号比较不覆盖、弱请求不打断相位。
+
+两个设计要点：
+1. **作用层隔离**：`screen_shake` 注释明确 `Only the vblank Y shadow moves. Sprites, collision and camera streaming keep their coordinates.`（`camera.rs:1726`）——震动只改显示 Y，不污染碰撞坐标与相机流送，反馈不回写游戏状态。
+2. **复位与脚本化**：`flow_game_clear_ram (0xA836)` 把 6 个 shake 字段连同 `shake_scroll1_y` 一次清零（`flow.rs:443-449`）；`flow.rs:1239` 在某关开场直接 `cam.shake_state = 2`，说明这段震动可被流程脚本当作持续状态用，不必由命中触发。`cam_shake(strength)`（`camera.rs:1733`）只写 `shake_req`，"last write wins"（`camera.rs:1731`）。
+
+```mermaid
+flowchart TD
+    H[碰撞 pass 命中] --> HS[写 hitstop: 攻击方 / 被击方 / partner]
+    H --> SR[cam_shake 写 shake_req]
+    HS --> N[下一帧各对象状态机入口<br/>player_hitstop_wait: -1 并 return]
+    SR --> S0[step_shake state 0<br/>strength=req, sign=-1, timer=0]
+    S0 --> SQ[每帧: off=±amp 写 display_y<br/>timer-1; 借位 → 换向 + 幅度-1]
+    SQ -->|strength=0| SE[state=0, 同步 scroll1_y]
+    N -->|hitstop=0| GO[恢复该对象状态推进]
+```
+
+### 37.3 wof：`+0x62` 一字节三用 + 全局 VBlank 震动
+
+**A. 对象级——`+0x62` 同时是硬直门、闪烁、群体命中锁**
+
+命中链从 `0x6E75F + (signed)attacker+0x7A` 取一字节，**双方同写** `+0x62`（`Cps1Collision.cs:3464-3470`）；`受击反应` 段再走 `命中双方硬直_可能对应ASM_7EA2(attacker, target, shake)`（`Cps1Collision.cs:5116-5119`），该值多数调用点恒 3、个别为 4 / 5（同文件 `:4907 / :5058 / :5087 / :5125` 的逐点注释）。
+
+推进方式与 dino 同构但更省：各 Actor 主体入口直接查这个字节，非 0 就 -1 并 **rts 跳过本帧**（`Cps1Actor1BRuntime.cs:385-392`，`Cps1Actor26Runtime.cs:258-261`、`Cps1Actor2DRuntime.cs:529-531` 同构）。
+
+它一字节兼三职：
+- 硬直门（上面）；
+- 受击闪白（`:5127` 提到 `0x121BA` 的 `tst.b (0x62,A0)` 闪烁循环）；
+- **群体命中锁**：`Cps1Collision.cs:337-341` 注释——命中 A 后 `attacker.+0x62 = 3`，3 帧后归 0 而攻击动画仍活跃，于是同一套攻击可依次命中 B、C（3–5 个目标），每命中 `combo_level++` 且伤害递增。
+
+即 wof 用**一个字节的生命周期**同时规定了"定格多久、闪多久、这套攻击还能不能再打中人"；dino 的 `hitstop` 只管定格，群体命中由 §12「命中帧只结算不处决 + 多 pass」另行组织。
+
+**B. 全局级——计数器 + 偏移表 + VBlank shadow**
+
+与对象 `+0x62` 完全分离的是屏幕震动（`Cps1CameraRuntime.cs:1261-1283`）：
+
+```csharp
+// 取得Y震动偏移_对应ASM_5DEAA_5DEB2
+ushort shake = rw(SCREEN_SHAKE_Y_COUNTER_ADDR);       // A5-62
+return shake == 0 ? 0 : rws(SCREEN_SHAKE_Y_OFFSET_TABLE_ADDR + shake);
+
+// 帧末提交并递减Y震动Shadow_对应ASM_5DED0_5DEF0
+offsetY = 取得Y震动偏移();
+ww(SCROLL2_NEXT_Y, CAMERA_Y + offsetY);
+ww(SCROLL3_NEXT_Y, BACKGROUND_Y + offsetY);
+if (shake != 0) ww(SCREEN_SHAKE_Y_COUNTER_ADDR, shake - 2);   // 每帧 -2
+```
+
+对象显示 Y 也走这条：`取得显示相机Y_5DEB4 = CAMERA_Y + 偏移`，再由 `写入对象渲染相机YShadow_5DEA6_5DEB4` 快照进 `A5-7CC4`，后续展开器读 shadow 而不现算（`Cps1CameraRuntime.cs:1243-1259`）。硬件 `CURRENT` 由 IRQ `5A8` 轮换（`:1273`）。形态是**一个自减计数器查一张偏移表**，没有 state / 请求仲裁 / 幅度包络；衰减速度由"每帧 -2"和表内容决定。
+
+```mermaid
+flowchart TD
+    H[命中链 0x8D96 / 0x7EA2] --> A[双方 +0x62 = shake]
+    A --> D[各 Actor 主体入口: -1 并 rts]
+    A --> F[0x121BA 闪烁循环读 +0x62]
+    A --> G[群体命中锁: 3 帧后攻击方可再命中]
+    H2[(屏幕震动请求)] --> C[SCREEN_SHAKE_Y_COUNTER]
+    C --> O[查 Y_OFFSET_TABLE 得偏移]
+    O --> V[帧末: SCROLL2/3 NEXT_Y += 偏移<br/>counter -= 2]
+    V --> S[对象渲染相机 Y shadow A5-7CC4]
+    S --> I[IRQ 5A8 轮换 CURRENT]
+```
+
+### 37.4 对照表
+
+| 维度 | dino | wof |
+|---|---|---|
+| 停顿归属 | 对象头 `hitstop`，攻击方 / 被击方 / 合体技 partner 三处同写（§22.3） | 对象 `+0x62` 一字节，双方同写 |
+| 停顿推进 | `player_hitstop_wait` 状态机入口 -1 并 return（`player.rs:1835`） | 各 Actor 主体入口 -1 并 rts（`Cps1Actor1BRuntime.cs:385`） |
+| 一字段多职 | 否，只管定格 | 是：硬直门 + 闪白 + 群体命中锁（`Cps1Collision.cs:337-341`） |
+| 群体命中 | 靠「命中帧只结算不处决 + 多 pass」（§12 / §22） | 靠攻击方 `+0x62` 3 帧解锁，combo 递增 |
+| 屏幕震动归属 | 相机控制器**显式子状态机**（6 字段） | 全局计数器 + 偏移表 + VBlank shadow |
+| 震动推进 | `step_shake` 幅度递减方波，每 3 帧换向、负半周衰减、到 0 收尾（`camera.rs:208`） | 帧末 `counter-2` + 查表偏移加到 scroll2/3 `NEXT_Y`（`Cps1CameraRuntime.cs:1270`） |
+| 触发 / 仲裁 | `cam_shake` 写 `req`，有符号比较可重触发且保留 timer 相位 | 命中链直接写字节 / 计数器，无独立请求接口 |
+| 作用层 | **只动 vblank Y shadow**，精灵 / 碰撞 / 相机流送坐标不变（`camera.rs:1726`） | 对象显示 Y 走 shadow、scroll2/3 `NEXT_Y` 加偏移，对象 `+0x62` 另算 |
+| 复位点 | `flow_game_clear_ram (0xA836)` 集中清 6 字段（`flow.rs:443`） | 计数器自减到 0；shadow 每帧覆盖 |
+| 可被流程脚本直接用 | 是（`flow.rs:1239` 开场置 `shake_state=2`） | 未见等价（不臆断） |
+| 验收可见 | 7 个 shake 字段全进逐帧 trace（`trace.rs:1731-1739`） | 计数器 / shadow 属实现表相，按 §0 视角约定不比较 |
+
+### 37.5 "更成熟"落在哪（只谈设计本意）
+
+1. **反馈与游戏状态解耦**：dino 的 `screen_shake` 明写只改显示 Y、不碰碰撞与流送坐标，并用独立字段承载；wof 的 `+0x62` 把定格、闪白、群体命中资格压进同一个字节，紧凑但三者生命周期被绑死（注释里"3 帧"既是硬直也是再命中窗口）。
+2. **震动从"计数器"升级为"控制器"**：dino 有 state / 请求仲裁 / 幅度包络 / 相位保持 / scroll1-vs-scroll2 分层选择，且可被流程脚本直接置状态；wof 是"自减计数器查表"，强度曲线由表与 `-2` 步长隐含。
+3. **两条独立线**：dino 的停顿在对象、震动在相机，各自复位、各自验收；wof 是对象级一字节 + 全局 VBlank 两层，但对象字节被复用，两层之间靠注释里的"3 帧"耦合出群体伤害节奏。
+4. 一句保留：这是**组织方式**差异，不是"wof 没有反馈"——wof 的群体命中锁（同一攻击打 3–5 个目标、combo 递增）反而是 dino 侧笔记里没有单独展开的节奏设计，按 §11.0 不据此断言 dino 没有类似机制。
+
+### 37.6 未做（保留，不扩张）
+
+- 特效对象状态机：pool C 与 `Cps1HitEffectRuntime.创建普通攻击命中特效_可能对应ASM_8366`（`Cps1Collision.cs:3472`）只记为挂接点；全量普查在 §21.8 / §35.5 已登记保留。
+- 音频 / 音效触发时机：`attack_record` 的 `snd` 字段按 §0 边界外。
+- wof 各 Actor 的 `+0x62` 逐类差异：仅抽样 `1B / 26 / 2D` 三处同构入口，不普查其余。
+- 不臆断 wof 是否有"脚本直接置屏幕震动状态"的等价入口；不追 `0x6E75F` 表全部内容（§11.0 只在必要时补 data）。
+
+**结论**：§37 把"命中之后几帧的反馈节奏"补成两条可对照的状态机；`长时间自主推进` 仍是开放目标，本节不宣称终止。
 
 
 
