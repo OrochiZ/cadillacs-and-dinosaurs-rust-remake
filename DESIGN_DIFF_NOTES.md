@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：5507 行、31 轮、54 张 mermaid 图、1063 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§38 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：5620 行、32 轮、55 张 mermaid 图、1081 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§39 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -43,7 +43,7 @@
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
 | 二十五 | §32 | 地形与载具（例程表按类别分入口 / dino Cadillac 4 态复合主体 / wof 6 槽马池 + 玩家骑马分支） | 有效 |
-| 二十六~三十一 | §33 / §34 / §35 / §36 / §37 / §38 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`） | 有效 |
+| 二十六~三十二 | §33 / §34 / §35 / §36 / §37 / §38 / §39 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计（文末）** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
@@ -57,7 +57,7 @@
 - 投技 / 抓取 / 挣扎 / 投掷 → **§24（双向互检协议 / 释放即落地 / 投掷多步状态机）**
 - 动态难度 / rank / 时间驱动 → **§25（`rank_tick` / `RANK_PERIOD` / Markov aggression / wof `A5-0x5A`）**
 - HUD / 分数 / 奖命 / 反馈时机 → **§26（`score_dirty` 帧末重绘 vs `0xD000` 事件投递 / 回扣「执行次数不确定」）**
-- 搓招 / 指令技 / 输入序列 → **§27（`player_command_fsm` 三态时间窗 / `cmd_flag` 结果位 / wof `RKey1` 符号三态）**
+- 搓招 / 指令技 / 输入序列 / 连击 → **§27（`player_command_fsm` 三态时间窗 / `cmd_flag` 结果位 / wof `RKey1` 符号三态）**、**§39（`combo_t` 时间窗 / 4 段链 / finisher 接投技 vs wof `ComboLev` 查表）**
 - 关卡 / 波次 / 同屏预算 / 背压 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**
 - 受击恢复 / 倒地 / 起身 / 无敌 / 眩晕 → **§29（`b.act` 14+ 分支 / `invuln[16]` 查表 / `enemy_getup_or_die` / `dizzy_prev` 全局限流 / wof `+0x78`）**
 - 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**；一关内部的空间分段 / 区域推进 / 段切换 → **§34（`area` 字节 / 相机 `mode/sub` FSM / `0xAA0E` 批量重置 / wof `trigger <= cameraX` + 门闩）**；非角色对象 / 可破坏物 / 关卡推进器 → **§35（一个 pool B + 共享契约 vs 多池 `ObjId` 跳表 / 波次控制器本身是对象）**；跨帧时序 / `prev` 快照 / 执行次数 → **§36（7 个 dino 实例全表 + wof 队列·shadow 并排 / §20.6 主线封顶）**
@@ -5500,6 +5500,119 @@ flowchart TD
 - 音频（`rec.sound` 触发）按 §0 边界外。
 
 **结论**：§38 把 §3.1 悬置的 `pass_10664` 与 §33.6 的归属边界补成"碰撞 → 结算 → 归属"三段；`长时间自主推进` 仍是开放目标，本节不宣称终止。
+
+---
+
+## 39. 连击 / 连续技：输入时间窗 vs 等级查表
+
+> 触发：笔记里"连击"一直只是别处的顺带一句——§17 / §12 表格提过 `Cps1Collision.cs:341` 的 `combo_level++ 伤害递增`，§9 的 9 状态跳表列过 `combo`，§24 提过投技；但**连击本身作为一套系统**从未成节。两侧 repo 的证据都很完整，本轮补上。
+> 归属：设计正文（§0–§39），按"轮次线性追加"接在 §38 之后。结论全部以两份 repo 源码为准，未新增 ROM 取证（§11.0）。
+> 分工：§27 讲搓招输入序列，§24 讲投技多步状态机，§17 讲伤害多因子，§22 讲受击反应，§31 讲角色差异化；本节只讲**"连按攻击键时，谁决定下一击是什么、什么时候断"**。
+
+### 39.1 同一个问题，两种载体
+
+一句话：dino 把连击做成**输入侧的时间窗状态机**（按键缓冲 + 命中计数 + 倒计时），wof 做成**角色状态机里的等级字段 + 按角色查攻击表**。前者挂在"输入解析 → 招式分派"这条线上（与 §27 同族），后者挂在"角色主状态机的攻击分支"上（与 §31 同族）。
+
+### 39.2 dino：`combo / combo_t / atk_buf` 三字段 + 4 段链
+
+字段（`player.rs:81-94`、`body.rs:109`）：
+
+| 字段 | 语义 |
+|---|---|
+| `+$AD atk_buf` | 缓冲的攻击键（combo） |
+| `+$AE combo_t` | 连击时间窗计时 |
+| `+$B2 combo` | 已命中段数 |
+| `+$B3 lock` | 挥空后移动锁 |
+| `+$5A knock` | `"force knockdown" / last hit of a combo flag`（连击最后一击强制击倒） |
+
+`combo / combo_t` 都是逐帧 trace 字段（`trace.rs:416 / 1131 / 1133`）。
+
+主链（`player.rs`）：
+
+```text
+player_hit_confirm_entry (0x19464, :1328-1336)
+    命中确认 → combo += 1 ; atk_buf = 0
+
+player_hit_confirm (0x1947E, :1338-1364)
+    hitstop 未结束：把 pressed(ATK) 存进 atk_buf 并 return
+    本段动画走完：combo_t = 0x28 (40 帧窗口)
+                  if combo == 4: 清 atk_buf / combo / combo_t → idle
+    否则 → player_chain_continue
+
+player_chain_continue (:1366-1384)
+    d3 = combo
+    1 → player_punch2_entry / 2 → player_punch3_entry
+    3 → player_finisher_entry / >=4 → 丢缓冲
+```
+
+续链门在 `player_idle`（`:1164-1198`）：`atk_buf != 0` 直接续；否则 `combo != 0 && combo_t != 0` 也续；`combo_t >= 0x24` 时锁朝向（`:1191`）。断连点很多且都是显式写 `p.combo = 0`：挥空 `pstep`（`:1316-1317`）、受击（`player_combat.rs:223`）、tag 切换（`player_tag.rs:338 / 425`）、武器动作重设（`player_weapon.rs:759`）、被抓（`enemy/class10_hold.rs:355`），以及 `player.rs:1302 / 1410 / 1496 / 1534 / 1627 / 2300 / 2342 / 2375 / 2441`。
+
+**终结技与投技合流**：第 4 段 `player_finisher_entry`（0x195B2，`:1436-1462`）检查 `b.partner` 是否抓着敌人且方向键满足条件——成立则给敌人 `set_state(0x0206_0000)` 并转 `player_throw_from_combo(i) 0x1D888`（§24 投技状态机）；否则普通收招 `player_new_attack(i, 4)`。抓取目标由 `0x108FA combo-throw probe`（`player_combat.rs:270`，记住第一个进入探针盒的普通敌人）预先备好。即**连击链的第 4 段不是一招新拳，而是一个可以改道进投技的分支点**。
+
+```mermaid
+flowchart TD
+    A[攻击键按下] --> B[player_jab_entry: combo=0]
+    B --> C[命中确认 hit_confirm_entry: combo+=1]
+    C --> D[hit_confirm: hitstop 期间存 atk_buf]
+    D --> E{本段动画结束?}
+    E -->|否| D
+    E -->|是| F[combo_t=0x28]
+    F --> G{combo==4?}
+    G -->|是| H[清空 → idle]
+    G -->|否| I[chain_continue 按 combo 分派]
+    I -->|1| J[punch2]
+    I -->|2| K[punch3]
+    I -->|3| L[finisher]
+    J --> C
+    K --> C
+    L --> M{抓着敌人且方向满足?}
+    M -->|是| N[player_throw_from_combo 0x1D888 → §24 投技]
+    M -->|否| O[普通收招 new_attack 4]
+    X[挥空 / 受击 / tag / 武器切换<br/>combo_t 耗尽] --> H
+```
+
+### 39.3 wof：`ComboLev / ComboLeft` + 按角色查攻击表
+
+字段是角色对象的 `+0xAE ComboLev`（连击等级）与 `+0xAD ComboLeft`（剩余额度）。
+
+- **待机递减**：`Player_Y00_Idle`（`Cps1PlayerMulti.cs:405-412`）每帧 `if (ComboLeft != 0) ComboLeft--`。
+- **攻击分支**：`Player_Z08_Punch`（`:572-615`）
+  - 初始化：`if (ComboLeft != 0 || ComboLev > 2) ComboLev = 0`；`combolev = min(ComboLev, 2)`；`AtkType = GetAtkTable(CharId)[combolev]`（`:578-590`）
+  - 五角色各一张**三档攻击类型表**（`:42-46`，`GetAtkTable` 在 `:51`）：关羽 `{0x00,0x10,0x20}`、张飞 `{0x00,0x10,0x250}`、赵云 `{0x00,0x10,0x420}`、黄忠 `{0x00,0x10,0x600}`（最高 / 远程）、魏延 `{0x00,0x10,0x7E0}`（距离感知）
+  - 动画结束：`if (ComboLeft != 0) { ComboLev++; ActStatD = 0 重新初始化连击 } else { 退出攻击 }`（`:605-613`）；`:1064-1067` 是另一处同构分支
+  - 即 **ComboLeft 决定"还能不能续"，ComboLev 决定"这一击用哪档"，且档位内容按角色分表**——§31「wof 是结构维 / 5 武将各自主状态机」在连击层同样成立。
+- **命中链清连击**：`Cps1Collision.cs:3872-3876` 按 `TypeWord == 8` 决定清 `+0xAE (ComboLev)` 还是 `+0xAD (ComboLeft)`；`Cps1Collision.cs:341` 的群体命中注释同时记「每次命中 `combo_level++`，伤害递增」（§38 已引）。
+- **同一对字节在敌人 AI 里被复用**：`Cps1EnemyAI.cs:2740-2744` 的 Grunt5 攻击态 `ComboLeft = 8`，`> 0` 时每帧递减并 `MoveTowardPlayer(4)`，归零切 `ActStatC = 0x12` 恢复态——这里它是**追击剩余帧**；repo 注释还见 `ComboLev <= 0 则不写事件` 与 `comboEventParameter` 写事件 `0x0018`（`:7966-7984`），以及多处把 `ComboLev / ComboLeft` 赋成 `0x80 / 0x81 / 0x82 / 0x83 / 0x88 / 0x8B` 之类的枚举值（`:8187 / 14012 / 22077 / 28386 / 33074`）。即这两个字节在 wof 里**不止服务玩家连击**；本节只登记 repo 侧可见的复用事实，不臆断各枚举的 ROM 语义。
+
+### 39.4 对照表
+
+| 维度 | dino | wof |
+|---|---|---|
+| 载体 | 输入侧 `atk_buf / combo_t / combo` + `+$5A knock` | 角色对象 `ComboLev / ComboLeft` + `AtkType` |
+| 推进 | 命中确认 `combo += 1`，缓冲键续链 | 动画结束 `ComboLev++`，`ComboLeft` 额度允许才续 |
+| 时间窗 | `combo_t = 0x28`（40 帧），`>= 0x24` 锁朝向 | `ComboLeft` 待机逐帧递减 |
+| 上限 | 4 段，`combo == 4` 清空，第 4 段是 finisher | 3 档，`ComboLev > 2` 归零 |
+| 分派 | `combo` → `punch2 / punch3 / finisher` 固定链 | `GetAtkTable(CharId)[min(ComboLev,2)]` 按角色查表 |
+| 终结 | finisher 可改道 `player_throw_from_combo 0x1D888`（§24）；`+$5A` 强制击倒 | 未见等价投技终结（不臆断） |
+| 对伤害的影响 | 连击链本身不改伤害数值（数值由 §17 的 power / 等级 / HP 等决定） | 每次命中 `combo_level++`、伤害递增（`Cps1Collision.cs:341`） |
+| 断连 | 挥空 / 受击 / tag / 武器切换 / 时间窗耗尽 | 命中链按 `TypeWord` 清 `+0xAE` 或 `+0xAD` |
+| 字段复用 | 连击专用，4 字段全进逐帧 trace | 敌人 AI 复用为追击倒计时与 0x8x 枚举、事件参数 |
+
+### 39.5 "更成熟"落在哪（只谈设计本意）
+
+1. **连击属于输入层还是角色层**：dino 把连击挂在"输入解析 → 招式分派"上（缓冲键 + 时间窗 + 命中确认推进），与 §27 搓招 FSM 是同一条显式管线；wof 把连击放进角色主状态机的攻击分支，档位内容按角色查表（§31 结构维）。这决定了"加一段连击"在 dino 是改输入分派表，在 wof 是改角色攻击表。
+2. **终结技与投技合流**：dino 第 4 段 finisher 在抓着敌人时直接改道 `player_throw_from_combo`，连击链、抓取、投技是同一套状态机（§24）；wof 侧 repo 未见等价（不臆断）。
+3. **专用字段 vs 复用字段**：dino 为连击单列 4 个字段并全部进 trace；wof 的 `ComboLev/ComboLeft` 在玩家、敌人 AI、事件投递里被复用为等级 / 追击倒计时 / 0x8x 枚举——与 §37 的 `+0x62` 一字节三用、§33 的 `who` 索引复用是同一种"紧凑但耦合"的取向，按 §0 只记组织方式、不评价实现表相。
+
+### 39.6 未做（保留，不扩张）
+
+- dino `player_punch3_entry` / `player_throw_from_combo` 逐条状态表：§24 已覆盖投技多步，不重复。
+- wof `GetAtkTable` 三档数值的 ROM 语义、五角色表逐项差异：§31 已覆盖角色差异化，不重复。
+- wof `ComboLev = 0x8x` 各枚举的逐类含义：repo 侧是命名赋值，不臆断语义。
+- 连击加分 / HUD 显示：§26 已覆盖分数脏标志，combo 计分本轮未展开。
+- 音频（`player_sfx`）按 §0 边界外。
+
+**结论**：§39 把"连击"补成输入时间窗 vs 等级查表的完整对照；`长时间自主推进` 仍是开放目标，本节不宣称终止。
 
 
 
