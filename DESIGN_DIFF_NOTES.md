@@ -13,7 +13,8 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：约 3930 行、20 轮、37 张 mermaid 图、附录 A（含 A.8 核验回执 / A.9 引用一致性核验）。§0–§27 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：约 4070 行、21 轮、39 张 mermaid 图、附录 A（含 A.8 核验回执 / A.9 引用一致性核验）。§0–§28 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
 |---|---|---|---|
@@ -37,6 +38,7 @@
 | 十八 | §25 | 动态难度 / rank（跨整局时间驱动状态机 / Markov aggression / wof 单字节 + 概率门） | 有效 |
 | 十九 | §26 | HUD / 分数 / 奖命（脏标志帧末重绘 vs 事件队列投递；回扣用户最初「执行次数不确定」） | 有效 |
 | 二十 | §27 | 搓招 / 指令技（独立三态时间窗 FSM vs 每角色主状态机入口 / `cmd_flag` / `RKey1`） | 有效 |
+| 二十一 | §28 | 同屏预算与波次编排（人头 vs 权重 / 7200 帧预算 / 超时清场 / 相机门闩 / 64 条上限） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
@@ -51,6 +53,7 @@
 - 动态难度 / rank / 时间驱动 → **§25（`rank_tick` / `RANK_PERIOD` / Markov aggression / wof `A5-0x5A`）**
 - HUD / 分数 / 奖命 / 反馈时机 → **§26（`score_dirty` 帧末重绘 vs `0xD000` 事件投递 / 回扣「执行次数不确定」）**
 - 搓招 / 指令技 / 输入序列 → **§27（`player_command_fsm` 三态时间窗 / `cmd_flag` 结果位 / wof `RKey1` 符号三态）**
+- 关卡 / 波次 / 同屏预算 / 背压 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**
 - "dino 更成熟"逐条落地 → §6.1（7 条已全部展开）
 - data 待核项结清 / Boss class 实现 → §18.1、§18.2
 - 工程断言的当前文件核验 / 帧存档 dump 时机桥接点 → 附录 A.8（A.8.3）
@@ -74,6 +77,7 @@
 - §25.7「`rank_event_*` 逐事件 / BCD 时间链 / wof `A5-0x5A` 全量写入点」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - §26.7「`hud_objects_tail` 逐行 / `0x12AE` 公共事件全文 / `0xD038` 跳表 / 奖命链路」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - §27.6「`player_command_move_entry` / 各角色主状态机全文 / `0x1CAEC` 跳表 / 马上·载具下搓招」→ 本轮新增时即明列为**保留、不扩张**，非欠账
+- §28.7「各关组表逐项数值 / 全部 `type` 命令 / `0x53B02` 与 `0x1066C` 逐字节 / 波次超时玩家侧提示」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - 用户最初「硬件中断 → 函数执行次数不确定」→ §26.4 给出反馈层的因果闭环，并与 §19 / §20 / 附录 A.5 / A.8.3 四处切面串联
 
 **主线（§14.5，§20.6 闭合）**：四大主题共享同一个设计习惯——把「这一帧做什么、下一帧读什么」做成显式结构（固定顺序 + 状态字节 + `prev` 快照）。§20 证明这个习惯从顶层任务机（5 任务 slot / `Scene` sleep / lag 记账）一路贯到碰撞 pass，不是某个子系统的局部技巧；也直答了用户最初的「硬件中断 / 函数执行次数」问题。
@@ -2477,21 +2481,21 @@ wof **也有**难度索引、`hpBand`、`defense`、随机伤害表——不是"
 
 ## A.9 全笔记引用一致性核验（11-06，本轮新增）
 
-> 触发：Stop hook `Verify every requirement and constraint against current files, tool results, artifacts`。在写完 §21–§27、多轮导航更新后，对**笔记自身**做一次可重跑的一致性核验，避免压缩后出现悬空引用。
+> 触发：Stop hook `Verify every requirement and constraint against current files, tool results, artifacts`。在写完 §21–§28、多轮导航更新后，对**笔记自身**做一次可重跑的一致性核验，避免压缩后出现悬空引用。
 
 | 检查项 | 方法 | 结果 |
 |---|---|---|
-| 结构完整性 | PowerShell 逐行统计（§27 + 导航同步后重跑） | 3929 行；代码栅栏 236（偶数：37 个 mermaid 开栅栏 + 199 个闭合栅栏，成对）；mermaid 开 37 / 闭 37、无未闭合；表格行 728 |
-| 章节引用 | `[regex] §(\d+)` 对比 `^## N.` 标题（加 `(?m)` 多行选项） | 引用号 `0, 2..27`（+ 外部 `§73`）全部有定义标题；已定义 `0..27` |
+| 结构完整性 | PowerShell 逐行统计（§28 + 导航同步后重跑） | 4072 行；代码栅栏 242（偶数：39 个 mermaid 开栅栏 + 203 个闭合栅栏，成对）；mermaid 开 39 / 闭 39、无未闭合；表格行 758 |
+| 章节引用 | `[regex] §(\d+)` 对比 `^## N.` 标题（加 `(?m)` 多行选项） | 引用号 `0, 2..28`（+ 外部 `§73`）全部有定义标题；已定义 `0..28` |
 | 定义但未被引用 | 同上 | 仅 `§1`（总览对照）——导航按轮次索引，正常 |
 | 疑似悬空 `§73` | Grep 定位 | `DESIGN_DIFF_NOTES.md:1078` 的 `SPEC §73-86` = `re/specs/enemy/SPEC.md` 的章节范围，**外部文档引用**，非本笔记章节；非损坏 |
 | 三态清单 | 顶部「三条状态标记」逐条对照正文 | ⚠️ 作废（§9.1 / §10.1 / §10.4、`A5-0x3E` 全局档位）→ §11 已更正；✅ 保留（表字节 data、§11 后只读 repo 章节）→ 正文一致；⏳ 仍开放 → 仅"发行先后" + 按 §11.0 不主动追的 data 项 |
-| 待办回执 | 顶部「旧待办回执」逐条 | §11.6 / §13.5 / §14.5 / §15 / §16 / §17 / §18.1 / §22.4 / §23.1 / §24.1 / §25.1 / §26.4 / §27.6 均已闭合，或明列为"保留、不扩张" |
+| 待办回执 | 顶部「旧待办回执」逐条 | §11.6 / §13.5 / §14.5 / §15 / §16 / §17 / §18.1 / §22.4 / §23.1 / §24.1 / §25.1 / §26.4 / §27.6 / §28.7 均已闭合，或明列为"保留、不扩张" |
 | 历史关键 `file:line` | PowerShell 按行抽查 8 处 | `STATUS.md:37`、`final.txt:20`、`record.lua:115`、`mod.rs:349`、`enemy_combat.rs:569`、`flow/scene.rs:31`、`camera.rs:150`、`Cps1Collision.cs:4882` **全部命中**，无行号漂移 |
-| 新增章节 `file:line` | PowerShell 按行抽查 §21–§27 的 30 处 | §21–§25 的 14 处（见上一版：`item.rs:24` … `Cps1PlayerLogic.cs:10690`）+ §26 的 7 处（`hud.rs:14/453/526/809`、`Cps1HudRuntime.cs:3`、`Cps1EventObjectRuntime.cs:369`、`Cps1Item.cs:127`）+ §27 的 9 处逐行（`player.rs:918/925/960/1005/1255/3489`、`Cps1PlayerZhaoyun1CA46.cs:104/147`、`Cps1PlayerMulti.cs:44`）**30/30 命中**；另 Grep 精确定位 `player.rs:927/929/961/963`、`Cps1PlayerMulti.cs:49`、`Cps1PlayerZhaoyun1CA46.cs:146/172/190`，确认 §27 的范围引用均覆盖真实符号，无行号漂移 |
-| 导航规模 | 顶部规模行 vs 实测 | 约 3930 行 / 20 轮 / 37 图 / §0–§27 / 附录 A（A.1–A.9）— 与实测（3929 行）一致 |
+| 新增章节 `file:line` | PowerShell 按行抽查 §21–§28 的 43 处 | §21–§25 的 14 处（见上一版：`item.rs:24` … `Cps1PlayerLogic.cs:10690`）+ §26 的 7 处（`hud.rs:14/453/526/809`、`Cps1HudRuntime.cs:3`、`Cps1EventObjectRuntime.cs:369`、`Cps1Item.cs:127`）+ §27 的 9 处逐行（`player.rs:918/925/960/1005/1255/3489`、`Cps1PlayerZhaoyun1CA46.cs:104/147`、`Cps1PlayerMulti.cs:44`）+ §28 的 13 处逐行（`spawn.rs:195/227/258`、`prop.rs:573/604`、`boss.rs:250`、`flow.rs:430`、`Cps1LevelScript.cs:40/455/1080/1189/1230`、`Cps1EnemySpawn.cs:47`）**43/43 命中**；另 Grep 精确定位 `player.rs:927/929/961/963`、`Cps1PlayerMulti.cs:49`、`Cps1PlayerZhaoyun1CA46.cs:146/172/190`，确认 §27–§28 的范围引用均覆盖真实符号，无行号漂移 |
+| 导航规模 | 顶部规模行 vs 实测 | 约 4070 行 / 21 轮 / 39 图 / §0–§28 / 附录 A（A.1–A.9）— 与实测（4072 行）一致 |
 
-**结论**：笔记自包含，无悬空章节引用；唯一 `§73` 是外部 spec 范围而非缺陷。§21–§27 与附录 A.8 的断言均由当前文件复核过（A.8.1–A.8.4、§21–§27 各轮取证行）。仍开放项按 §11.0「ROM 只补 data、不审 repo」与用户「不过度怀疑 rep 侧」保持不变；本回执只记录核验结果，不宣称目标终止。
+**结论**：笔记自包含，无悬空章节引用；唯一 `§73` 是外部 spec 范围而非缺陷。§21–§28 与附录 A.8 的断言均由当前文件复核过（A.8.1–A.8.4、§21–§28 各轮取证行）。仍开放项按 §11.0「ROM 只补 data、不审 repo」与用户「不过度怀疑 rep 侧」保持不变；本回执只记录核验结果，不宣称目标终止。
 
 > 可重跑：本节检查是纯文本统计，不依赖构建 / 外部服务；后续会话再追加章节后，重跑上面两条 PowerShell 即可复核。
 
@@ -3922,6 +3926,145 @@ flowchart TB
 - **补读确认**：wof 侧 `Cps1PlayerZhaoyun1CA46.cs` 带逐条 ROM listing，`Cps1PlayerMulti.cs` 有角色特有攻击表与多次调用；本轮据此写入 §27.3，未做额外 ROM 逐指令对照，也未改 §0–§26 结论。
 - **未做（保留，不扩张）**：`player_command_move_entry` / `player_cmd_dash` 逐函数展开；`command_time` 表逐角色数值；wof 各角色主状态机（关羽 / 张飞 / 黄忠 / 魏延）全文、`检测下上搓招_1F7C` 实现、`0x1CAEC` 跳表逐项；两游戏"马上 / 载具下能否搓招"是否对应（不臆断）。
 - **未新增 ROM 取证**，全部以两份 repo 源码为准（§11.0）；**未考证发行先后**，沿用用户给定前提。
+
+---
+
+# 第二十一轮：同屏预算与波次编排 —— 一关的量怎么被切到多帧
+
+> 视角：只谈**游戏逻辑本意**（用户 11-06「rs 和 cs 表面的编程和硬件差异不重要，那不是游戏本意」）。本轮把 §19「脚本格式」、§13「census 反馈闭环」、§20「顶层任务机」、§23「摄像机」串成"一关的量如何逐帧放出来"。
+> 边界：repo 侧为主，**不新增 ROM 取证**（§11.0）。wof 侧 `Cps1LevelScript.cs` / `Cps1EnemySpawn.cs` 里大量 `_无对应ASM` 的宿主补偿、调试开关、逐帧对拍修正，按 §0 的约定**剥掉不谈**；只读其中描述原机关卡 / 波次控制器的部分，按用户「不过度怀疑 rep 侧」只作补读，不改 §0–§27 结论。
+> 取证：`dino-rs/.../game/spawn.rs:14-70, 160-278`、`prop.rs:555-625`、`boss.rs:203-258`、`rank.rs:313-323`、`flow.rs:430-432`、`car.rs:51-84`；`wt1/wof_cs/src/Cps1LevelScript.cs:17-58, 90-118, 448-476, 1074-1088, 1180-1254`、`Cps1EnemySpawn.cs:30-51, 82-99`。
+
+## 28.1 一句话对照
+
+两边都**不把一关的敌人一次性铺满**，而是做成"计数 + 阈值 + 计时器"的跨帧节流系统；差别在**计数是什么**、**超时做什么**、**门控写在哪**：
+
+| | dino | wof |
+|---|---|---|
+| 计数 | `g.alive`：census 数出来的**存活人头** | `A5+0x1AD`：20 槽处理池里各对象 `+0xAC` 的**权重和** |
+| 阈值 | `thr[players_minus_one % 3]` 按在场玩家数分档 | `waveEnemyThreshold` / `gateEnemyThreshold` 由波次脚本记录自带 |
+| 超时 | `wave_timer = 0x1C20`（7200 帧）归零 → `kill_all = 2` **清场且不给 killer 记分** | `waveTimer == 0` → **推进波次状态**，脚本继续，不清场 |
+| 太满时 | 阈值未到 → 整组不推进（计时器仍在递减） | 权重超阈值 → `return`，**连计时器都不递减**，整个控制器暂停 |
+| 门控载体 | **对象状态机**：波次 prop 的 `sub 0/2/4`、Boss 门控 prop | **关卡脚本解释器**：gate / wave controller + 相机 min/max 锁定 |
+
+## 28.2 共同骨架：一关的量由四个闸门切到多帧
+
+```mermaid
+flowchart TB
+    subgraph 共同骨架
+        A[记录流: trigger 与 camera X 比较] --> B[一帧消费上限 / 池容量背压]
+        B --> C{场上计数 <= 阈值?}
+        C -- 否 --> P[停住: 不推进这一组]
+        C -- 是 --> D[分配对象槽并写坐标 / 类型 / 变体]
+        D --> E[计时器: 组间隔 / 波次预算]
+        E --> A
+        P --> F{预算耗尽?}
+        F -- 是 --> G[收尾: 清场 或 进下一波]
+    end
+```
+
+四个闸门是：① **触发**（记录自带的 camera X/Y 阈值，见 §19 / §23）；② **背压**（池容量或单帧记录条数上限）；③ **同屏门**（存活计数 vs 阈值）；④ **计时**（组间隔 / 波次预算）。任何一帧"消费几条记录"都是这四者共同决定的，不是脚本表长决定的——这正是用户最初「硬件中断 → 函数执行次数不确定」在关卡层的又一实例（§20 顶层任务机、§26 加分事件队列之后第三次出现）。
+
+## 28.3 dino：人头数 + 7200 帧预算 + 超时清场
+
+**计数来自 census**（§13）：`spawn.rs:17` 的 `g.alive` 是"上一次 census 数出的存活敌人数"，`g.alive_run` 是运行计数；`flow.rs:430-432` 在 area start 把 `alive / wave_timer / kill_all` 一并清零，`rank_area_start` / `time_area_start` / `spawn_reset` 是同一次区域切换的配套调用（`spawn.rs:4-9`）。
+
+**阈值按玩家数分档**：`prop.rs:559-566` 取 `w.groups[g].thr[players_minus_one % 3]`，`boss.rs:210-214` 取 `assets.boss.alive_limit[...]`、`boss.rs:250` 取 `thr[...]`。同一张波次表，1 / 2 / 3 人时放敌量不同；记录级还有 `spawn.rs:253-267` 的 `flags & 0x60`（按 `players_minus_one` 跳过）与 `flags & 0x18`（按 `w.level` 难度跳过）。
+
+**超时是主动清场**：`prop.rs:572-574` 在终组 `wave_timer < 0` 时写 `kill_all = 2`，`spawn.rs:20` 注明"2 = no credit (wave timeout)"；相对地 `kill_all = 1` 才把击杀记给 `killer`（`car.rs:84`、`boss_common.rs:298`）。也就是说"玩家拖太久"会由系统把场上敌人清掉、且**不把分数记到任何玩家头上**——这是一条明确的关卡结算规则，不只是计时显示。
+
+**背压在 allocator**：`spawn.rs:195-199` 的 list1 在 `spawn_alloc` 返回 `None`（池满）时 `l1 += 1` **丢弃该记录并 `break` 停止消费后续记录**；`spawn.rs:268` 的 `spawn_record` 池满返回 `false`。注意 `prop.rs:594-596` 的波次 prop 对池满**不中断**，只是不给 `SPAWNED` 计数——两种背压策略并存，取决于记录来自帧末生成表还是波次 prop。
+
+```mermaid
+stateDiagram-v2
+    [*] --> 等阈值_sub0
+    等阈值_sub0 --> 等阈值_sub0: wave_timer-- 且 g.alive > lim[players]
+    等阈值_sub0 --> 投记录_sub2: 阈值到达 / 预算耗尽(终组)
+    等阈值_sub0 --> 收尾_sub4: 终组且 wave_timer < 0 → kill_all=2
+    投记录_sub2 --> 投记录_sub2: TIMER-- 未到 / 池满(仅跳过)
+    投记录_sub2 --> 等阈值_sub0: 本组记录投完 → GROUP++, wave_timer=0x1C20
+    收尾_sub4 --> [*]: 玩家恢复控制后 kill_all=0
+```
+
+## 28.4 wof：权重和 + 相机锁定 + 单帧 64 条上限
+
+**计数是"权重"而非人头**：`Cps1EnemySpawn.cs:44-51` 定义 `0x22D06` 扫描 20 个 `0xE0` 槽（处理池 `A5+0x40BC`），`:82-99` 给出 ROM 逐条 `move.b (0xac,a0),d0 / add.b d0,(0x1ad,a5)` —— **每个存活敌人把自己 `+0xAC` 的权重累加进 `A5+0x1AD`**。重兵种可以顶多个轻兵种，这比单纯数人头更能表达"同屏预算"。`:97-99` 明确该字节就是波次生成门的比较对象。
+
+**同屏门同时卡住计时器**：`Cps1LevelScript.cs:1189` 生成前判 `取得敌人处理权重() > waveEnemyThreshold` 就 `return`；`:1230-1233` 更关键——波次等待里同一判断在 `waveTimer--` **之前**，所以场上太满时**连倒计时都不走**，整个波次控制器暂停，而不是"超时后强制推进"。`waveTimer` 归零的动作是 `切换二级波次状态`（推进脚本指针），不是清场。
+
+**门控是空间约束**：`:1080-1087` 的 gate 把 `gateEnemyThreshold` 与 `gateLockedMinX/MaxX`（当时的 `CAMERA_MIN_X/MAX_X`）一起存下并置 `gateWaiting`；`:92-107` 的调试开关也只是在这两个锁定的相机值之间切换。结合 §23，摄像机在 wof 这里不只是显示/触发，还是**"敌人没清完不许往前走"的门闩**。
+
+**背压按记录条数**：`:40` `MaxRecordsPerFrame = 64`、`:455` 的 `for (int records = 0; records < MaxRecordsPerFrame; records++)` —— 一帧最多消费 64 条关卡脚本记录。与 dino 按池容量截断不同，这是按条数截断；两者目的相同：不让一帧把整关铺完。
+
+**玩家数也是记录条件**：`:1183-1188` 的 `requiredPlayers > (A5+0x1AC)` 时跳过该波次记录，与 dino `thr[players]` 呼应，但 wof 把它做成"这条记录需要至少几人"的逐记录条件，dino 做成"这一组最多放几个"的分档阈值。
+
+## 28.5 逐项对照
+
+| 维度 | dino | wof |
+|---|---|---|
+| 触发 | `spawn_trigger_reached`：横版 `t <= cam_x`，纵向场景按 `cam_y` 有符号比较（`spawn.rs:225-233`） | 关卡脚本记录 `trigger:word` vs `cameraX`（`Cps1LevelScript.cs:17, 463`） |
+| 记录格式 | list1 14B / list2 16B，`flags & 0x80` = 命令不生成对象（`spawn.rs:185-222`） | `trigger:word, type:byte, payload`，命令表 `0x10744`（§19） |
+| 同屏计数 | `g.alive` 人头（census，`spawn.rs:17`） | `A5+0x1AD` 权重和（20 槽 × `+0xAC`，`Cps1EnemySpawn.cs:44-51`） |
+| 阈值来源 | 表 `groups[g].thr[3]` / `boss.alive_limit[3]` 按玩家数（§25 rank 同族） | 波次脚本记录里读 `waveEnemyThreshold` / `gateEnemyThreshold`（`:1080, :1130, :1246`） |
+| 玩家数影响 | 分档阈值 + 记录级 `flags & 0x60` 跳过 | 逐记录 `requiredPlayers` + `A5+0x1AC` 比较（`:1183`） |
+| 难度影响 | 记录级 `flags & 0x18` 按 `w.level` 跳过（`spawn.rs:258-267`） | 本轮未展开，不臆断 |
+| 计时 | `wave_timer = 0x1C20` 组间重载（`prop.rs:604`），`rank.rs:382/388` 另有 `+0x258 / +600` 时间奖励 | `waveTimer` 从脚本记录装载后递减（`:1224-1231`） |
+| 超时后果 | `kill_all = 2` 清场、不记分（`prop.rs:573`） | 推进波次状态 / 收尾门（`:1232-1233, :1236-1253`），不清场 |
+| 太满后果 | 池满丢记录 + break；波次 prop 仅跳过不中断 | 权重超阈值 → 生成与计时**一并暂停** |
+| 背压 | 对象池容量（`spawn_alloc` 返回 `None`） | 单帧 64 条记录上限 |
+| 门控载体 | 波次 prop / Boss prop 的 `sub` 状态（`prop.rs`、`boss.rs:224-258`） | 关卡脚本解释器的 gate / wave controller |
+| 相机的第二重角色 | 触发 + 生成坐标基准（`spawn.rs:269` `screen_x` 时 X += cam_x） | 触发 + **锁定 min/max 作为清场门闩**（`:1081-1082`） |
+
+## 28.6 伪代码：两边并排
+
+```
+# dino：帧末生成表（spawn.rs:167-223）+ 波次 prop（prop.rs:555-613）
+while record.trig <= cam_x:                       # 或纵向 cam_y
+    if record.flags & 0x80: spawn_command(record); cursor++; continue
+    Some(h) = spawn_alloc(flags) else { cursor++; break }   # 池满：丢弃并停消费
+    write(h, class, x, z, var); cursor++
+
+# 波次 prop sub0
+wave_timer -= 1
+lim = groups[g].thr[players_minus_one % 3]
+if wave_timer != 0 and g.alive > lim: return     # 人还多，整组不推进
+if g == last: sub = 4; if wave_timer < 0: g.kill_all = 2; return
+sub = 2; REC = 0; TIMER = groups[g].spawns[0].trig
+
+# wof：20 槽权重 + 关卡脚本（Cps1EnemySpawn.cs:82-99 / Cps1LevelScript.cs:455, 1222-1233）
+weight = sum(pool[s].OBJ_AC for s in 0..19 if pool[s].live); A5[0x1AD] = weight
+for records in 0..63:
+    trigger = rw(scriptAddress)
+    if trigger >= 0 and camera_x < trigger: break
+    dispatch(type)                                # 0x04 生成 / gate / wave
+
+# 波次等待
+if weight > waveEnemyThreshold: return            # 太满 → 连 waveTimer 都不递减
+if waveTimer != 0: waveTimer--
+if waveTimer == 0: next_wave_state()
+
+# gate
+gateEnemyThreshold = rw(secondaryScript + 2)
+gateLockedMinX, gateLockedMaxX = CAMERA_MIN_X, CAMERA_MAX_X
+gateWaiting = true                                # 相机锁死，清场前不前进
+```
+
+## 28.7 主线闭环与本轮边界
+
+| 出处 | 本轮对应 |
+|---|---|
+| §19 脚本系统全景 | 补上"推进时钟写在哪里"之后的**第二问**：一帧到底推进几条，由同屏门 + 背压决定 |
+| §13 census 反馈闭环 | `g.alive` 不只是 AI 选目标用，**还是关卡放量的输入**（§28.3） |
+| §20 顶层任务机 | 波次门控写在对象状态机（dino）/ 脚本解释器（wof），与"5 任务按 slot"是上下两层，不冲突 |
+| §23 卷轴 / 摄像机 | wof 把相机 min/max 当**清场门闩**，是摄像机除触发与显示延迟外的第三重角色 |
+| §25 动态难度 / rank | 两边都按玩家数调节放量；dino 还按 `w.level` 跳过记录，与 `rank_tick` 共用同一个"跨整局状态" |
+| §26 / 用户最初「执行次数不确定」 | 关卡层第三次回扣：脚本一帧消费量取决于池容量 / 权重门 / 计时器 / VBlank 截断，不是表长 |
+
+结论：一关的敌人不是"表里有几条就生成几个"，而是**被同屏预算按帧挤出来的流**。dino 把预算做成"人头阈值 + 7200 帧预算 + 超时清场"，挂在对象状态机里；wof 做成"权重阈值 + 相机锁定 + 单帧 64 条"，挂在关卡脚本解释器里。两边都让"清场"成为推进条件，但 dino 的超时是**结算**（清场且不记分），wof 的超时是**续算**（推进脚本）。这与整份笔记「把瞬时事件改写成可续存的显式结构」的主线一致，也把 §6.1「dino 更成熟」里的"脚本系统"从格式层推到了编排层。
+
+- **未做（保留，不扩张）**：`prop_wave_script` 各关组表逐项数值；`Cps1LevelScript.cs` 全部 `type` 命令逐条展开；`0x53B02` 波次表与 `0x1066C` 关卡表逐字节；wof 难度如何影响波次阈值；两游戏"波次超时"是否都有玩家侧提示（不臆断）。
+- **未新增 ROM 取证**，全部以两份 repo 源码为准（§11.0）；**未考证发行先后**，沿用用户给定前提。
+- 按 §0 边界，wof 侧 `_无对应ASM` 的宿主补偿 / 调试开关 / 逐帧对拍修正未纳入设计对照；本轮不据此评价 rep 侧实现。
 
 
 
