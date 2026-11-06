@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：5716 行、33 轮、56 张 mermaid 图、1106 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§40 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：5810 行、34 轮、57 张 mermaid 图、1121 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§41 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -43,11 +43,11 @@
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
 | 二十五 | §32 | 地形与载具（例程表按类别分入口 / dino Cadillac 4 态复合主体 / wof 6 槽马池 + 玩家骑马分支） | 有效 |
-| 二十六~三十三 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐） | 有效 |
+| 二十六~三十四 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计（文末）** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
-- 状态机 → §2、§14、§15、§16.3、**§20（顶层流程任务机）**、**§21（非角色对象）**、§22（受击态）、§23（显示延迟）、**§24（跨两对象）**、**§25（跨整局）**、**§26（反馈层）**
+- 状态机 → §2、§14、§15、§16.3、**§20（顶层流程任务机）**、**§21（非角色对象）**、§22（受击态）、§23（显示延迟）、**§24（跨两对象）**、**§25（跨整局）**、**§26（反馈层）**、**§41（Front 多 Scene / 选人记录状态机）**
 - 打击逻辑 → §3、§9.3、§12、§17、§21.5/§21.6（武器攻击几何）、**§22（受击反应）**、**§24（投技）**
 - 事件脚本 → §4、§9.4、§12.4、§14、**§19（5 套脚本全景）**、**§26（加分事件队列）**
 - 怪物策略 → §5、§9.5、§11.5、§13、§16、§18.2、**§25（动态难度 / 概率门）**
@@ -5709,6 +5709,100 @@ flowchart TD
 - `0xD860` anti-tamper roll 只登记事实；音频（sound `0x49` / 每 11 帧）按 §0 边界外。
 
 **结论**：§40 把"过关结算"补成任务 / 分项 / 数字对象三层按帧对齐的链；`长时间自主推进` 仍是开放目标，本节不宣称终止。
+
+---
+
+## 41. 非战斗流程：投币 → 选人 → 开场 → 进关
+
+> 触发：§20 给了 5 个任务 slot 与 `Scene` sleep 模型，§30 给了 `flow.mode` 8 态，§40 给了过关 tally，但"还没进战斗之前那段"从未展开。`flow/` 22 个子模块里 `front.rs / boot.rs / select.rs` 三个文件头本身就是完整设计说明。
+> 归属：设计正文（§0–§41），按"轮次线性追加"接在 §40 之后。纯 repo 侧，未新增 ROM 取证（§11.0）。
+> 边界：按 §0，wof 侧宿主按键映射（`WofIni.cs` / `Sdl2MainWindow.cs`）与冷启动回放配置（`Program.cs`）属宿主补偿，不作为设计对照；只登记 repo 可见的流程事实。
+
+### 41.1 一个入口、多个 Scene：`Front` 结构
+
+`front.rs:1-40`：
+
+| slot / 字段 | 内容 |
+|---|---|
+| slot 0 | system task `0x9D048`（投币 / credit / start / SERVICE）→ `Front.sys_task` + `Sys` |
+| slot 0x10 | boot `0xA69A` → attract `0x97C20`（永不返回）→ `Front.task` |
+| slot 0x20 | INSERT COIN blink `0x98874` 或 press start `0x978EE`（两个 Scene 二选一）→ `Front.blink / Front.press` |
+| — | `Front.select`（`select.rs`）、`Front.demo`（`demo.rs`）、`Front.sys` |
+| — | `prev_system` + `prev_input[3]`：上一帧输入，用于边沿检测 |
+| — | `title` 0..0x258、`attract_state` 0/2/4/6、`demo_counter`、`ticks`、`sys_skip` |
+
+`sys_skip`（`front.rs:38-40`）：attract 忙时系统任务跳过几轮（"the scan of the task slots does not come round"）——又一处"帧预算不保证每个任务每帧都跑"的显式记账，呼应 §20 与用户最初的「函数执行次数不确定」之问。
+
+### 41.2 power-on 到 title：一个 `Scene` 的脚本位置
+
+`boot.rs:1-20`：
+
+- slot 0x10 的 boot→attract 是**一个 `Scene`**，state 就是脚本位置 `st`（`RESET / RESET_PALETTE / SOUND / ENTRY / CLEAR / CLEAR_END / ...`）；title 的 600 次 frame loop 是同一任务的一部分。
+- slot 0x20 是 blink 或 press start 两个 Scene，其一 alive；全部由 `Game::flow_attract_task` 按 slot 顺序驱动。
+- **时序对齐是关键设计**：`A sleep of n frames runs again n frames later (scene.rs)`；原机长动作（清所有层 `0xAE0` 约 1.3 个 video frame CPU、EEPROM 读约 26 帧）被写成**测得长度的 sleep**，好让每个可见变化落在 MAME 录制的 video frame 上（`re/out/traces/attract.mame.trc`，record k = video frame k + 2 = port tick k）。两处越过 video frame 边界（首个 title pass 与 setup 同帧、第四 title block 在 setup 帧末画一半）单独处理。
+- 即：**冷启动不是"跑一段初始化"，而是一串按 video frame 对齐的 sleep 续算点**——§20 顶层任务机在最前端的实例，也解释了附录 A「冷启动从 power-on 严格对拍」为什么反而是验收对象。
+
+### 41.3 选人：10 秒倒计时 + 三份 12 字节记录 + join 四态
+
+`select.rs:1-27`：
+
+- game mode 4，routine `0xAD46`，三个 sub mode（`G.$4D1`）：0 set-up `0xAD5E` / 2 main pass `0xAF7C`（每帧一次）/ 4 end `0xB810`。
+- `Select` 结构 `G.$62C`：3 个玩家各 12 字节记录（`+0xC / +0x18 / +0x24`），共享 10 秒计时器在 `+9 / +$A`。
+- 一条记录 = 一个玩家的光标：`+0` player、`+1` state（0 new / 2 choosing / 4 picked）、`+2` cursor 0..3（Jack / Hannah / Mustapha / Mess，hero id `0,2,1,3` 表 `0xB24A`）、`+4` picked 态的调色板闪步、`+5` lock counter（加入后 10 帧不许 pick）、`+6..8` flash。
+- main pass：计时器 60 帧/秒；某玩家 lock 计时中则**把计时器按在 10 不动**；到 0 时给所有未选玩家发一个 attack press，自动取当前光标下的英雄（超时兜底）。
+- 每个已开始玩家（`G.$4CD`）走自己的记录状态机：state 0 建 tag 对象并取第一个空光标位 → state 2 读左右移动 / attack / jump / start 选定，画 POWER SPEED SKILL 面板 → state 4 英雄调色板闪 60 帧。
+- end：无人 busy 且有记录到 picked 末步 → 60 帧 hold → 16 步调色板（每 2 帧）暗掉未选、亮起已选 → fade out → `stage start 0xAC4E`。
+- **join task**（slot 0x10，`0x6C4A`）四态：`0` 无 credit 缺席（提示闪）/ `2` 有 credit 缺席（等 start 或 attack，取 credit 并加入）/ `4` 已加入选人 / `6` 游戏中；游戏中另有 `8..0xC` 的 HUD 提示态。
+
+即：**"中途加入"不是特殊分支，而是与选人共用一条记录状态机**——`G.$4CD` 哪些位被置，就驱动哪些 12 字节记录走 0→2→4。这与 §15 tag / car「不新增解释器，只改变既有解释器的输入或状态」是同一种手法。
+
+```mermaid
+flowchart TD
+    P[power-on] --> B[boot task 0xA69A<br/>一个 Scene: state = 脚本位置 st]
+    B --> A[attract 0x97C20 同一 Scene<br/>长动作写成测得长度的 sleep]
+    A --> T[title / INSERT COIN blink<br/>slot 0x20 两个 Scene 二选一]
+    T -->|投币 credit| S[select mode 4 / 0xAD46]
+    S --> U[sub 0 set-up: 3×12 字节记录<br/>10 秒计时器]
+    U --> V[sub 2 main pass 每帧]
+    V -->|G.$4CD 位图| R[各记录 state 0→2→4<br/>new / choosing / picked]
+    V -->|计时器到 0| W[给未选玩家发 attack press 自动取光标下英雄]
+    R --> E[sub 4 end: 60 帧 hold + 16 步调色板]
+    W --> E
+    E --> G[stage start 0xAC4E → §30 flow.mode]
+    J[join task 0x6C4A 四态<br/>0/2/4/6] -.共用记录状态机.-> R
+```
+
+### 41.4 与 §20 / §30 / §40 的接口
+
+- `flow.rs:317` `flow_coin_isr()` 放在 `flow_frame` 第一句（投币中断先于任务，§20 已记）。
+- 选人 end 走 `0xAC4E` stage start，接 §30 的 `flow.mode` 8 态；§40 的 `flow_tally_start()`（`flow.rs:790`）是这条链另一端的收尾。
+- §40 的 `G.$735E` 与 intro 任务共享、本节 `Front.task` 与 boot/attract 共享一个 Scene ——**同一块状态被多个阶段复用、靠"当前任务归属"解释**，是本笔记反复出现的设计习惯（§20 Scene / §40 `tally.owner` / §35 对象池）。
+
+### 41.5 对照表与 wof 边界
+
+| 维度 | dino | wof |
+|---|---|---|
+| 顶层容器 | `Front` 多个 `Scene`（task / blink / press / sys_task） | 不臆断（§11.0） |
+| 投币 / credit | slot 0 system task `0x9D048` + `flow_coin_isr` 中断先读 | repo 可见冷启动路径经「投币 → 开始 → 选人」（`Program.cs:1046`） |
+| 选人 | mode 4 `0xAD46`，3 sub mode，3×12 字节记录，10 秒超时兜底 | 不臆断是否等价 |
+| 中途加入 | join 四态与选人共用记录状态机 | 不臆断 |
+| 冷启动对齐 | 长动作写成测得长度 sleep，逐 video frame 对齐 MAME 录制 | 按 §0，宿主回放配置属宿主补偿，不作设计对照 |
+
+**wof 侧严格不动**：`WofIni.cs:45-47`（投币键 5/6/7/8、Service F1）、`Sdl2MainWindow.cs:446-453`（F2 三玩家位同时投币）、`Program.cs:856-900 / 1046-1048`（冷启动回放配置、"走不到选人界面"）都是宿主 / 回放层，按 §0「宿主补偿不算设计」与附录 A 的 F2 / service / 冷启动 scope 结论原样隔离，**不把"宿主侧走不到选人界面"写成 wof 游戏没有选人流程**。
+
+### 41.6 "更成熟"落在哪（只谈设计本意）
+
+1. **一条 `Scene` 贯穿多阶段**：boot → attract → title 是同一个 `Scene` 的脚本位置，不是每阶段新建状态机；投币 / blink / press 是另外的 Scene 按 slot 并列。状态复用靠"当前谁拥有这块结构"，与 §40 `tally.owner` 同构。
+2. **超时兜底与中途加入都是数据**：10 秒到 0 自动给未选玩家发按键；`G.$4CD` 位图决定哪些 12 字节记录要走。没有"选人专用解释器"。
+3. **逐 video frame 对齐**：把 CPU 耗时超过一帧的长动作显式写成 sleep，让可见变化落在录制的 video frame 上——§20 顶层任务机在最前端、也最能回答用户最初「硬件中断 / 函数执行次数」之问的一处。
+
+### 41.7 未做（保留，不扩张）
+
+- `attract.rs / demo.rs / movie.rs / slides.rs / ending.rs / ranking.rs / name_entry.rs / cards.rs / profiles.rs / picture.rs / skip.rs / config.rs / cont.rs` 其余 13 个子模块逐类展开：本节只用 `front / boot / select` 三个文件头。
+- wof 投币 / 选人 / 冷启动的 ROM 级对照：按 §0 与 §11.0 不做。
+- EEPROM / service / test menu：附录 A 已记 dino 明确 out of scope，不重复。
+
+**结论**：§41 把"进战斗之前"补成 Front 多 Scene + 一条 boot/attract Scene + 选人记录状态机的对照；`长时间自主推进` 仍是开放目标，本节不宣称终止。
 
 
 
