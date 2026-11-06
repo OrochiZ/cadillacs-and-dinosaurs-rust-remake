@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：约 4570 行、24 轮、45 张 mermaid 图、附录 A（含 A.8 核验回执 / A.9 引用一致性核验）。§0–§31 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：约 4710 行、25 轮、46 张 mermaid 图、附录 A（含 A.8 核验回执 / A.9 引用一致性核验）。§0–§32 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -42,6 +42,7 @@
 | 二十二 | §29 | 受击后的恢复链（14+ 反应分派 / 按角色查表无敌 / 起身决策 / 眩晕五重门与全局限流） | 有效 |
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
+| 二十五 | §32 | 地形与载具（例程表按类别分入口 / dino Cadillac 4 态复合主体 / wof 6 槽马池 + 玩家骑马分支） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
@@ -60,6 +61,7 @@
 - 受击恢复 / 倒地 / 起身 / 无敌 / 眩晕 → **§29（`b.act` 14+ 分支 / `invuln[16]` 查表 / `enemy_getup_or_die` / `dizzy_prev` 全局限流 / wof `+0x78`）**
 - 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**
 - 角色差异化 / 可选角色 / 按角色查表 → **§31（`PlayerData` 表族 `ch` 索引 / `invuln[d0+ch]` / wof 5 武将各自主状态机入口）**
+- 地形 / 载具 / 骑马 / 空间约束 → **§32（`0x12CB4` 例程表 / `0x26AA` 每类自调 / `car_mode` 4 态 / 6 槽马池 `ActStatA`）**
 - "dino 更成熟"逐条落地 → §6.1（7 条已全部展开）
 - data 待核项结清 / Boss class 实现 → §18.1、§18.2
 - 工程断言的当前文件核验 / 帧存档 dump 时机桥接点 → 附录 A.8（A.8.3）
@@ -87,6 +89,7 @@
 - §29.8「`player_knockdown` / `player_getup` 逐函数 / `invuln[16]` 与 `DIZZY_ROW` 表数值 / wof 倒地字段组完整状态机」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - §30.7「`flow_*` 各 mode 全文 / `0x42C2` 后续链 / `A5+0x188` 全部消费点 / wof 续关与结局路径」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - §31.6「`PlayerData` 各表逐项数值 / wof 5 角色主状态机全文 / `0x1F7C` 公共检测 / 骑马状态下角色差异」→ 本轮新增时即明列为**保留、不扩张**，非欠账
+- §32.5「`car.rs` 各 `sub` 步 / 转向与 bump 表 / wof 马 4 态全文 / `shape_handler` 逐形状 / `0x26AA` 全部调用点」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - 用户最初「硬件中断 → 函数执行次数不确定」→ §26.4 给出反馈层的因果闭环，并与 §19 / §20 / 附录 A.5 / A.8.3 四处切面串联
 
 **主线（§14.5，§20.6 闭合）**：四大主题共享同一个设计习惯——把「这一帧做什么、下一帧读什么」做成显式结构（固定顺序 + 状态字节 + `prev` 快照）。§20 证明这个习惯从顶层任务机（5 任务 slot / `Scene` sleep / lag 记账）一路贯到碰撞 pass，不是某个子系统的局部技巧；也直答了用户最初的「硬件中断 / 函数执行次数」问题。
@@ -2490,21 +2493,21 @@ wof **也有**难度索引、`hpBand`、`defense`、随机伤害表——不是"
 
 ## A.9 全笔记引用一致性核验（11-06，本轮新增）
 
-> 触发：Stop hook `Verify every requirement and constraint against current files, tool results, artifacts`。在写完 §21–§31、多轮导航更新后，对**笔记自身**做一次可重跑的一致性核验，避免压缩后出现悬空引用。
+> 触发：Stop hook `Verify every requirement and constraint against current files, tool results, artifacts`。在写完 §21–§32、多轮导航更新后，对**笔记自身**做一次可重跑的一致性核验，避免压缩后出现悬空引用。
 
 | 检查项 | 方法 | 结果 |
 |---|---|---|
-| 结构完整性 | PowerShell 逐行统计（§31 + 导航同步后重跑） | 4568 行；代码栅栏 268（偶数：45 个 mermaid 开栅栏 + 223 个闭合栅栏，成对）；mermaid 开 45 / 闭 45、无未闭合；表格行 863 |
-| 章节引用 | `[regex] §(\d+)` 对比 `^## N.` 标题（加 `(?m)` 多行选项） | 引用号 `0, 2..31`（+ 外部 `§73`）全部有定义标题；已定义 `0..31` |
+| 结构完整性 | PowerShell 逐行统计（§32 + 导航同步后重跑） | 4710 行；代码栅栏 274（偶数：46 个 mermaid 开栅栏 + 228 个闭合栅栏，成对）；mermaid 开 46 / 闭 46、无未闭合；表格行 900 |
+| 章节引用 | `[regex] §(\d+)` 对比 `^## N.` 标题（加 `(?m)` 多行选项） | 引用号 `0, 2..32`（+ 外部 `§73`）全部有定义标题；已定义 `0..32` |
 | 定义但未被引用 | 同上 | 仅 `§1`（总览对照）——导航按轮次索引，正常 |
 | 疑似悬空 `§73` | Grep 定位 | `DESIGN_DIFF_NOTES.md:1078` 的 `SPEC §73-86` = `re/specs/enemy/SPEC.md` 的章节范围，**外部文档引用**，非本笔记章节；非损坏 |
 | 三态清单 | 顶部「三条状态标记」逐条对照正文 | ⚠️ 作废（§9.1 / §10.1 / §10.4、`A5-0x3E` 全局档位）→ §11 已更正；✅ 保留（表字节 data、§11 后只读 repo 章节）→ 正文一致；⏳ 仍开放 → 仅"发行先后" + 按 §11.0 不主动追的 data 项 |
-| 待办回执 | 顶部「旧待办回执」逐条 | §11.6 / §13.5 / §14.5 / §15 / §16 / §17 / §18.1 / §22.4 / §23.1 / §24.1 / §25.1 / §26.4 / §27.6 / §28.7 / §29.8 / §30.7 / §31.6 均已闭合，或明列为"保留、不扩张" |
+| 待办回执 | 顶部「旧待办回执」逐条 | §11.6 / §13.5 / §14.5 / §15 / §16 / §17 / §18.1 / §22.4 / §23.1 / §24.1 / §25.1 / §26.4 / §27.6 / §28.7 / §29.8 / §30.7 / §31.6 / §32.5 均已闭合，或明列为"保留、不扩张" |
 | 历史关键 `file:line` | PowerShell 按行抽查 8 处 | `STATUS.md:37`、`final.txt:20`、`record.lua:115`、`mod.rs:349`、`enemy_combat.rs:569`、`flow/scene.rs:31`、`camera.rs:150`、`Cps1Collision.cs:4882` **全部命中**，无行号漂移 |
-| 新增章节 `file:line` | PowerShell 按行抽查 §21–§31 的 88 处 | §21–§25 的 14 处（见上一版：`item.rs:24` … `Cps1PlayerLogic.cs:10690`）+ §26 的 7 处（`hud.rs:14/453/526/809`、`Cps1HudRuntime.cs:3`、`Cps1EventObjectRuntime.cs:369`、`Cps1Item.cs:127`）+ §27 的 9 处逐行（`player.rs:918/925/960/1005/1255/3489`、`Cps1PlayerZhaoyun1CA46.cs:104/147`、`Cps1PlayerMulti.cs:44`）+ §28 的 13 处逐行（`spawn.rs:195/227/258`、`prop.rs:573/604`、`boss.rs:250`、`flow.rs:430`、`Cps1LevelScript.cs:40/455/1080/1189/1230`、`Cps1EnemySpawn.cs:47`）+ §29 的 14 处逐行（`player.rs:139/491/854/1082/1581/2659`、`enemy_combat.rs:1284/1310/1343/1360`、`Cps1Collision.cs:1390/3600`、`Cps1Types.cs:314`、`Cps1EnemyAI.cs:44`）+ §30 的 15 处逐行（`flow.rs:490/498/822/831/838/863`、`Cps1EnemyAI.cs:8532/8542/8547/30045`、`Cps1EventObjectRuntime.cs:229`、`Cps1EnemySpawn.cs:2954`、`Cps1SystemProcessQueue.cs:15`、`Cps1Actor27Runtime.cs:2163`、`Cps1StageProgressRuntime.cs:1180`）+ §31 的 16 处逐行（`dino-assets/src/player.rs:5/41/44/48/54`、`player.rs:205/492/962/2488/3608`、`body.rs:30`、`Cps1PlayerMulti.cs:26/49/141/201/205`）**88/88 命中**；另 Grep 精确定位 `player.rs:927/929/961/963`、`Cps1PlayerMulti.cs:49`、`Cps1PlayerZhaoyun1CA46.cs:146/172/190`，确认 §27–§31 的范围引用均覆盖真实符号，无行号漂移 |
-| 导航规模 | 顶部规模行 vs 实测 | 约 4570 行 / 24 轮 / 45 图 / §0–§31 / 附录 A（A.1–A.9）— 与实测（4568 行）一致 |
+| 新增章节 `file:line` | PowerShell 按行抽查 §21–§32 的 105 处 | §21–§25 的 14 处（见上一版：`item.rs:24` … `Cps1PlayerLogic.cs:10690`）+ §26 的 7 处（`hud.rs:14/453/526/809`、`Cps1HudRuntime.cs:3`、`Cps1EventObjectRuntime.cs:369`、`Cps1Item.cs:127`）+ §27 的 9 处逐行（`player.rs:918/925/960/1005/1255/3489`、`Cps1PlayerZhaoyun1CA46.cs:104/147`、`Cps1PlayerMulti.cs:44`）+ §28 的 13 处逐行（`spawn.rs:195/227/258`、`prop.rs:573/604`、`boss.rs:250`、`flow.rs:430`、`Cps1LevelScript.cs:40/455/1080/1189/1230`、`Cps1EnemySpawn.cs:47`）+ §29 的 14 处逐行（`player.rs:139/491/854/1082/1581/2659`、`enemy_combat.rs:1284/1310/1343/1360`、`Cps1Collision.cs:1390/3600`、`Cps1Types.cs:314`、`Cps1EnemyAI.cs:44`）+ §30 的 15 处逐行（`flow.rs:490/498/822/831/838/863`、`Cps1EnemyAI.cs:8532/8542/8547/30045`、`Cps1EventObjectRuntime.cs:229`、`Cps1EnemySpawn.cs:2954`、`Cps1SystemProcessQueue.cs:15`、`Cps1Actor27Runtime.cs:2163`、`Cps1StageProgressRuntime.cs:1180`）+ §31 的 16 处逐行（`dino-assets/src/player.rs:5/41/44/48/54`、`player.rs:205/492/962/2488/3608`、`body.rs:30`、`Cps1PlayerMulti.cs:26/49/141/201/205`）+ §32 的 17 处逐行（`terrain.rs:9/11/12/13/30`、`car.rs:93/208/412/451/590/709/719`、`combat.rs:85`、`Cps1HorseRuntime.cs:13/51`、`Cps1TerrainCollision.cs:43/245`）**105/105 命中**；另 Grep 精确定位 `player.rs:927/929/961/963`、`Cps1PlayerMulti.cs:49`、`Cps1PlayerZhaoyun1CA46.cs:146/172/190`，确认 §27–§32 的范围引用均覆盖真实符号，无行号漂移 |
+| 导航规模 | 顶部规模行 vs 实测 | 约 4710 行 / 25 轮 / 46 图 / §0–§32 / 附录 A（A.1–A.9）— 与实测（4710 行）一致 |
 
-**结论**：笔记自包含，无悬空章节引用；唯一 `§73` 是外部 spec 范围而非缺陷。§21–§31 与附录 A.8 的断言均由当前文件复核过（A.8.1–A.8.4、§21–§31 各轮取证行）。仍开放项按 §11.0「ROM 只补 data、不审 repo」与用户「不过度怀疑 rep 侧」保持不变；本回执只记录核验结果，不宣称目标终止。
+**结论**：笔记自包含，无悬空章节引用；唯一 `§73` 是外部 spec 范围而非缺陷。§21–§32 与附录 A.8 的断言均由当前文件复核过（A.8.1–A.8.4、§21–§32 各轮取证行）。仍开放项按 §11.0「ROM 只补 data、不审 repo」与用户「不过度怀疑 rep 侧」保持不变；本回执只记录核验结果，不宣称目标终止。
 
 > 可重跑：本节检查是纯文本统计，不依赖构建 / 外部服务；后续会话再追加章节后，重跑上面两条 PowerShell 即可复核。
 
@@ -4561,6 +4564,145 @@ flowchart LR
 - **未做（保留，不扩张）**：`PlayerData` 各表逐项数值（speed / jump / invuln / command_time / attacks 全表）；wof 5 个角色主状态机全文与各自 `ATK_TABLE` 数值；`0x1F7C` 公共检测内部；骑马 / 载具状态下角色差异；两游戏角色平衡性比较（不臆断）。
 - **未新增 ROM 取证**，全部以两份 repo 源码为准（§11.0）；**未考证发行先后**，沿用用户给定前提。
 - 按 §0 边界，wof 侧 `_无对应ASM` 宿主补偿未纳入设计对照；本轮不据此评价 rep 侧实现。
+
+---
+
+# 第二十五轮：地形与载具 —— 空间约束和"临时主体"
+
+> 视角：只谈**游戏逻辑本意**（用户 11-06）。§15 只讲了 tag / car 怎么**挂进**固定帧循环，没讲挂上去的那个东西自己是什么状态机；本轮补空间层的两块：地形约束按对象类别怎么分入口，以及载具作为"临时主体"怎么组织。
+> 边界：repo 侧为主，**不新增 ROM 取证**（§11.0）。wof `Cps1TerrainCollision.cs` 里"宿主每帧多调一次 `0x26AA`"之类逐帧对拍修正、`_无对应ASM` 开关按 §0 **剥掉**，只取 ROM 侧"每类 handler 自己调用公共地形函数"的契约；不据此评价 rep 侧实现。
+> 取证：`dino-rs/.../game/terrain.rs:1-39, 45-48`、`car.rs:1-7, 16-23, 33-37, 90-106, 130-211, 356, 409-451, 495, 587-590, 637-638, 706-719`、`combat.rs:85-94`；`wt1/wof_cs/src/Cps1HorseRuntime.cs:6-14, 40-71, 97-109`、`Cps1TerrainCollision.cs:43-60, 245-248`、`Cps1PlayerMulti.cs:201-205`。
+
+## 32.1 地形：同一套共享例程，按对象类别选不同入口
+
+`terrain.rs:7-21` 是一张原机例程表，说明地形不是"一个函数给所有对象"，而是**一组共享例程 + 按类别挑入口**：
+
+| 例程 | 地址 | 谁调用 |
+|---|---|---|
+| `terrain_area_start` | `0x12BE4` | 区域开始（flow / camera），装 floor list 到 `G.$6B0` |
+| `terrain_advance` | `0x12C90` | `objects_update` 末尾，floor list 指针跟着 camera 走 |
+| `terrain_collide` | `0x12CB4` | 地板 + 墙（5 passes）+ 障碍 + snap：敌人 / props / items |
+| `terrain_collide` + `terrain_ceiling` | `0x12CAC` + `0x1361E` | **玩家**（多一个天花板检测） |
+| `terrain_floor_only` | `0x12D4E` | `G.$4F0` 时的玩家 / respawn |
+| `terrain_effect_floor` | `0x12DAC` | effects（5 次 floor lookup） |
+| `terrain_collide_free` | `0x12E20` | 免障碍测试的某些 enemy class |
+| `floor_lookup` / `terrain_wall` / `shape_handler` | `0x12FE4 / 0x1309C / 0x13138` | scroll2 tilemap 属性 + 形状跳表 |
+| `scene_class` | `0x136E4` | 纵向（电梯）场景图同一套查表 |
+
+`terrain.rs:30-39` 还记着这些例程用 68000 oracle 跑了 250,000 组向量，并**故意保留 5 个 quirks**（`ble/bgt` 有符号溢出比较、形状 0x10 变体移位、纵向场景 ceiling 恒为 class 0、障碍表本帧/上帧共用、`+$50` 用 `move.b` 而非 OR）——说明"地形"在原机是有精确边界条件的系统，不是粗略的碰撞盒。
+
+wof 侧对应物是 `0x2698` / `0x26AA` 这对"对象地形与活动范围修正"公共函数：`Cps1TerrainCollision.cs:43-47` 的玩家入口 `玩家_地形纠偏与屏幕范围_可能对应ASM_171A8` 调 `应用对象地形纠偏_可能对应ASM_2730`；`:245-248` 记着 ROM 的跳表里**只有主 AI 项含 `jsr 0x26AA`**，其余状态项不含。也就是说 wof 也是**共享函数 + 每类 handler 各自决定在哪个分支调**，与 §11.2 的 `0x3C6A`「共享决策函数 + 每兵种各带概率表」同形，是这一习惯的第六次复现。
+
+## 32.2 载具：dino 的复合演出状态机 vs wof 的对象池 + 玩家分支
+
+**dino Cadillac**（`car.rs:1-7`）：一个 radio event `0x8BD24` 生成 **3 个对象**——车（variant 0）、前轮（2）、后轮（4），轮子 `+$76` 指回车；另有池 C helpers：座位（class 36）、送车队友（class 37）、烟尘（class 41）。它自己的 `mode` 是 4 态（`car.rs:90-106`）：
+
+```
+mode 0 arrival  (0x8BDEC)  ← sub 8 步：init / drive in 5px / brake / wait120
+                              / wait60 / boarding jumps(45帧) / accelerate / drive start
+mode 2 drive    (0x8C0A4)  ← variant 0 = 车，其它 = 轮子；steer / lane / band / bump / smoke
+mode 4 end      (0x8C810)  ← 英雄跳下、残骸滚出镜头（camera X + 0x200）后 mode 6
+mode 6 free     (0x8C880)
+```
+
+`car.rs:16-23` 的字段协议几乎是一张"载具状态表"：座位 `+$A2..$A4`（角色号，0xFF 空）、`+$A5..$A7` 构建中座位、`+$A8` 乘员位、`+$A9` bump 计时、`+$B0/$B2` 转向目标 vx/vz、`+$B4` 队友角色。`:208` 置 `G.$518 = car_mode = 1`，§15 已说明这个全局位让输入 / 碰撞 / 生成各自改道（碰撞侧多插 4 个 pass `0x121D8..0x12454`，`combat.rs:85-94`）；`:719` 退场时清零。车自身有 HP 120 / bar 100、可 bump（`0x8C41C`）、可发 attack 0x66——**载具是一个有血量、有攻击、有完整入场/退场演出的临时主体**，玩家被"装"进去，pad 被接管（`:235` `+$11A = 1`）。
+
+**wof 马**（`Cps1HorseRuntime.cs:6-14`）：独立马对象池 `A5+0x6BBC`，**6 槽 × 0xC0**，与玩家的 `Mount/MSpr` 字段分开。`:51-70` 的 `ActStatA` 分派是 4 态：
+
+| `ActStatA` | 入口 | 含义 |
+|---|---|---|
+| `0x00` | `0x213A4` | 初始化 / **下马后待机** |
+| `0x02` | `0x21426` | 待机与**重新上马** |
+| `0x04` | `0x214F4` | 离场判定 |
+| `0x06` | `0x21564` | 清 `A5+0x1CA` 后压回马池（回收） |
+
+关键在 `:6-10` 的注释：**挂马期间马槽 `OBJ+0 = 0`**，只由玩家对象的 `5E5DA` 展开 `MSpr`；`1F3BE` 下马后才把马槽置 `0101`，`0x213A4` 再把它变成可渲染的普通对象。也就是说 wof 的马在挂载时**退化成玩家的显示附属**，马自己只保留"下马 → 待机 → 可被重新上马 / 离场 → 回收"的生命周期。玩家侧则有§31 已列的**每角色骑马主状态机入口**（`1ED1E` 关羽 / `1F64A` 张飞 / `1FDD2` 赵云 / `2055E` / `20C50`）。
+
+## 32.3 逐项对照
+
+| 维度 | dino Cadillac | wof 马 |
+|---|---|---|
+| 对象构成 | 1 车 + 2 轮 + 座位 / 送车队友 / 烟尘，复合对象 | 独立 6 槽马池（步长 0xC0），单对象 |
+| 状态机 | `mode` 4 态，arrival 内还有 8 步 `sub` | `ActStatA` 4 态（初始化 / 待机 / 离场 / 回收） |
+| 挂载期间 | 玩家被装进车、pad 接管；车是主体 | 马槽 `Exist=0`，由玩家 `MSpr` 展开；玩家是主体 |
+| 全局联动 | `G.$518 car_mode` 让输入 / 碰撞 / 生成改道 | `Mount/MSpr` 字段 + 每角色骑马入口 |
+| 演出 | 入场 8 步（含 120/60/45 帧等待）、驾驶、跳下、残骸离场 | 上马 / 下马 / 重新上马 / 离场回收 |
+| 可受击 | 车有 HP 120 / bar 100、bump、attack 0x66、4 个碰撞 pass | 本轮未展开，不臆断 |
+| 地形 | 共享例程按类别分入口（玩家带 ceiling、部分 class 免 obstacle） | `0x2698/0x26AA` 公共函数，每类 handler 自己调 |
+| 生命周期终点 | `mode 6 free` | 压回马池（`0x21564`） |
+
+## 32.4 伪代码与流程图
+
+```
+# dino 地形：同一套例程 × 按类别选入口
+terrain_area_start(stage, area)      # 0x12BE4：floor list → G.$6B0
+per frame: terrain_advance(camera)   # 0x12C90：指针跟 camera
+on object update:
+    player  -> terrain_collide + terrain_ceiling     # 0x12CAC
+    enemy   -> terrain_collide（5 passes + obstacles）# 0x12CB4
+    class X -> terrain_collide_free                  # 免障碍
+    effect  -> terrain_effect_floor                  # 5 次 floor lookup
+    G.$4F0  -> terrain_floor_only                    # respawn
+
+# dino 载具
+prop_car(mode):
+    0: arrival(sub 0..0xE)  # 0x8BDEC
+    2: drive  -> steer / lane / band / bump / smoke  # 0x8C0A4
+       wheel  -> prop_car_wheel                     # variant != 0
+    4: end    -> 英雄跳下 → camera X+0x200 → mode 6  # 0x8C810
+    _: free
+G.$518 = car_mode   # §15：各系统自查改道
+
+# wof 马池
+for slot in 0..5:
+    if slot.Exist == 0: continue
+    switch slot.ActStatA:
+        0x00: 初始化与下马后待机  # 0x213A4
+        0x02: 待机与重新上马      # 0x21426
+        0x04: 离场判定            # 0x214F4
+        0x06: 回收压回马池        # 0x21564
+挂马中: slot.OBJ+0 = 0，玩家 5E5DA 展开 MSpr
+下马  : 1F3BE 置 0101 → 0x213A4 变普通对象
+```
+
+```mermaid
+flowchart TB
+    subgraph dino_复合主体
+        A1[radio event 0x8BD24] --> A2[车 + 前轮 + 后轮 + 座位/队友/烟尘]
+        A2 --> A3[mode 0 入场 8 步]
+        A3 --> A4[mode 2 驾驶 steer/bump]
+        A4 --> A5[mode 4 跳下+残骸离场]
+        A5 --> A6[mode 6 free]
+        A4 -. 全局 .-> A7[G.$518 car_mode 让输入/碰撞/生成改道]
+    end
+    subgraph wof_对象池
+        B1[6 槽马池 A5+0x6BBC] --> B2{ActStatA}
+        B2 --> B3[00 初始化/下马待机]
+        B2 --> B4[02 待机/重新上马]
+        B2 --> B5[04 离场判定]
+        B2 --> B6[06 回收]
+        B3 -. 挂马时 .-> B7[槽 Exist=0, 玩家 MSpr 展开]
+        B7 -. 下马 .-> B3
+    end
+```
+
+## 32.5 主线闭环与本轮边界
+
+| 出处 | 本轮对应 |
+|---|---|
+| §15 附加玩法挂接 | 补上"挂上去的东西自己是什么"：`car_mode` 背后的 4 态演出状态机 |
+| §31 角色差异化 | wof 每角色**骑马**入口是"结构维度"的又一实例；dino 座位 `+$A2..$A4` 是数据维度 |
+| §11.2 / §16 / §22 / §27 / §31 | 「共享函数 + 每类自己调用」第六次复现：地形 `0x26AA` / 例程表 |
+| §2 状态机 | 载具证明四层状态字节不只给角色用，也抬到了"临时主体"层 |
+| §23 卷轴 / 摄像机 | `terrain_advance` 让 floor list 跟 camera；车退场用 `camera X + 0x200` 判定 |
+| §28 同屏预算 | 车 / 座位 / 队友 / 烟尘都是 pool B / C 对象，受同一套池容量约束 |
+| §0 边界 | wof 地形文件里的逐帧对拍修正是宿主补偿，已剥掉，不当设计结论 |
+
+结论：地形与载具是"空间约束"和"临时主体"两层。地形两边都做成**共享例程 + 按对象类别选入口**（dino 一张 0x12BE4..0x136E4 例程表，玩家带 ceiling、部分 class 免 obstacle；wof `0x2698/0x26AA` 由每类 handler 自己调）。载具则明显分岔：dino 把 Cadillac 做成**有入场 / 驾驶 / 退场演出的复合对象状态机**，玩家被装进去、全局 `car_mode` 让各系统改道；wof 把马做成**可复用对象池 + 玩家状态机的骑马分支**，挂载期间马槽隐身、由玩家 `MSpr` 展开，马自己只留下马 → 待机 → 离场 → 回收的生命周期。一个让载具当主体，一个让玩家当主体——这正是 §15「附加玩法挂接方式」在对象层的根因。
+
+- **未做（保留，不扩张）**：`car.rs` 各 `sub` 步逐段、`0x8C886` 转向表 / `0x8C404` bump 表数值；wof 马 4 态 handler 全文、`1F3BE` 下马链与 `5E5DA` MSpr 展开；dino `shape_handler` 各形状与 5 个 quirk 的逐类展开；wof `0x26AA` 全部 49/50 个调用点；两游戏载具是否可被攻击 / 有 HP（dino 已确认，wof 不臆断）。
+- **未新增 ROM 取证**，全部以两份 repo 源码为准（§11.0）；**未考证发行先后**，沿用用户给定前提。
+- 按 §0 边界，wof 侧 `Cps1TerrainCollision.cs` 的宿主逐帧修正与 `_无对应ASM` 开关未纳入设计对照；本轮不据此评价 rep 侧实现。
 
 
 
