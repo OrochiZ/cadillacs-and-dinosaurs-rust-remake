@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：5620 行、32 轮、55 张 mermaid 图、1081 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§39 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：5716 行、33 轮、56 张 mermaid 图、1106 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§40 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -43,7 +43,7 @@
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
 | 二十五 | §32 | 地形与载具（例程表按类别分入口 / dino Cadillac 4 态复合主体 / wof 6 槽马池 + 玩家骑马分支） | 有效 |
-| 二十六~三十二 | §33 / §34 / §35 / §36 / §37 / §38 / §39 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表） | 有效 |
+| 二十六~三十三 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计（文末）** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
@@ -56,7 +56,7 @@
 - 卷轴 / 摄像机 / 硬件时序 → **§23（`VIDEO_LATENCY` / VBlank shadow 提交 / 与 A.8 dump 点闭合）**
 - 投技 / 抓取 / 挣扎 / 投掷 → **§24（双向互检协议 / 释放即落地 / 投掷多步状态机）**
 - 动态难度 / rank / 时间驱动 → **§25（`rank_tick` / `RANK_PERIOD` / Markov aggression / wof `A5-0x5A`）**
-- HUD / 分数 / 奖命 / 反馈时机 → **§26（`score_dirty` 帧末重绘 vs `0xD000` 事件投递 / 回扣「执行次数不确定」）**
+- HUD / 分数 / 奖命 / 反馈时机 / 过关结算 → **§26（`score_dirty` 帧末重绘 vs `0xD000` 事件投递 / 回扣「执行次数不确定」）**、**§40（tally 四分项 / 每帧 100 倒扣进 score / `G.$735E` 与 intro 共享）**
 - 搓招 / 指令技 / 输入序列 / 连击 → **§27（`player_command_fsm` 三态时间窗 / `cmd_flag` 结果位 / wof `RKey1` 符号三态）**、**§39（`combo_t` 时间窗 / 4 段链 / finisher 接投技 vs wof `ComboLev` 查表）**
 - 关卡 / 波次 / 同屏预算 / 背压 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**
 - 受击恢复 / 倒地 / 起身 / 无敌 / 眩晕 → **§29（`b.act` 14+ 分支 / `invuln[16]` 查表 / `enemy_getup_or_die` / `dizzy_prev` 全局限流 / wof `+0x78`）**
@@ -5613,6 +5613,102 @@ flowchart TD
 - 音频（`player_sfx`）按 §0 边界外。
 
 **结论**：§39 把"连击"补成输入时间窗 vs 等级查表的完整对照；`长时间自主推进` 仍是开放目标，本节不宣称终止。
+
+---
+
+## 40. 过关结算：`stage clear tally` 怎么把一局表现变成分数
+
+> 触发：§20 把 `flow_tally_task` 列为 slot 0x30 的一个任务，§30 讲 `flow.mode` 8 态的过关迁移，§26 讲 `score_dirty` 帧末重绘——但"Boss 死后那段结算画面本身"从未展开。`flow/tally.rs` 是完整独立模块，`prop/b25.rs` 是它的数字对象，两侧 repo 证据充分。
+> 归属：设计正文（§0–§40），按"轮次线性追加"接在 §39 之后。纯 repo 侧，未新增 ROM 取证（§11.0）。
+> 分工：§20 任务机 / Scene sleep、§26 HUD 分数脏标志、§30 过关流程、§35 pool B 统一契约、§36 跨帧时序；本节讲**"分数分项 → 面板 → 累加 → 倒扣进总分"这条链**。
+
+### 40.1 它不是一个函数，是一个 6 状态 / 9 子步的任务
+
+- 任务 `0xB97E`（slot 0x30）：`flow.rs:372` 每帧调度，`flow.rs:790` 在 Boss 死后 `flow_tally_start()` 拉起（`flow/tally.rs:1-3`）。
+- **`G.$735E` 结构（`Tally::raw` 字节图）与 stage intro 任务 `0xB9BE` 共享**：任务创建不清这块（`flow.rs:892` "keeps the bytes of the last task"），`flow.rs:899-905` 靠 `tally.owner` 决定谁读；`trace.rs:1866-1875` 用 `fl.tally.owner = fl.sub >= 6 && fl.mode == 0xC` 判归属。不是"清干净重来"，而是**保留上一个任务留下的字节**——§20「Scene / 共享结构 / 续算点」在内存层的对应。
+- 状态表 `0xB9A4`（`flow/tally.rs:24-27`）：state 0 起动 + 4 步淡出 → 2 九个 sub step → 4 地图面板 → 6 滑入 + marker 闪 → 8 → 0xA 结束（`G.$4E2 = 0`）。
+- 九个 sub step（`flow/tally.rs:29-39`）：
+
+| sub | 内容 |
+|---|---|
+| 0 | VITALITY 面板（最佳体力），30 帧 |
+| 2 | ENEMIES 面板（最佳击杀数） |
+| 4 | FINAL BLOW 面板（持 final blow flag 的英雄） |
+| 6 | M.V.P. 面板（最佳伤害，平局共享） |
+| 8 | 清四行文本，`counter +4 = 14` |
+| 0xA | 14 帧后 TOTAL（多人时 WINNER! + pool C class 34 火花），30 帧 |
+| 0xC | 每帧各 TOTAL 倒扣 100 进分数（`0x101E6`），每 11 帧一次音效，最佳总分肖像闪 |
+| 0xE | 清面板格、亮回 |
+| 0x10 | 淡出后转 state 4、释放 pose lock `G.$503` |
+
+每段用 `jsr 0xA7E`（30 帧 sleep）+ `After` 续算点，routine 末尾 `jsr 0xA76`（一帧）——正是 §20「Scene sleep / 续算点显式化」在结算层的实例。
+
+### 40.2 分数规则：四个分项 + 一个 BCD 累加器
+
+`flow/tally.rs:41-43`：
+
+| 分项 | 计算 | 满值示例 |
+|---|---|---|
+| VITALITY | `(HP - 1) * 100` | HP 100 → 20000 |
+| ENEMIES | `kills * 100`（`+$10B`） | 按击杀数 |
+| FINAL BLOW | 固定 | 20000 |
+| M.V.P. | 固定 | 10000（`+$10C` 造成伤害最高者，平局共享） |
+| TOTAL | 四项之和（BCD） | 每帧 100 倒扣进 score |
+
+数值为 BCD，用 `hud.rs` 的 `bcd_add32 / bcd_sub32 / to_bcd`（`flow/tally.rs:46`）。`anti tamper roll 0xD860` 在第一个英雄 HP 为偶数时抽一个随机数（注释 "it never finds a patch"）——只登记事实，不展开（附录 A 阶段 A 已记 dino 裁掉 anti-tamper）。
+
+### 40.3 数字是 pool B 对象画的，不是结算任务自己画
+
+`prop/b25.rs:1-22`：
+
+- pool B class 25（`+$20 = 0x64`，handler `0x7E7B4`），每英雄每面板一个 + 每个 TOTAL 一个（变体 8）。
+- 变体 0 / 2 / 4 / 6 对应四块面板，字段 `+$58` 指向 tally 里的英雄块、`+$5C` 玩家对象、`+$60` 显示值（BCD）、`+$64` 前导零是否空白。
+- mode 链：0 取 pool D 槽建数字精灵表 → 2 **等 tally 的 sub step 变成 variant+2** → 4 换成第二种形式（完整数值，如 `(HP-1)*100`）并在 16 帧内移到目标 Y `0x50` → 6 tally 倒扣开始时归还槽并 free。
+- 变体 8（TOTAL）的 mode 4 **每帧从 total 重建精灵表**，直到 sub 0xE。
+
+即：**结算任务只推进 sub step 与写分项，数字怎么显示、什么时候把值加进 total，是二十多个 pool B 对象各自按 `mode/sub` 与 tally 的 `sub step` 对齐完成的**——§35「pool B 统一契约」与 §36「这一帧写、下一帧读」的又一次复现。
+
+```mermaid
+flowchart TD
+    B[Boss 死亡] --> T[flow_tally_start 任务 0xB97E / slot 0x30]
+    T --> S0[state 0: 4 步淡出]
+    S0 --> S2[state 2: 9 个 sub step]
+    S2 --> P[sub 0/2/4/6: 四面板分项]
+    S2 --> C[sub 0xC: 每帧 TOTAL 倒扣 100 进 score]
+    P --> N[pool B class 25 数字对象<br/>mode 2 等 sub step = variant+2]
+    N --> A[mode 4: 换完整数值<br/>把值加进 block total]
+    C --> R[变体 8 每帧从 total 重建数字表]
+    A --> E[sub 0xE 清面板 → state 4 地图 → 0xA 结束]
+    R --> E
+    S2 -.共享 G.$735E 字节图.-> I[stage intro 任务 0xB9BE<br/>tally.owner 判归属]
+```
+
+### 40.4 对照表与 wof 边界
+
+| 维度 | dino | wof |
+|---|---|---|
+| 载体 | 独立任务 `0xB97E`（slot 0x30）+ `Tally::raw` 字节图 | repo 侧未见等价过关分数面板（不臆断） |
+| 分项 | VITALITY / ENEMIES / FINAL BLOW / M.V.P. / TOTAL | §30 已记：共享出口 `0x42C2` + `A5+0x188 = 0xFF` + 收尾对白对象接力 |
+| 推进 | 6 个 state + 9 个 sub step，30 帧 sleep + 续算点 | 不臆断 |
+| 显示 | pool B class 25 数字对象按 sub step 对齐 | 不臆断 |
+| 共享结构 | `G.$735E` 与 intro 任务共享，靠 `tally.owner` 判归属 | 不臆断 |
+
+**wof 侧严格不动**：Grep `wt1/wof_cs/src/` 命中的"结算"全是命中结算 / 逃跑结算 / 落地结算，未见过关分数面板；按 §11.0 与用户「不过度怀疑 rep 侧」，只登记"repo 侧未见等价"，**不断言原机没有集中结算**。
+
+### 40.5 "更成熟"落在哪（只谈设计本意）
+
+1. **结算是任务 + 子状态机 + 对象协同**，不是"算完分数刷新一下"：分项、显示、累加、倒扣分给任务与二十多个对象按帧对齐，节奏可逐帧验收（§20 / §36）。
+2. **共享结构的归属显式化**：`G.$735E` 与 intro 任务共用一块字节图，靠 `tally.owner` 决定谁读，保留上一个任务留下的字节——这是 §20「续算点」在内存层的对应，也回扣用户最初的"函数执行次数 / 遗留任务"之问。
+3. **与 §26 分工清楚**：`score_dirty` 是**游戏中**每次加分置脏、帧末重绘；本节是**关卡结束**把一局统计以每帧 100 的速度倒扣进总分。两条分数链时间尺度完全不同。
+
+### 40.6 未做（保留，不扩张）
+
+- `flow/tally.rs` 各 state routine 逐条 ROM 对照、`0xB9A4` 状态表全项：本节只用文件头注释的语义。
+- `prop/b25.rs` 数字精灵表构造与 pool D 槽管理逐条：§35 已覆盖 pool B 契约。
+- wof 过关收尾对象接力已在 §30 覆盖，不重复；不追 wof 是否有未实现的 tally。
+- `0xD860` anti-tamper roll 只登记事实；音频（sound `0x49` / 每 11 帧）按 §0 边界外。
+
+**结论**：§40 把"过关结算"补成任务 / 分项 / 数字对象三层按帧对齐的链；`长时间自主推进` 仍是开放目标，本节不宣称终止。
 
 
 
