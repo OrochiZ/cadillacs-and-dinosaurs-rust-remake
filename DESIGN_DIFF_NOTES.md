@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：7361 行、49 轮、71 张 mermaid 图、1415 表格行、附录 A（A.1–A.18：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执（§46 后）/ A.15 §37–§46 约束合规审计 / A.16 §47–§50 约束合规审计与规模进度回执 / A.17 §51–§52 约束合规审计与规模进度回执 / A.18 §53–§54 约束合规审计与规模进度回执；A.8–A.13 位于 §33 之后、A.14 / A.15 位于 §47 之前、A.16 位于 §50 后、A.17 位于 §52 后、A.18 位于文末）。§0–§54 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：7444 行、50 轮、72 张 mermaid 图、1422 表格行、附录 A（A.1–A.18：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执（§46 后）/ A.15 §37–§46 约束合规审计 / A.16 §47–§50 约束合规审计与规模进度回执 / A.17 §51–§52 约束合规审计与规模进度回执 / A.18 §53–§54 约束合规审计与规模进度回执；A.8–A.13 位于 §33 之后、A.14 / A.15 位于 §47 之前、A.16 位于 §50 后、A.17 位于 §52 后、A.18 位于 §54 后、§55 位于文末）。§0–§55 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -43,8 +43,8 @@
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
 | 二十五 | §32 | 地形与载具（例程表按类别分入口 / dino Cadillac 4 态复合主体 / wof 6 槽马池 + 玩家骑马分支） | 有效 |
-| 二十六~三十六 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 / §42 / §43 / §44 / §45 / §46 / §47 / §48 / §49 / §50 / §51 / §52 / §53 / §54 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态）；生成帧跨帧契约（`spawn_script_tick` 帧最后 / 首帧 AI 下一帧 / wof `0x1082E` 在 `0x22D8E` 之后 / 宿主 pending 按 §0 隔离）；离场与回收（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）；纵深空间与跳跃（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）；渲染优先级与遮挡（`(depth,handle)` 单键排序 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序）；一次攻击的数据表示（8 字段 `AttackRecord` 聚合 / 玩家·敌人共用 vs wof 一个 ID 散在多张表 `0xE4F02` / `0x1C20` / `0x7E68`）；一帧完整调度链（`tick` 三层 / `game_frame` 8 步 / `objects_update` 14 调用 / wof 帧首 `0x050E` 与帧末 `0x18B12`）；一次挥击的判定窗口（`attack_serial` G.$67BE / `+$5E` 双向去重 / `combat_lists_reset` 拷 `0x69BA` 上一帧 hurt list vs wof `+0x79` 相位锁 + `HitMeObj`）；判定盒的数据与开关（`+$44` 可切换表基址 + `+$48/+$49` 索引 / frame record 逐帧重载 / `attack_box=0` 关盒 vs wof `0xE4F02` 全局表 + `+0x6C/6E/70` 偏移 / `AtkBoxId=0` 是合法表项）；对象池总表（players+5 池精确常量 / `slot_of` 地址即身份 / LIFO free 栈·`alloc=None` 背压 / 更新分池·绘制全池 / pool D 被 B 借用 vs wof 容器+`ObjId` 跳表）；RNG 单流全景（`w.rng` 一个全局种子 / `rand()` 取值直接当值 vs wof `& 0x1F + offset` 扰动 `0x1C20` 查表 / 取几次即帧契约·不取也被单测钉死 / 宿主 RNG 诊断按 §0 隔离）；摄像机（`Scroll2` 控制器 / 全体玩家 `max_x60/min_x64` 包围盒 / `push50` 人数分档·限速 6px / `lock78` 三态 + 事件 + `go` / wof 单玩家相机用上一帧 X 算边界 + Scroll2/Scroll3 拆分）；动画帧状态机（frame record 自带时长·链接·终止位 / `tick_anim` 返回「播完」事件 vs wof 序列表项 + `AniLeft` 计时门 + `AniStat` 状态位回调 / 主·副·强制装载多入口）；对象间引用与归属（dino `who`/`attacker`/`partner`/`serial` 语义分字段 vs wof `HitObj1`/`HitMeObj` 地址对 + `+0x79` 相位） | 有效 |
-| 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执 / A.15 §37–§46 约束合规审计 / A.16 §47–§50 约束合规审计与规模进度回执 / A.17 §51–§52 约束合规审计与规模进度回执 / A.18 §53–§54 约束合规审计与规模进度回执（A.14 / A.15 位于 §47 之前、A.16 位于 §50 后、A.17 位于 §52 后、A.18 位于文末）** — 非设计正文 | 隔离存档 |
+| 二十六~三十六 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 / §42 / §43 / §44 / §45 / §46 / §47 / §48 / §49 / §50 / §51 / §52 / §53 / §54 / §55 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态）；生成帧跨帧契约（`spawn_script_tick` 帧最后 / 首帧 AI 下一帧 / wof `0x1082E` 在 `0x22D8E` 之后 / 宿主 pending 按 §0 隔离）；离场与回收（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）；纵深空间与跳跃（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）；渲染优先级与遮挡（`(depth,handle)` 单键排序 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序）；一次攻击的数据表示（8 字段 `AttackRecord` 聚合 / 玩家·敌人共用 vs wof 一个 ID 散在多张表 `0xE4F02` / `0x1C20` / `0x7E68`）；一帧完整调度链（`tick` 三层 / `game_frame` 8 步 / `objects_update` 14 调用 / wof 帧首 `0x050E` 与帧末 `0x18B12`）；一次挥击的判定窗口（`attack_serial` G.$67BE / `+$5E` 双向去重 / `combat_lists_reset` 拷 `0x69BA` 上一帧 hurt list vs wof `+0x79` 相位锁 + `HitMeObj`）；判定盒的数据与开关（`+$44` 可切换表基址 + `+$48/+$49` 索引 / frame record 逐帧重载 / `attack_box=0` 关盒 vs wof `0xE4F02` 全局表 + `+0x6C/6E/70` 偏移 / `AtkBoxId=0` 是合法表项）；对象池总表（players+5 池精确常量 / `slot_of` 地址即身份 / LIFO free 栈·`alloc=None` 背压 / 更新分池·绘制全池 / pool D 被 B 借用 vs wof 容器+`ObjId` 跳表）；RNG 单流全景（`w.rng` 一个全局种子 / `rand()` 取值直接当值 vs wof `& 0x1F + offset` 扰动 `0x1C20` 查表 / 取几次即帧契约·不取也被单测钉死 / 宿主 RNG 诊断按 §0 隔离）；摄像机（`Scroll2` 控制器 / 全体玩家 `max_x60/min_x64` 包围盒 / `push50` 人数分档·限速 6px / `lock78` 三态 + 事件 + `go` / wof 单玩家相机用上一帧 X 算边界 + Scroll2/Scroll3 拆分）；动画帧状态机（frame record 自带时长·链接·终止位 / `tick_anim` 返回「播完」事件 vs wof 序列表项 + `AniLeft` 计时门 + `AniStat` 状态位回调 / 主·副·强制装载多入口）；对象间引用与归属（dino `who`/`attacker`/`partner`/`serial` 语义分字段 vs wof `HitObj1`/`HitMeObj` 地址对 + `+0x79` 相位）；续关跨系统契约（保留 hero·score·RNG·不取 RNG / `wave_timer+600` / rank 时间+速度补偿 / HUD 倒计时 scripted·hold·mode 门 / `flow.sub` 0·2·4·6 四态） | 有效 |
+| 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执 / A.15 §37–§46 约束合规审计 / A.16 §47–§50 约束合规审计与规模进度回执 / A.17 §51–§52 约束合规审计与规模进度回执 / A.18 §53–§54 约束合规审计与规模进度回执（A.14 / A.15 位于 §47 之前、A.16 位于 §50 后、A.17 位于 §52 后、A.18 位于 §54 后、§55 位于文末）** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
 - 状态机 → §2、§14、§15、§16.3、**§20（顶层流程任务机）**、**§21（非角色对象）**、§22（受击态）、§23（显示延迟）、**§24（跨两对象）**、**§25（跨整局）**、**§26（反馈层）**、**§41（Front 多 Scene / 选人记录状态机）**、**§53（动画帧状态机 / frame record 自带时长·链接·终止位 / `tick_anim` 返回「播完」事件 vs wof 序列表项 + `AniLeft` 计时门 + `AniStat` 状态位回调 / 主·副·强制装载多入口）**、**§54（对象间引用与归属 / dino `who`·`attacker`·`partner`·`serial` 语义分字段 vs wof `HitObj1`·`HitMeObj` 地址对 + `+0x79` 相位 / 引用住在对象头·跨帧持有）**
@@ -60,7 +60,7 @@
 - 搓招 / 指令技 / 输入序列 / 连击 → **§27（`player_command_fsm` 三态时间窗 / `cmd_flag` 结果位 / wof `RKey1` 符号三态）**、**§39（`combo_t` 时间窗 / 4 段链 / finisher 接投技 vs wof `ComboLev` 查表）**
 - 关卡 / 波次 / 同屏预算 / 背压 / 生成帧时序 / 离场回收 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**、**§42（`spawn_script_tick` 帧最后 / 首帧 AI 落下一帧 / wof `0x1082E` 在 `0x22D8E` 之后）**、**§43（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）**；对象池总表 / 容量背压 / 跨池组织 → **§50（players+5 池基址·步长·容量 / `slot_of` 地址算术 / `alloc=None` 即同屏上限 / 更新分池·绘制全池 / pool D 无独立 pass 被 B 借用 vs wof 池+`ObjId` 二次分派）**
 - 受击恢复 / 倒地 / 起身 / 无敌 / 眩晕 → **§29（`b.act` 14+ 分支 / `invuln[16]` 查表 / `enemy_getup_or_die` / `dizzy_prev` 全局限流 / wof `+0x78`）**
-- 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**；一关内部的空间分段 / 区域推进 / 段切换 → **§34（`area` 字节 / 相机 `mode/sub` FSM / `0xAA0E` 批量重置 / wof `trigger <= cameraX` + 门闩）**；非角色对象 / 可破坏物 / 关卡推进器 → **§35（一个 pool B + 共享契约 vs 多池 `ObjId` 跳表 / 波次控制器本身是对象）**；跨帧时序 / `prev` 快照 / 执行次数 → **§36（7 个 dino 实例全表 + wof 队列·shadow 并排 / §20.6 主线封顶）**；完整一帧调度链 / 执行次数 / 两套循环 → **§47（`tick` 三层固定序列 / `game_frame` 8 步 / `objects_update` 14 调用 / 帧首 `latch` 与帧末 `spawn_script_tick` vs wof `0x050E` VBlank + `0x18B12` 复位三表）**；一次挥击判定窗口 / 命中去重 / 候选列表跨帧 → **§48（`attack_serial` 去重 / `combat_lists_reset` 一帧延迟 hurt list / §36 跨帧清单延伸）**；判定盒的数据 / 逐帧开关 → **§49（`+$48/+$49` 随动画帧重载 / `0` 在两边含义相反 / §46→§49→§48 判定链）**
+- 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**、**§55（续关跨系统契约 / 保留 hero·score·RNG·不取 RNG / `wave_timer+600` / rank 时间+速度补偿 / HUD 倒计时三类暂停门 / `flow.sub` 0·2·4·6 四态）**；一关内部的空间分段 / 区域推进 / 段切换 → **§34（`area` 字节 / 相机 `mode/sub` FSM / `0xAA0E` 批量重置 / wof `trigger <= cameraX` + 门闩）**；非角色对象 / 可破坏物 / 关卡推进器 → **§35（一个 pool B + 共享契约 vs 多池 `ObjId` 跳表 / 波次控制器本身是对象）**；跨帧时序 / `prev` 快照 / 执行次数 → **§36（7 个 dino 实例全表 + wof 队列·shadow 并排 / §20.6 主线封顶）**；完整一帧调度链 / 执行次数 / 两套循环 → **§47（`tick` 三层固定序列 / `game_frame` 8 步 / `objects_update` 14 调用 / 帧首 `latch` 与帧末 `spawn_script_tick` vs wof `0x050E` VBlank + `0x18B12` 复位三表）**；一次挥击判定窗口 / 命中去重 / 候选列表跨帧 → **§48（`attack_serial` 去重 / `combat_lists_reset` 一帧延迟 hurt list / §36 跨帧清单延伸）**；判定盒的数据 / 逐帧开关 → **§49（`+$48/+$49` 随动画帧重载 / `0` 在两边含义相反 / §46→§49→§48 判定链）**
 - 角色差异化 / 可选角色 / 按角色查表 → **§31（`PlayerData` 表族 `ch` 索引 / `invuln[d0+ch]` / wof 5 武将各自主状态机入口）**
 - 地形 / 载具 / 骑马 / 空间约束 → **§32（`0x12CB4` 例程表 / `0x26AA` 每类自调 / `car_mode` 4 态 / 6 槽马池 `ActStatA`）**；纵深空间 / 跳跃 / 地形数据 → **§44（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）**；渲染优先级 / 遮挡 / 绘制队列 → **§45（`(depth,handle)` 单键排序 / `0x13FA6` 全池一张表 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序 + 三组背景优先级）**
 - 多人协作 / 活跃位图 / 目标玩家 / 玩家数 / 友军伤害 / 记分归属 → **§33（`A5-0x3E` / `0x3E62` / `A5+0x3E1C` 三槽 / `players_minus_one` / census；§11 勘误主线）**、**§38（`pass_10664` 玩家互伤 / 伤害 1 保底 1 HP / `hud_hit` 归攻击者）**
@@ -7352,6 +7352,89 @@ dino 把「引用」按用途拆成多个窄字段，每个字段只服务一个
 - 仍开放项按 §11.0 与用户「不过度怀疑 rep 侧」保持不变：两游戏发行先后未考证；`0x22DB0` region set 不主动追；`Cps1LidianFinaleRuntime.cs` / `Cps1HardResetRuntime.cs` 抽样不主动扩大；§53.8 / §54.8 的「未做（保留，不扩张）」不是欠账。
 - **本回执不宣称 `长时间自主推进` 终止**，也不把「0 硬残留 / 骨架 ~99%」当作分析完成；继续按「repo 侧为主、ROM 主要为 data 且仅在 `wof_cs` 非常可疑时才查 ROM、不过度怀疑 rep 侧、每块一提交」推进。
 - 可重跑：A.18.1 三组模式对 L7083–7286 分区 Grep + A.18.4 原口径统计 + A.18.3 约束清单逐条对照；后续每追加一批设计节照例新开回执，不回改 A.13 / A.15 / A.16 / A.17 / A.18。
+
+---
+
+## 55. 续关这一个动作，动了哪些全局状态
+
+> 边界：纯 repo 侧，未新增 ROM 取证（§11.0 / §11.6）。本节**不展开 `flow_*` 各 mode 全文**——§30.7 已把它与 `0x42C2` 后续链、`A5+0x188` 全部消费点、wof 续关与结局路径一起明列为「保留、不扩张」，本节维持该边界，只把 `flow/cont.rs` 里**续关对其他系统的契约**抽成横切面，作为 §51 / §25 / §28 / §30 / §41 / §52 的下游补证。wof 侧按 §30.7 / §11.0 保留、不臆断其续关路径；音效 `snd_request` 按 §0 隔离。只谈游戏逻辑本意，不谈 Rust/C#、typed/WRAM、端序这类实现表相。
+
+### 55.1 一句话
+
+续关**不是「重开一局」**，而是一个「只改少数全局状态、刻意保留其余状态」的动作：dino 在 `flow_continue_player` 里明写 `0x4DE8 preserves hero, score and RNG`，并刻意**不重置对象、不取 RNG**（`cont.rs:82`、`cont.rs:92`）——这是 §51「不取 RNG 也是跨系统帧契约」在整局流程层的又一实例；它只补 HP / lives / 状态字 / 倒计时，再给 `wave_timer += 600`（§28）与 `rank_add_time(0x400)` / `rank_speed_add(-2)`（§25）作为时间补偿。
+
+### 55.2 投币门：进续关要过几道
+
+`flow_continue_player`（`cont.rs:28`）一帧里依次判：
+
+- 输入边沿照 §14 算：`p.prev = p.held; p.held = input[i]; p.pressed = held & !prev`（`cont.rs:37`）。
+- `join[i].seconds <= 18` 且按攻击键 `pressed & 0x30` → `frames = 60; seconds--`（`cont.rs:40`）：**玩家按键可以加速倒计时**，这是 §41 join 状态机的同一套记录。
+- `seconds < 0` → `flow_join_clear` + `name_qualify`（`cont.rs:47`），进排名资格而不是继续等。
+- 然后才是投币门（`cont.rs:59`）：`!free_play && credits == 0`、`b4d7 != 0`（最终关 / DIP 禁续关）、`starts`（必须有 start 按键边沿）、region 的分槽攻击键快捷投币；credits 扣减**在 free play 也执行、饱和到 0**（`cont.rs:73`），`flow.started |= 1 << i` 记谁续了关。
+- 四态分派在 `flow_continue_mode`（`cont.rs:154`）里按 `flow.sub` 走 `0 setup / 2 countdown / 4 game_over / 6 return`——补的是 §30 那张 `flow.mode` 8 态图**内部的 sub 层**，不是重写 §30.7 保留的 mode 全文。
+
+### 55.3 「保留什么」才是设计本意
+
+| 类别 | 续关时的处理 | 位置 | 呼应 |
+|---|---|---|---|
+| **保留** | 英雄身份、分数、**RNG 种子**、角色对象本体（不重置、不取 RNG） | `cont.rs:82`、`:92` | §51 不取 RNG 也是契约；§50 对象不被回收 |
+| **重置** | 状态字 `0x0002_0000`、`hp / hp_prev / hp_bar = 100`、`facing = 1`、lives、`w80 = 0`、join 倒计时 | `cont.rs:83`–`:99` | §29 受击恢复的初值；§14 输入边沿 |
+| **时间补偿** | `wave_timer += 600`；`rank_add_time(0x400)`（4:00 BCD 时间） | `cont.rs:104` | §28 波次计时；§25 rank 时间驱动 |
+| **难度补偿** | `rank_speed_add(-2)`（续关降速度档） | `cont.rs:91` | §25 `rank_event_*` 把续关当降档事件 |
+| **投币 / 归属** | credits 饱和扣减、`flow.started` 位图、`flow_join_scores` | `cont.rs:73`、`:81`、`:90` | §26 / §40 分数与奖命归属；§33 玩家位图 |
+
+- 最值得单列的是 `cont.rs:92` 的注释：续关走的是**「without the ordinary join's object reset or RNG call」**——普通中途加入会重置对象并取 RNG，续关刻意两者都不做。同一份 `flow.join[i]` 记录状态机（§41）被两种入口复用，差别就在这一行。于是「取几次 RNG」和「不取」在整局流程层同样是可逐帧对拍的契约，与 §51 的结论一致。
+
+### 55.4 HUD 倒计时：什么时候**不走**
+
+`flow_continue_hud_tick`（`cont.rs:110`）开头三选一直接 return：
+
+```text
+if scripted != 0 或 HUD hold(b4d5) != 0 或 flow.mode > 0x0C:
+    return                      # 倒计时整段暂停
+frames -= 1
+if frames != 0: return
+frames = 60                     # 60 帧 = 1 秒
+if seconds >= 0: seconds -= 1; 重绘大数字
+if front.sys.hold != 0:
+    seconds = 21; frames = 1    # HUD hold 把倒计时拨回起点
+```
+
+- 过场脚本接管、HUD 冻结、或已经不在 `ingame` 态时，**倒计时不推进**——与 §25 的 rank `freeze` 门、§28 的「场上太满连倒计时都不走」是同一类「全局时间门」。
+- `flow_continue_setup`（`cont.rs:213`）给每个 `join[i]` 设 `seconds = 20; frames = 100`；`flow_continue_countdown`（`cont.rs:294`）另有一套闪烁 / 数字重绘 / 提前响应按键边沿（`cont.rs:318`），但这些属于显示层，按本节边界不展开。
+
+### 55.5 显示上下文另存与四态
+
+```mermaid
+flowchart TD
+  A["全员倒地 · 允许续关<br/>flow.mode = 0x10"] --> B["sub0 setup<br/>另存 Scroll2/3 与 cam 坐标 → 相机清零 → 装地图页"]
+  B --> C["sub2 countdown<br/>join 秒表 60 帧/秒 · 按键可提前"]
+  C --> D{"flow_continue_player<br/>credits / start 边沿 / free_play / b4d7 门"}
+  D -- 投币成立 --> E["保留 hero·score·RNG<br/>HP 满 · lives · wave_timer+600 · rank 时间+速度补偿"]
+  E --> F["sub6 return<br/>恢复相机与卷轴上下文 → 回 ingame 0x0C"]
+  D -- 秒表归零 --> G["sub4 game_over → name_qualify"]
+  C -. "scripted / hold / mode>0xC" .-> C
+```
+
+- setup 把 `Scroll2` / `Scroll3` 控制器与四个相机坐标另存进 `flow.cont`（`cont.rs:214`），再把相机清零、装新页（`cont.rs:225`–`:232`）；return 态再恢复——呼应 §52 的 `Scroll2` 结构与 §34 的区域切换「先存上下文再换场」。
+- `b4d7`（禁续关，最终关 / DIP）时 setup 跳过 digits / bubble / taunt 文本（`cont.rs:243`），与 §30 的「最终关禁续关 + 结局标志」是同一个字节在两层生效。
+
+### 55.6 与既有章节的关系
+
+§30 的 `flow.mode` 8 态图给的是「整局走到哪」，本节给的是「续关这一下改了哪些全局状态」：`sub` 四态是它的内部，投币 / 保留 / 补偿是它的横切面。§51（不取 RNG）、§25（rank 降速 + 加时间）、§28（`wave_timer`）、§41（join 记录状态机复用）、§52（相机结构另存）、§34（换场上下文）、§36（跨帧字段）、§26 / §40（分数归属）都在这里有一个具体消费者。本节不新增机制。
+
+### 55.7 这一节补了什么（带收敛限定）
+
+把「续关」从 §30 的一个状态节点，还原成一张**跨系统契约清单**：哪些全局状态被刻意保留（尤其 RNG 与对象不重置）、哪些被补偿（波次时间 / rank 时间 / 难度速度）、哪些门会让倒计时整段停住。这是「整局流程不是孤立状态机、而是若干全局计数器的协调动作」的一个实例；**不据此断言 wof 缺续关或续关契约不同**（§30.7 / §11.0 明列保留），也不做设计优劣判断。
+
+### 55.8 未做（保留，不扩张）
+
+- `flow_*` 各 mode 全文、`0x42C2` 后续链、`A5+0x188` 全部消费点、**wof 续关与结局路径**：按 §30.7 保留，不展开、不臆断。
+- `flow_continue_countdown` / `flow_continue_game_over` / `flow_continue_return` 的显示层逐帧细节、`name_qualify` 排名表、Episode 3 保存与 row scroll 标志，按 §11.0 不主动扩大。
+- 音效 `snd_request` 按 §0 边界外；两游戏发行先后未考证。
+- ROM 主要为 data，本节未触发「`wof_cs` 非常可疑」条件，**0 次新增 ROM 取证**（§11.6）。
+
+**结论**：§55 把续关还原成「保留 hero / score / RNG、不取 RNG，只重置 HP 与倒计时，并给 `wave_timer` / rank 时间 / 难度速度做补偿」的跨系统动作，补上 §51 在整局流程层的「不取 RNG」实例与 §28 / §25 的时间补偿下游，同时明确 §30.7 的保留边界不被打破；wof 侧按 §30.7 / §11.0 保留、不臆断；`长时间自主推进` 仍是开放目标，本节不宣称终止。
 
 ---
 
