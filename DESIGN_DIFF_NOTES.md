@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：5810 行、34 轮、57 张 mermaid 图、1121 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§41 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：5885 行、35 轮、58 张 mermaid 图、1130 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§42 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -43,7 +43,7 @@
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
 | 二十五 | §32 | 地形与载具（例程表按类别分入口 / dino Cadillac 4 态复合主体 / wof 6 槽马池 + 玩家骑马分支） | 有效 |
-| 二十六~三十四 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态） | 有效 |
+| 二十六~三十五 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 / §42 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态）；生成帧跨帧契约（`spawn_script_tick` 帧最后 / 首帧 AI 下一帧 / wof `0x1082E` 在 `0x22D8E` 之后 / 宿主 pending 按 §0 隔离） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计（文末）** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
@@ -58,7 +58,7 @@
 - 动态难度 / rank / 时间驱动 → **§25（`rank_tick` / `RANK_PERIOD` / Markov aggression / wof `A5-0x5A`）**
 - HUD / 分数 / 奖命 / 反馈时机 / 过关结算 → **§26（`score_dirty` 帧末重绘 vs `0xD000` 事件投递 / 回扣「执行次数不确定」）**、**§40（tally 四分项 / 每帧 100 倒扣进 score / `G.$735E` 与 intro 共享）**
 - 搓招 / 指令技 / 输入序列 / 连击 → **§27（`player_command_fsm` 三态时间窗 / `cmd_flag` 结果位 / wof `RKey1` 符号三态）**、**§39（`combo_t` 时间窗 / 4 段链 / finisher 接投技 vs wof `ComboLev` 查表）**
-- 关卡 / 波次 / 同屏预算 / 背压 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**
+- 关卡 / 波次 / 同屏预算 / 背压 / 生成帧时序 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**、**§42（`spawn_script_tick` 帧最后 / 首帧 AI 落下一帧 / wof `0x1082E` 在 `0x22D8E` 之后）**
 - 受击恢复 / 倒地 / 起身 / 无敌 / 眩晕 → **§29（`b.act` 14+ 分支 / `invuln[16]` 查表 / `enemy_getup_or_die` / `dizzy_prev` 全局限流 / wof `+0x78`）**
 - 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**；一关内部的空间分段 / 区域推进 / 段切换 → **§34（`area` 字节 / 相机 `mode/sub` FSM / `0xAA0E` 批量重置 / wof `trigger <= cameraX` + 门闩）**；非角色对象 / 可破坏物 / 关卡推进器 → **§35（一个 pool B + 共享契约 vs 多池 `ObjId` 跳表 / 波次控制器本身是对象）**；跨帧时序 / `prev` 快照 / 执行次数 → **§36（7 个 dino 实例全表 + wof 队列·shadow 并排 / §20.6 主线封顶）**
 - 角色差异化 / 可选角色 / 按角色查表 → **§31（`PlayerData` 表族 `ch` 索引 / `invuln[d0+ch]` / wof 5 武将各自主状态机入口）**
@@ -5803,6 +5803,81 @@ flowchart TD
 - EEPROM / service / test menu：附录 A 已记 dino 明确 out of scope，不重复。
 
 **结论**：§41 把"进战斗之前"补成 Front 多 Scene + 一条 boot/attract Scene + 选人记录状态机的对照；`长时间自主推进` 仍是开放目标，本节不宣称终止。
+
+---
+
+## 42. 生成帧的跨帧契约：新对象为什么"这一帧还不算活着"
+
+> 触发：§28 讲"这一帧允许生成几个"（波次预算 / 门闩 / 64 条上限），§36 把 `alive / alive_run` 列为跨帧实例之一，但"一个新敌人从被分配到第一次跑 AI 之间发生什么"从未成节。两侧 repo 都有帧内顺序的硬证据。
+> 归属：设计正文（§0–§42），按"轮次线性追加"接在 §41 之后。纯 repo 侧，未新增 ROM 取证（§11.0）。
+> 边界：wof `Cps1EnemySpawn.cs` 里大量 `_无对应ASM` 的 pending 数组 / 帧号 / 轮号属宿主补偿，按 §0 只登记、不作为设计对照；只取其中带 ROM 地址与 FBA cycles 实证的**原机帧内顺序**。
+
+### 42.1 一句话
+
+**两款游戏都把"生成"排在帧内分发表之后，所以新对象第一次 AI 必然落在下一帧**；dino 是生成脚本排在 `game_frame` 最后，wof 是生成命令排在 `0x22C40 / 0x22D8E` 之后。差别不在"要不要推迟"，而在"推迟由帧序列的哪一段保证"。
+
+### 42.2 dino：生成脚本是 `game_frame` 的最后一步
+
+- `mod.rs:349-357`：`game_frame()` → `objects_update()` (`0xE90E`) → … → `spawn_script_tick()` (`0xFBF4`)；`spawn.rs:167` 自述 **"Runs last in the frame"**。
+- 于是 `spawn_alloc` 写入的新槽（`live=1 / k20=class / x,y,z / var26`，`spawn.rs:195-209`）在生成帧**没有任何对象更新扫到它**；`spawn.rs:284` 明写 `The prop's own handler runs from the next pool B update.`
+- 生成坐标与过滤：`spawn_record`（`spawn.rs:245-277`）`screen_x` 时 `x += cam_x`（屏幕相对坐标），`f & 0x40 / 0x60` 按人数跳过、`f & 0x18` 按 `level` 跳过；`enemy_set_spawn_extras` 把记录里的 `+$5C / +$5B (entrance facing) / +$96` 写进新对象（`enemy.rs:162-163, 481-492`）。
+- 可见判定 `enemy_draw_check`（`enemy.rs:496-503`）：`dx = xi - cam_x + 0x100`、`dy = yi + zi - cam_y + 0x40`，`visible = dx <= 0x380 && dy <= 0x1C0` —— 生成点可以在镜头外，由 `visible` 决定是否进 draw list，而不是"生成时必须可见"。
+- 池满：`spawn.rs:196-199` 丢掉该记录并 `break`（§28 同屏预算在生成层的落点）。
+- 人头计数：`alive`（上次 census）/ `alive_run`（本次，`enemy.rs:782` 每帧累加）——生成帧不计入预算，下一帧才被 census 看到（§13 / §36）。
+
+### 42.3 wof：生成命令在 per-object 分发之后（FBA cycles 实证）
+
+`Cps1EnemySpawn.cs:420-441` 注释给出的 ROM 契约：
+
+- spawn 命令体 `0x1082E`（写 `Exist=01 / +0x21 CharId / +0x16 / +0x04 / +0x08`）由关卡脚本 `0x10734` 推进。
+- 帧内 pc 顺序（FBA cycles 实证）：`pc=22C40 cyc=714846`（渲染队列重建）→ `pc=11F2/1628 cyc=717252` → `pc=13B4/1082E cyc=728500` → `pc=10734 cyc=728770`。
+- ⇒ 本帧 `0x22D8E` per-object 分发表**已经跑完**，新槽本帧不被任何 AI 处理器扫到，A00（资料装载链 `0x2A3F6 → 0x3DF6 → 0x3D62`）只能落到下一帧。f400 实证（`slot2spawn` watch，`0xFFD15C`）：分配帧 f=1225 零写点，f=1226 才有 `+0x36` 资料装载。
+- `Cps1EnemySpawn.cs:497-502`：`0x53B8E` 整条生成链（`53BBE / 53BF4 / 53C5E / 53C8A / 53BCC / 53C96 / 53CBE → 53CE8 → 1552`）**不含** `jsr 0x2698 / 0x26AA` ⇒ 生成当帧不可能被整池地形尾链纠偏。
+- `Cps1EnemySpawn.cs:233-234`：`0x16F76 jsr 0x10620`（关卡脚本可生成新对象）⇒ 第 R 轮生成的对象到第 R+1 轮 `0x22D8E` 才被扫到跑 A00。
+
+**宿主层隔离**：`scriptSpawnAiPending / scriptSpawnAiPendingFrame / scriptSpawnAiPendingRoundPlus1 / enemyJustActivated / 脚本生成AI本帧推迟_无对应ASM / 尝试取出脚本生成AI待执行_无对应ASM`（`:420-441 / 449 / 491-508 / 542-568`）是 C# 为复现上述帧内顺序引入的宿主侧标记，按 §0「宿主补偿不算设计」原样隔离，不把它们写成 wof 的游戏机制。
+
+```mermaid
+flowchart TD
+    subgraph D["dino: 一帧"]
+        D1[objects_update 0xE90E<br/>更新所有已存在对象] --> D2[… 碰撞 / 绘制 …]
+        D2 --> D3[spawn_script_tick 0xFBF4<br/>帧最后: 写新槽 live=1 / class / xyz]
+        D3 --> D4["新槽本帧无人扫到<br/>→ 下一帧 objects_update 首跑"]
+    end
+    subgraph W["wof: 一帧"]
+        W1[0x22C40 渲染队列重建] --> W2[0x22D8E per-object 分发 / A00]
+        W2 --> W3[0x10734 → 0x1082E spawn 命令<br/>写 Exist / CharId / 坐标]
+        W3 --> W4["新槽本帧分发已过<br/>→ 下一帧 0x22D8E 首跑 A00"]
+    end
+    D4 -.同一契约.-> W4
+```
+
+### 42.4 对照表
+
+| 维度 | dino | wof |
+|---|---|---|
+| 生成何时发生 | `spawn_script_tick 0xFBF4`，`game_frame` **最后一步**（`mod.rs:357`） | 关卡脚本 `0x10734` 的 `0x1082E`，帧内在 `0x22C40 / 0x22D8E` 之后 |
+| 首帧 AI | 下一帧 `objects_update 0xE90E` | 下一帧 `0x22D8E` 分发跑 A00 |
+| 保证方式 | 固定帧序列的顺序（生成在更新之后） | 帧内命令顺序（生成在分发表已跑完之后） |
+| 生成帧不做什么 | 不进 `objects_update`、不计入 `alive` census | 不跑 A00、不进整池地形尾链（`0x53B8E` 无 `0x2698/0x26AA`） |
+| 生成坐标 | 记录带 x/y/z 或 `x += cam_x` 屏幕相对；`dx<=0x380 && dy<=0x1C0` 定可见 | 不臆断（§11.0） |
+| 池满 | 丢记录并 `break`（`spawn.rs:196-199`） | 不臆断 |
+| 记录过滤 | `f & 0x40/0x60` 按人数、`f & 0x18` 按 level | 不臆断 |
+
+### 42.5 "更成熟"落在哪（只谈设计本意）
+
+1. **生成帧不是"半个对象"**：两侧都让新对象在生成帧只被写入字段、不被任何更新链解释；第一次 AI 统一落下一帧。这是 §36「这一帧写、下一帧读」在**对象生命周期起点**的实例，也直接回答用户最初的「函数执行次数不确定」——帧内位置本身就是语义。
+2. **不靠标志靠顺序**：dino 没有"刚生成"标志，靠 `spawn_script_tick` 排在 `game_frame` 最后；wof 原机也没有该标志（宿主 pending 是 C# 补的），靠 spawn 命令落在 `0x22D8E` 之后。把"这一帧算不算活着"交给帧序列，而不是给每个对象加一个 bool。
+3. **与 §28 分工清楚**：§28 管"这一帧允许生成几个"（预算 / 门闩 / 超时清场），本节管"生成出来之后哪一帧开始动"。前者是数量，后者是时序。
+
+### 42.6 未做（保留，不扩张）
+
+- dino `SpawnRec` 两张表逐项数值、41 actions 全表：§19 已记脚本格式，不重复。
+- wof `0x1082E` 命令体逐指令、`0x22C40` 渲染队列重建全文、`0x53B8E` 生成链 8 段逐条：本节只用 repo 注释里的 ROM 契约与 FBA cycles 实证。
+- wof 宿主 pending 机制逐项语义（按 §0 隔离）。
+- 两游戏"入场无敌帧是否存在"：不臆断。
+
+**结论**：§42 把"生成帧"补成固定帧序列 / 帧内命令顺序两条同构的跨帧契约；`长时间自主推进` 仍是开放目标，本节不宣称终止。
 
 
 
