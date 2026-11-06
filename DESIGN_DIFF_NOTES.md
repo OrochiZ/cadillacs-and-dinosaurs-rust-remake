@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：6613 行、44 轮、65 张 mermaid 图、1242 表格行、附录 A（A.1–A.15：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执（§46 后）/ A.15 §37–§46 约束合规审计；A.8–A.13 位于 §33 之后、A.14 / A.15 位于文末）。§0–§49 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：6719 行、45 轮、66 张 mermaid 图、1260 表格行、附录 A（A.1–A.15：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执（§46 后）/ A.15 §37–§46 约束合规审计；A.8–A.13 位于 §33 之后、A.14 / A.15 位于文末）。§0–§50 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -43,7 +43,7 @@
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
 | 二十五 | §32 | 地形与载具（例程表按类别分入口 / dino Cadillac 4 态复合主体 / wof 6 槽马池 + 玩家骑马分支） | 有效 |
-| 二十六~三十六 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 / §42 / §43 / §44 / §45 / §46 / §47 / §48 / §49 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态）；生成帧跨帧契约（`spawn_script_tick` 帧最后 / 首帧 AI 下一帧 / wof `0x1082E` 在 `0x22D8E` 之后 / 宿主 pending 按 §0 隔离）；离场与回收（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）；纵深空间与跳跃（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）；渲染优先级与遮挡（`(depth,handle)` 单键排序 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序）；一次攻击的数据表示（8 字段 `AttackRecord` 聚合 / 玩家·敌人共用 vs wof 一个 ID 散在多张表 `0xE4F02` / `0x1C20` / `0x7E68`）；一帧完整调度链（`tick` 三层 / `game_frame` 8 步 / `objects_update` 14 调用 / wof 帧首 `0x050E` 与帧末 `0x18B12`）；一次挥击的判定窗口（`attack_serial` G.$67BE / `+$5E` 双向去重 / `combat_lists_reset` 拷 `0x69BA` 上一帧 hurt list vs wof `+0x79` 相位锁 + `HitMeObj`）；判定盒的数据与开关（`+$44` 可切换表基址 + `+$48/+$49` 索引 / frame record 逐帧重载 / `attack_box=0` 关盒 vs wof `0xE4F02` 全局表 + `+0x6C/6E/70` 偏移 / `AtkBoxId=0` 是合法表项） | 有效 |
+| 二十六~三十六 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 / §42 / §43 / §44 / §45 / §46 / §47 / §48 / §49 / §50 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态）；生成帧跨帧契约（`spawn_script_tick` 帧最后 / 首帧 AI 下一帧 / wof `0x1082E` 在 `0x22D8E` 之后 / 宿主 pending 按 §0 隔离）；离场与回收（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）；纵深空间与跳跃（`floor/floor2` 连续地面 / `jump[16][9]` 六分量 / 5 个地形入口 / 蹬墙跳 vs wof `Z=0x0C` 招式跳跃 + 地面带 `0x1E3C`）；渲染优先级与遮挡（`(depth,handle)` 单键排序 / `0x14EC0` 影子同序 vs wof 多队列分阶段消费 + `0x5DFBC` 冒泡排序）；一次攻击的数据表示（8 字段 `AttackRecord` 聚合 / 玩家·敌人共用 vs wof 一个 ID 散在多张表 `0xE4F02` / `0x1C20` / `0x7E68`）；一帧完整调度链（`tick` 三层 / `game_frame` 8 步 / `objects_update` 14 调用 / wof 帧首 `0x050E` 与帧末 `0x18B12`）；一次挥击的判定窗口（`attack_serial` G.$67BE / `+$5E` 双向去重 / `combat_lists_reset` 拷 `0x69BA` 上一帧 hurt list vs wof `+0x79` 相位锁 + `HitMeObj`）；判定盒的数据与开关（`+$44` 可切换表基址 + `+$48/+$49` 索引 / frame record 逐帧重载 / `attack_box=0` 关盒 vs wof `0xE4F02` 全局表 + `+0x6C/6E/70` 偏移 / `AtkBoxId=0` 是合法表项）；对象池总表（players+5 池精确常量 / `slot_of` 地址即身份 / LIFO free 栈·`alloc=None` 背压 / 更新分池·绘制全池 / pool D 被 B 借用 vs wof 容器+`ObjId` 跳表） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计 / A.14 规模与进度回执 / A.15 §37–§46 约束合规审计（后两节位于文末）** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
@@ -58,7 +58,7 @@
 - 动态难度 / rank / 时间驱动 → **§25（`rank_tick` / `RANK_PERIOD` / Markov aggression / wof `A5-0x5A`）**
 - HUD / 分数 / 奖命 / 反馈时机 / 过关结算 → **§26（`score_dirty` 帧末重绘 vs `0xD000` 事件投递 / 回扣「执行次数不确定」）**、**§40（tally 四分项 / 每帧 100 倒扣进 score / `G.$735E` 与 intro 共享）**
 - 搓招 / 指令技 / 输入序列 / 连击 → **§27（`player_command_fsm` 三态时间窗 / `cmd_flag` 结果位 / wof `RKey1` 符号三态）**、**§39（`combo_t` 时间窗 / 4 段链 / finisher 接投技 vs wof `ComboLev` 查表）**
-- 关卡 / 波次 / 同屏预算 / 背压 / 生成帧时序 / 离场回收 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**、**§42（`spawn_script_tick` 帧最后 / 首帧 AI 落下一帧 / wof `0x1082E` 在 `0x22D8E` 之后）**、**§43（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）**
+- 关卡 / 波次 / 同屏预算 / 背压 / 生成帧时序 / 离场回收 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**、**§42（`spawn_script_tick` 帧最后 / 首帧 AI 落下一帧 / wof `0x1082E` 在 `0x22D8E` 之后）**、**§43（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）**；对象池总表 / 容量背压 / 跨池组织 → **§50（players+5 池基址·步长·容量 / `slot_of` 地址算术 / `alloc=None` 即同屏上限 / 更新分池·绘制全池 / pool D 无独立 pass 被 B 借用 vs wof 池+`ObjId` 二次分派）**
 - 受击恢复 / 倒地 / 起身 / 无敌 / 眩晕 → **§29（`b.act` 14+ 分支 / `invuln[16]` 查表 / `enemy_getup_or_die` / `dizzy_prev` 全局限流 / wof `+0x78`）**
 - 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**；一关内部的空间分段 / 区域推进 / 段切换 → **§34（`area` 字节 / 相机 `mode/sub` FSM / `0xAA0E` 批量重置 / wof `trigger <= cameraX` + 门闩）**；非角色对象 / 可破坏物 / 关卡推进器 → **§35（一个 pool B + 共享契约 vs 多池 `ObjId` 跳表 / 波次控制器本身是对象）**；跨帧时序 / `prev` 快照 / 执行次数 → **§36（7 个 dino 实例全表 + wof 队列·shadow 并排 / §20.6 主线封顶）**；完整一帧调度链 / 执行次数 / 两套循环 → **§47（`tick` 三层固定序列 / `game_frame` 8 步 / `objects_update` 14 调用 / 帧首 `latch` 与帧末 `spawn_script_tick` vs wof `0x050E` VBlank + `0x18B12` 复位三表）**；一次挥击判定窗口 / 命中去重 / 候选列表跨帧 → **§48（`attack_serial` 去重 / `combat_lists_reset` 一帧延迟 hurt list / §36 跨帧清单延伸）**；判定盒的数据 / 逐帧开关 → **§49（`+$48/+$49` 随动画帧重载 / `0` 在两边含义相反 / §46→§49→§48 判定链）**
 - 角色差异化 / 可选角色 / 按角色查表 → **§31（`PlayerData` 表族 `ch` 索引 / `invuln[d0+ch]` / wof 5 武将各自主状态机入口）**
@@ -6606,6 +6606,112 @@ flowchart TD
 - 音频（命中音）按 §0 边界外；「两游戏一帧最多几个盒」不做量化对比。
 
 **结论**：§49 把 §46（攻击记录）与 §48（挥击去重）之间「判定盒本身是什么数据、由哪一帧打开」补上，并给出两条最容易混淆的语义分界（双参数 vs 单参数、`0`=关盒 vs `0`=合法项）；`长时间自主推进` 仍是开放目标，本节不宣称终止。
+
+## 50. 对象池全景：谁住在哪个池、多大、怎么分配与更新
+
+> 触发：§2（对象池与固定更新顺序）、§15 / §32（车是 pool B 一个 class）、§21（pool E 24 槽 12 class）、§28（池容量背压）、§34.3（区域切换清池）、§35（pool B 统一契约 vs wof 多池）、§42（生成帧时序）、§43（离场回收）都用过"池"，但都是**为各自主题顺带引用**，从没有一张"五池 + 玩家"的完整总表：基址 / 步长 / 容量 / 装什么 / 谁更新 / 怎么分配 / 怎么判定身份。本轮收束成一条主线。
+> 归属：设计正文（§0–§50），按"轮次线性追加"接在 §49 之后。纯 repo 侧，未新增 ROM 取证（§11.0）。
+> 边界：本节只读两份 repo 的池常量与更新序列；按用户 11-06 授权「ROM 主要为调查 data，仅 `wof_cs` 非常可疑时可查 ROM」，池信息在 `mod.rs` / `Cps1EffectActorRuntime.cs` 注释里自带地址与槽数，**未触发可疑条件**，故不查 ROM。分工上 §35 讲"非角色对象怎么组织"是设计主线，本节是它的**容器层数据底座**。
+
+### 50.1 一句话
+
+dino 把"所有非玩家对象"切成 **5 个固定容量的静态池 + 3 个固定玩家对象**，对象的**身份大半由它在哪个池决定**，而池归属又由 RAM 地址区间算术反解——`handle = 基址 + stride×槽号`，`slot_of(handle)` 就能算出 `Slot::{Player,Enemy,Prop,Item,Effect,Special}`，不需要在对象里存一个 type 字段。wof 同样是多个固定容量池，但每个池只当**容器**，槽里跑什么逻辑由槽上的 `ObjId` 再查一张跳表决定。
+
+### 50.2 dino 六容器总表（精确常量）
+
+`mod.rs:47-58` 一次性给出全部基址 / 步长 / 容量：
+
+| 容器 | 基址 | 步长 | 容量 | 装什么 | 更新 pass（`objects_update`） | 分配器 | 池 tag `+$82` |
+|---|---|---|---|---|---|---|---|
+| players | `0xB274` | `0x180` | 3 | 玩家（固定，非池） | `players_update 0x18834` | — | 无 |
+| pool A | `0xC8F4` | `0xE0` | 24 | 敌人 / Boss / 恐龙 | `enemies_update 0x23420` | `0x483C` | 4 |
+| pool B | `0xB6F4` | `0xC0` | 24 | 波次控制器 / 机关 / 可破坏物 / 车 class 88 / 街景 | `pool_b_update 0x23604` | `0x4860` | 8 |
+| pool E | `0x8874` | `0xC0` | 24 | 道具 / 食物 / 武器 / 容器 / 弹丸 / 攻击盒 | `pool_e_update 0x233C6` | `0x4818` | `0xC` |
+| pool C | `0x9A74` | `0x80` | 48 | 特效 / 射击 / 火花 | `pool_c_update 0x237B2` | `0x4884` | 无 |
+| pool D | `0xDDF4` | `0x80` | 16 | special：tally 数字对象、typewriter 文本的**附属数据槽** | **无独立 pass**，由 pool B 的 b25 / b31 handler 直接借用 | `0x48A8` | 无 |
+
+- 六个容器在 `Game` 里一一对上（`mod.rs:233-239`）：`players[3]` / `enemies` / `props` / `items` / `effects` / `specials`；名字与池字母不是一一对应（props=B、items=E、effects=C、specials=D），所以读源码要按 `POOL_*` 常量而不是字段名。
+- `trace.rs:1214-1220` 的 `POOLS` 表把六者按 `enemy / prop / item / effect / special` 登记给逐帧 trace；`trace.rs:2699` 遍历顺序是 `[PLAYERS, POOL_A, POOL_B, POOL_E, POOL_C, POOL_D]`——**既不是字母序也不是内存地址序**，是 trace 自己的登记序。
+- 区域切换时 `flow.rs:653-661` 重建 A / B / C 三池并清 `G.$4F1..` 一片全局标志，`spawn.rs:141-142` 另调 `pool_a_init` / `pool_b_init`；§34.3 / §42 的"清池 + 重装"落在这里。
+
+### 50.3 分配与身份：handle 就是地址，池 tag 是冗余
+
+- **反解身份**：`mod.rs:60-85` 的 `slot_of(h)` 遍历 `(base, stride, n)` 六元组，`h >= base && h < base + stride*n && (h-base) % stride == 0` 就返回对应 `Slot` 变体。`mod.rs:150-152` 反过来 `handle(i) = base + stride*i`。即**对象引用是它在 WRAM 里的真实地址**，池归属纯算术可得。
+- **LIFO free stack**：`mod.rs:87-101` 的 `Pool<T>` 用 `free: Vec<usize>`，`new` 压入 `0..n`；`mod.rs:125-137` 的 `alloc()` = `free.pop()`、`release(i)` = `free.push(i)`，注释直说 *"init pushes slot 0 first, so the first allocation returns the last slot (23 for a 24-slot pool)"*。`mod.rs:139-143` 的 `reset_free()` 只重建栈、**槽字节保留**（`0x4CCC` pool D 的 init 就是这样），`free_count()` 对应原机 `$65F4 / $65F6 / $65F8 / $65FA / $65FC` 五个空槽计数。
+- **池满即背压**：`alloc()` 返回 `None`（原机 carry set）就是 §28 波次生成被截断的地方——"这一帧允许生成几个"不是脚本说了算，是池里还剩几个 free slot。
+- **`+$82` 是第二套、且只覆盖三个池的 tag**：`mod.rs:104-106` 明说 `pool_a_init` 写 tag 4、`pool_b_init` 写 8、`pool_e_init` 写 `0xC` 到每槽 `+$82`，**free 例程不动它**，C / D 两池根本没有 init 写 tag。§38 的 `hud_hit` 正是靠 `+$82` 把 pool A 敌人挡在"英雄被击中"记分环之外（`:392`）。所以"池身份"有**两套并存**：地址区间（全体六容器）+ `+$82` 字节（仅 A/B/E 的粗分类）。
+- free 例程按池分开：`0x48FC` A / `0x4938` B / `0x4964` C / `0x4994` D 与 E（`mod.rs:132-133`）；§43 讲的 `enemy_free_pool_a` 只清部分字段、故意留 `+$84 / +$5C` 供复用，就是这套"释放只归栈、不清槽"的一例。
+
+### 50.4 更新顺序按游戏语义，不按池字母
+
+`mod.rs:361-377` 的 `objects_update`（§47 的 14 调用）里池相关顺序是：
+
+```text
+players_update → items_reset → pool_e_update → enemies_update → screen_shake
+              → pool_b_update → pool_c_update → held_players_update → terrain_obstacles_swap
+              → tag_trigger → hud_objects_tail → background_update → terrain_advance
+```
+
+- **玩家 → 道具(E) → 敌人(A) → 机关/控制器(B) → 特效(C)**：与 §21 的"玩家先跑、pool E 后跑，所以 `find_pickup` 读到上一帧的注册列表"、§28 的 census 在玩家之前、§42 的 `spawn_script_tick` 在 `game_frame` 最后，串成同一条帧内因果链。
+- **pool D 不在这条序列里**：`prop/b25.rs:146` / `prop/b31.rs:76` 里 pool B 的 handler 从自己字段取出一个 handle，`slot_of(...)` 解成 `Slot::Special(k)`，再直接读写 `self.specials.slots[k]`；`flow/tally.rs:684` 数 specials 的 live 槽。也就是 **D 是被 B 借用的私有数据区，不是一类会自己 tick 的对象**——这是总表里最反直觉的一格。
+- 与 §45 对照：**更新按池分批**（每池一个 pass、各自 class 分派），**绘制却全池统一**（`build_sprite_list` 把六容器对象一起按 `(depth,handle)` 排序）。分治在逻辑侧，统一在显示侧。
+
+### 50.5 wof：多池 + 每池一张 `ObjId` 跳表
+
+- 同样有精确池常量：`Cps1EffectActorRuntime.cs:21-22` 写「池基址 `A5+0x1D9C`（`0xFF9D9C`）／槽步长 `0xE0`／槽数 20」，空闲槽计数在 `A5+0x2FE`、初值 `0x14`；另有「特殊 18 型对象池」（`Program.cs:2123` 等处调 `Cps1SpecialObjRuntime.更新特殊18型对象池_部分对应ASM_4F266`），§35 已确认波次脚本执行器本身就是这个池里的 `ObjId 0x0A` 对象。
+- 差别在**类型放哪**：wof 槽上带 `ObjId`（`Cps1Types.cs:13-25` 的 OBJ 槽视图），每池配一张按 `ObjId` 分派的跳表（`Program.cs` 里 `probe.ObjId = Cps1Actor24Runtime.OBJ_ID` 一类的锚点、§35 的"每池一张 ObjId 跳表"）；槽里跑什么逻辑由 `ObjId` 决定，而不是由"进了哪个池"决定。
+- 即：**dino 把类型压进"容器选择"**（进 A 就是敌人、进 E 就是道具、进 D 就是被借用的数据），**wof 把类型压进"容器内的一张跳表"**（池只是内存，逻辑靠 ObjId 二次分派）。两边都是固定容量静态池，都没有动态分配。按 §11.0 立场，这里只陈述两份 repo 呈现的组织方式，不臆断 wof 缺统一对象模型（§35 已有收敛限定）。
+
+### 50.6 流程图与对照表
+
+```mermaid
+flowchart TD
+    subgraph dino
+        H[handle = WRAM 地址] --> S["slot_of: 地址区间算术<br/>(base,stride,n)"]
+        S --> V{"Slot 变体"}
+        V -->|Player| P[players 固定 3]
+        V -->|Enemy| A[pool A 24×0xE0]
+        V -->|Prop| B[pool B 24×0xC0]
+        V -->|Item| E[pool E 24×0xC0]
+        V -->|Effect| C[pool C 48×0x80]
+        V -->|Special| D[pool D 16×0x80<br/>无独立 pass, 被 B 借用]
+        A --> U[objects_update 按池分批]
+        B --> U; E --> U; C --> U
+    end
+    subgraph wof
+        W[handle 落在某池] --> O[读槽上 ObjId]
+        O --> J[ObjId 跳表二次分派]
+        J --> L[该槽本帧逻辑]
+    end
+```
+
+| 维度 | dino | wof |
+|---|---|---|
+| 容器数 | 5 池 + 3 固定玩家，常量集中在 `mod.rs:47-58` | 多个池（特效演员池 20 槽、特殊 18 型池等），按用途分 |
+| 类型载体 | "进哪个池" + 地址区间 `slot_of`（`mod.rs:60-85`） | 池只当容器，类型在槽上的 `ObjId` + 跳表（§35） |
+| 引用形式 | `handle = base + stride*i`，就是 WRAM 地址 | OBJ 槽包装 + `ObjId` |
+| 分配 | 每池 LIFO free 栈，`alloc` 为 `None` 即池满背压（§28） | 空闲槽计数（如 `A5+0x2FE` 初值 `0x14`） |
+| 重置 | 区域切换重建 A/B/C 并清全局标志（`flow.rs:653-661`） | 各池各自的清槽 / 复位例程（§34 / §43） |
+| 更新 | `objects_update` 按池分批、顺序按语义（`mod.rs:361-377`） | 协作式任务 + 各池 update（§20 / §47） |
+| 特殊一格 | pool D 无独立 pass，被 pool B 的 b25 / b31 handler 当数据槽借用 | 特殊 18 型池里 `ObjId 0x0A` 波次执行器本身就是对象（§35） |
+| 与 §45 关系 | 更新分池、绘制全池统一 `(depth,handle)` | 更新与渲染都按多队列分阶段（§45） |
+
+### 50.7 "更成熟"落在哪（只谈设计本意，带收敛限定）
+
+1. **身份零冗余**：dino 让 `handle` 直接是 WRAM 地址，池归属由地址算术反解，碰撞 / 绘制 / 记分 / trace 都拿同一个 `u16` 当主键，不必在每个对象里维护"我是什么类型"；`+$82` 只是 A/B/E 的粗分类冗余（且 §38 用它挡记分）。这是"地址即类型"的紧凑取向，与 §48 `+$5E` 双向字段、§49 `0` 语义分界同源。
+2. **容量即规则**：`free.pop()` 为 `None` 直接把"同屏上限"变成生成器的物理事实（§28 的 7200 帧预算 / 清场是另一层），不需要脚本自己数；wof 用 `MaxRecordsPerFrame=64` 按记录条数截断（§28），两条路都达成了"一帧不铺完整关"，但一个落在容器、一个落在解释器。
+3. **pool D 的"借用"是一种显式分工**：把 tally 数字 / typewriter 文本这类**不需要自己 tick、但要有独立 sprite 列表与句柄**的数据，单独放一个不参与 `objects_update` 的池，由 pool B 持有者驱动；比把它们塞进特效池或做成完整对象更省。按 §11.0 不据此断言 wof 缺等价手段，只登记 dino 侧的这种组织。
+4. **与既有节闭合**：§35 的"pool B 统一契约"、§42 的"生成帧最后"、§43 的"`mode=6` 归栈"、§45 的"全池统一绘制"、§47 的"14 次更新调用"——本节给这些散点补上同一张容器地图。
+
+### 50.8 未做（保留，不扩张）
+
+- 各池 free 例程（`0x48FC / 0x4938 / 0x4964 / 0x4994`）逐字节清哪些字段的全量对照；§43 已就 pool A 展开，其余按 §11.0 不扩张。
+- wof 全部池的基址 / 槽数 / `ObjId` 跳表逐项普查（§35 已给组织方式，本节只取一例精确常量）；`A5+0x1D9C` 之外的池不逐一列举。
+- pool D 全部借用者（b25 / b31 之外）、`0x4CCC` init 的逐指令；`trace.rs` 的 `POOLS` 登记序与逐帧 dump 的关系按 §47 / A.8 已覆盖，不重复。
+- **ROM 核查未触发**：按用户 11-06 授权，仅 `wof_cs` 非常可疑时才查 ROM；池常量在两份 repo 的注释里已自带地址与槽数，故保持纯 repo 侧（§11.0 / §11.6）。
+- 音频（对象触发音）按 §0 边界外；「两游戏池总容量谁大」不做量化优劣对比。
+
+**结论**：§50 把 §2 / §21 / §28 / §35 / §42 / §43 / §45 / §47 反复引用的"池"收成一张六容器总表，给出"地址即身份""容量即背压""更新分池·绘制全池""pool D 被借用"四条组织结论，并对 wof 收敛为"容器 + ObjId 二次分派"；`长时间自主推进` 仍是开放目标，本节不宣称终止。
 
 
 
