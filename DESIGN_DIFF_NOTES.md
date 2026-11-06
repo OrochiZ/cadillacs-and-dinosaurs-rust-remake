@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：约 4420 行、23 轮、43 张 mermaid 图、附录 A（含 A.8 核验回执 / A.9 引用一致性核验）。§0–§30 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：约 4570 行、24 轮、45 张 mermaid 图、附录 A（含 A.8 核验回执 / A.9 引用一致性核验）。§0–§31 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -41,6 +41,7 @@
 | 二十一 | §28 | 同屏预算与波次编排（人头 vs 权重 / 7200 帧预算 / 超时清场 / 相机门闩 / 64 条上限） | 有效 |
 | 二十二 | §29 | 受击后的恢复链（14+ 反应分派 / 按角色查表无敌 / 起身决策 / 眩晕五重门与全局限流） | 有效 |
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
+| 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
@@ -58,6 +59,7 @@
 - 关卡 / 波次 / 同屏预算 / 背压 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**
 - 受击恢复 / 倒地 / 起身 / 无敌 / 眩晕 → **§29（`b.act` 14+ 分支 / `invuln[16]` 查表 / `enemy_getup_or_die` / `dizzy_prev` 全局限流 / wof `+0x78`）**
 - 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**
+- 角色差异化 / 可选角色 / 按角色查表 → **§31（`PlayerData` 表族 `ch` 索引 / `invuln[d0+ch]` / wof 5 武将各自主状态机入口）**
 - "dino 更成熟"逐条落地 → §6.1（7 条已全部展开）
 - data 待核项结清 / Boss class 实现 → §18.1、§18.2
 - 工程断言的当前文件核验 / 帧存档 dump 时机桥接点 → 附录 A.8（A.8.3）
@@ -84,6 +86,7 @@
 - §28.7「各关组表逐项数值 / 全部 `type` 命令 / `0x53B02` 与 `0x1066C` 逐字节 / 波次超时玩家侧提示」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - §29.8「`player_knockdown` / `player_getup` 逐函数 / `invuln[16]` 与 `DIZZY_ROW` 表数值 / wof 倒地字段组完整状态机」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - §30.7「`flow_*` 各 mode 全文 / `0x42C2` 后续链 / `A5+0x188` 全部消费点 / wof 续关与结局路径」→ 本轮新增时即明列为**保留、不扩张**，非欠账
+- §31.6「`PlayerData` 各表逐项数值 / wof 5 角色主状态机全文 / `0x1F7C` 公共检测 / 骑马状态下角色差异」→ 本轮新增时即明列为**保留、不扩张**，非欠账
 - 用户最初「硬件中断 → 函数执行次数不确定」→ §26.4 给出反馈层的因果闭环，并与 §19 / §20 / 附录 A.5 / A.8.3 四处切面串联
 
 **主线（§14.5，§20.6 闭合）**：四大主题共享同一个设计习惯——把「这一帧做什么、下一帧读什么」做成显式结构（固定顺序 + 状态字节 + `prev` 快照）。§20 证明这个习惯从顶层任务机（5 任务 slot / `Scene` sleep / lag 记账）一路贯到碰撞 pass，不是某个子系统的局部技巧；也直答了用户最初的「硬件中断 / 函数执行次数」问题。
@@ -2487,21 +2490,21 @@ wof **也有**难度索引、`hpBand`、`defense`、随机伤害表——不是"
 
 ## A.9 全笔记引用一致性核验（11-06，本轮新增）
 
-> 触发：Stop hook `Verify every requirement and constraint against current files, tool results, artifacts`。在写完 §21–§30、多轮导航更新后，对**笔记自身**做一次可重跑的一致性核验，避免压缩后出现悬空引用。
+> 触发：Stop hook `Verify every requirement and constraint against current files, tool results, artifacts`。在写完 §21–§31、多轮导航更新后，对**笔记自身**做一次可重跑的一致性核验，避免压缩后出现悬空引用。
 
 | 检查项 | 方法 | 结果 |
 |---|---|---|
-| 结构完整性 | PowerShell 逐行统计（§30 + 导航同步后重跑） | 4419 行；代码栅栏 260（偶数：43 个 mermaid 开栅栏 + 217 个闭合栅栏，成对）；mermaid 开 43 / 闭 43、无未闭合；表格行 823 |
-| 章节引用 | `[regex] §(\d+)` 对比 `^## N.` 标题（加 `(?m)` 多行选项） | 引用号 `0, 2..30`（+ 外部 `§73`）全部有定义标题；已定义 `0..30` |
+| 结构完整性 | PowerShell 逐行统计（§31 + 导航同步后重跑） | 4568 行；代码栅栏 268（偶数：45 个 mermaid 开栅栏 + 223 个闭合栅栏，成对）；mermaid 开 45 / 闭 45、无未闭合；表格行 863 |
+| 章节引用 | `[regex] §(\d+)` 对比 `^## N.` 标题（加 `(?m)` 多行选项） | 引用号 `0, 2..31`（+ 外部 `§73`）全部有定义标题；已定义 `0..31` |
 | 定义但未被引用 | 同上 | 仅 `§1`（总览对照）——导航按轮次索引，正常 |
 | 疑似悬空 `§73` | Grep 定位 | `DESIGN_DIFF_NOTES.md:1078` 的 `SPEC §73-86` = `re/specs/enemy/SPEC.md` 的章节范围，**外部文档引用**，非本笔记章节；非损坏 |
 | 三态清单 | 顶部「三条状态标记」逐条对照正文 | ⚠️ 作废（§9.1 / §10.1 / §10.4、`A5-0x3E` 全局档位）→ §11 已更正；✅ 保留（表字节 data、§11 后只读 repo 章节）→ 正文一致；⏳ 仍开放 → 仅"发行先后" + 按 §11.0 不主动追的 data 项 |
-| 待办回执 | 顶部「旧待办回执」逐条 | §11.6 / §13.5 / §14.5 / §15 / §16 / §17 / §18.1 / §22.4 / §23.1 / §24.1 / §25.1 / §26.4 / §27.6 / §28.7 / §29.8 / §30.7 均已闭合，或明列为"保留、不扩张" |
+| 待办回执 | 顶部「旧待办回执」逐条 | §11.6 / §13.5 / §14.5 / §15 / §16 / §17 / §18.1 / §22.4 / §23.1 / §24.1 / §25.1 / §26.4 / §27.6 / §28.7 / §29.8 / §30.7 / §31.6 均已闭合，或明列为"保留、不扩张" |
 | 历史关键 `file:line` | PowerShell 按行抽查 8 处 | `STATUS.md:37`、`final.txt:20`、`record.lua:115`、`mod.rs:349`、`enemy_combat.rs:569`、`flow/scene.rs:31`、`camera.rs:150`、`Cps1Collision.cs:4882` **全部命中**，无行号漂移 |
-| 新增章节 `file:line` | PowerShell 按行抽查 §21–§30 的 72 处 | §21–§25 的 14 处（见上一版：`item.rs:24` … `Cps1PlayerLogic.cs:10690`）+ §26 的 7 处（`hud.rs:14/453/526/809`、`Cps1HudRuntime.cs:3`、`Cps1EventObjectRuntime.cs:369`、`Cps1Item.cs:127`）+ §27 的 9 处逐行（`player.rs:918/925/960/1005/1255/3489`、`Cps1PlayerZhaoyun1CA46.cs:104/147`、`Cps1PlayerMulti.cs:44`）+ §28 的 13 处逐行（`spawn.rs:195/227/258`、`prop.rs:573/604`、`boss.rs:250`、`flow.rs:430`、`Cps1LevelScript.cs:40/455/1080/1189/1230`、`Cps1EnemySpawn.cs:47`）+ §29 的 14 处逐行（`player.rs:139/491/854/1082/1581/2659`、`enemy_combat.rs:1284/1310/1343/1360`、`Cps1Collision.cs:1390/3600`、`Cps1Types.cs:314`、`Cps1EnemyAI.cs:44`）+ §30 的 15 处逐行（`flow.rs:490/498/822/831/838/863`、`Cps1EnemyAI.cs:8532/8542/8547/30045`、`Cps1EventObjectRuntime.cs:229`、`Cps1EnemySpawn.cs:2954`、`Cps1SystemProcessQueue.cs:15`、`Cps1Actor27Runtime.cs:2163`、`Cps1StageProgressRuntime.cs:1180`）**72/72 命中**；另 Grep 精确定位 `player.rs:927/929/961/963`、`Cps1PlayerMulti.cs:49`、`Cps1PlayerZhaoyun1CA46.cs:146/172/190`，确认 §27–§30 的范围引用均覆盖真实符号，无行号漂移 |
-| 导航规模 | 顶部规模行 vs 实测 | 约 4420 行 / 23 轮 / 43 图 / §0–§30 / 附录 A（A.1–A.9）— 与实测（4419 行）一致 |
+| 新增章节 `file:line` | PowerShell 按行抽查 §21–§31 的 88 处 | §21–§25 的 14 处（见上一版：`item.rs:24` … `Cps1PlayerLogic.cs:10690`）+ §26 的 7 处（`hud.rs:14/453/526/809`、`Cps1HudRuntime.cs:3`、`Cps1EventObjectRuntime.cs:369`、`Cps1Item.cs:127`）+ §27 的 9 处逐行（`player.rs:918/925/960/1005/1255/3489`、`Cps1PlayerZhaoyun1CA46.cs:104/147`、`Cps1PlayerMulti.cs:44`）+ §28 的 13 处逐行（`spawn.rs:195/227/258`、`prop.rs:573/604`、`boss.rs:250`、`flow.rs:430`、`Cps1LevelScript.cs:40/455/1080/1189/1230`、`Cps1EnemySpawn.cs:47`）+ §29 的 14 处逐行（`player.rs:139/491/854/1082/1581/2659`、`enemy_combat.rs:1284/1310/1343/1360`、`Cps1Collision.cs:1390/3600`、`Cps1Types.cs:314`、`Cps1EnemyAI.cs:44`）+ §30 的 15 处逐行（`flow.rs:490/498/822/831/838/863`、`Cps1EnemyAI.cs:8532/8542/8547/30045`、`Cps1EventObjectRuntime.cs:229`、`Cps1EnemySpawn.cs:2954`、`Cps1SystemProcessQueue.cs:15`、`Cps1Actor27Runtime.cs:2163`、`Cps1StageProgressRuntime.cs:1180`）+ §31 的 16 处逐行（`dino-assets/src/player.rs:5/41/44/48/54`、`player.rs:205/492/962/2488/3608`、`body.rs:30`、`Cps1PlayerMulti.cs:26/49/141/201/205`）**88/88 命中**；另 Grep 精确定位 `player.rs:927/929/961/963`、`Cps1PlayerMulti.cs:49`、`Cps1PlayerZhaoyun1CA46.cs:146/172/190`，确认 §27–§31 的范围引用均覆盖真实符号，无行号漂移 |
+| 导航规模 | 顶部规模行 vs 实测 | 约 4570 行 / 24 轮 / 45 图 / §0–§31 / 附录 A（A.1–A.9）— 与实测（4568 行）一致 |
 
-**结论**：笔记自包含，无悬空章节引用；唯一 `§73` 是外部 spec 范围而非缺陷。§21–§30 与附录 A.8 的断言均由当前文件复核过（A.8.1–A.8.4、§21–§30 各轮取证行）。仍开放项按 §11.0「ROM 只补 data、不审 repo」与用户「不过度怀疑 rep 侧」保持不变；本回执只记录核验结果，不宣称目标终止。
+**结论**：笔记自包含，无悬空章节引用；唯一 `§73` 是外部 spec 范围而非缺陷。§21–§31 与附录 A.8 的断言均由当前文件复核过（A.8.1–A.8.4、§21–§31 各轮取证行）。仍开放项按 §11.0「ROM 只补 data、不审 repo」与用户「不过度怀疑 rep 侧」保持不变；本回执只记录核验结果，不宣称目标终止。
 
 > 可重跑：本节检查是纯文本统计，不依赖构建 / 外部服务；后续会话再追加章节后，重跑上面两条 PowerShell 即可复核。
 
@@ -4412,6 +4415,152 @@ if A5-0x60 == 0x1C: 生成第一关收尾对白_1552C()   # ObjId 03 / OBJ26 000
 - **未做（保留，不扩张）**：`flow_*` 各 mode 全文与 `Scene` 逐场景脚本；`0x42C2` 之后 `0x15BC` 链与 `A5+0x188` 的全部消费点；wof 续关 / game over / 结局路径；`A5-0x60` 其他取值；`ResetPool` 与收尾对白量子链的宿主补偿（按 §0 剥掉）。
 - **未新增 ROM 取证**，全部以两份 repo 源码为准（§11.0）；**未考证发行先后**，沿用用户给定前提。
 - 按 §0 / §11.0 边界，不把 repo 侧"未呈现集中 mode"写成 wof 原机缺陷；本轮只对照组织方式。
+
+---
+
+# 第二十四轮：角色差异化 —— 数据索引 vs 每角色一套状态机
+
+> 视角：只谈**游戏逻辑本意**（用户 11-06）。本轮做一个横向切面：前面各节反复出现 `ch = id & 3`、`command_time[ch]`、`invuln[d0+ch]`、`GetAtkTable(charId)`，这里把"角色差异到底放在哪"单独说清。
+> 边界：repo 侧为主，**不新增 ROM 取证**（§11.0）。`dino-assets/src/player.rs` 每个字段的注释都直接标了 ROM 表地址，属**原机数据组织**，不是 §0 所说"移植者加的工程分层"；wof 侧 `_无对应ASM` 宿主补偿按 §0 剥掉，不据此评价 rep 侧实现。
+> 取证：`dino-rs/crates/dino-assets/src/player.rs:1-75`、`dino-rs/.../game/player.rs:205, 214, 492, 645, 962, 1640, 2109, 2216, 2288, 2488, 3608`、`body.rs:30, 48`；`wt1/wof_cs/src/Cps1PlayerMulti.cs:13, 26-30, 42-60, 141-146, 163, 198-213`、`Cps1PlayerZhaoyun1CA46.cs:35, 104`。
+
+## 31.1 一句话对照
+
+四个 / 五个可选角色的差异，dino 放在**一张按 `ch` 索引的 ROM 表族**里，四个角色共用同一套状态机；wof 放在**「分派到哪个角色的主状态机」**里，五个武将各有自己的入口段，局部参数再用小表。
+
+| | dino（4 人：Jack / Mustapha / Hannah / Mess） | wof（5 人：关羽 / 张飞 / 赵云 / 黄忠 / 魏延） |
+|---|---|---|
+| 角色标识 | `obj+$03`，`body.rs:30`；`+$20 = character * 4`（`:48`） | `CharId` 常量 0..4（`Cps1PlayerMulti.cs:26-30`） |
+| 差异载体 | `PlayerData` 表族，索引 `ch` / `class/4*4 + ch` / `d0 + ch` | 各角色独立 ROM 入口段 + `GetAtkTable(charId)` switch |
+| 状态机 | **一套** `player_frame` / `b.act` 分派（§29），四个角色共享 | **每角色一套主状态机入口**，徒步 / 骑马还各分一套 |
+| 加一个角色 | 约等于加一行表 | 约等于写一整套状态机 + 骑马变体 |
+| 局部共享表 | 全在 `PlayerData` | 也有 `XXX_ATK_TABLE` / `UPPERCUT_ATK_TABLE` / 公共 `jsr 1F7C` |
+
+要点：wof **不是没有数据驱动**（它有攻击表、必杀表、公共检测），而是"角色级主状态机"这一层是分函数的；dino 连这一层都收进了同一段代码，只让数据随 `ch` 变。这是整份笔记「共享检测 + 每类自己的分派」的**第五次复现**（§16 Boss / §11.2 敌人 AI / §22 受击 / §27 搓招 / §31 角色），只是这次 dino 站在"共享"一侧。
+
+## 31.2 dino：`PlayerData` 是一张带 ROM 地址的按角色索引表族
+
+`dino-assets/src/player.rs:1-5` 文件头把约定写死：*"Per-character arrays are indexed by the character id in obj+$03: 0 Jack, 1 Mustapha, 2 Hannah, 3 Mess"*，且每个字段注释都标了 ROM 地址：
+
+| 字段 | ROM 地址 / 索引 | 本笔记对应 |
+|---|---|---|
+| `speed[16][8][2]` / `speed_heavy` | `0x5064` / `0x50A4`，索引 `class/4*4 + ch` | §2 移动 |
+| `jump[16][9]` | `0x53A2`，同索引 + 8 方向 | §2 / §27 |
+| `invuln[16]` | `0x6C3A`，索引 `d0 + ch`，`d0 = 0 起身 / 4 投掷 / 8 拾取 / 12 必杀` | **§29**（`player_set_invuln`） |
+| `command_time[2][4]` | `0x6B7C / 0x6B84`，每角色两段时间窗 | **§27**（`player_command_fsm`） |
+| `attacks: [Vec<AttackRecord>; 4]` | `0xA26FC`，按 `obj+$58/2` 索引 | **§17**（多因子伤害） |
+| `defense[4]` | `0x2C88E`，每角色受伤系数 | §17.2 |
+| `pushback[3][3]` / `knockdown[6][4]` | `0x1D27C / 0x1D28E` | §29 恢复链 |
+| `start_pos[stage][area][player]` | `0x4E56` | §28 关卡开始 |
+| `power` / `counter_scale` / `weakness` / `*_scale` | `0x2C9B6 / 0xA320C / 0xA32FA / ...` | §17.1 伤害连乘 |
+
+`player_pd()`（`player.rs:205`）只返回 `&'static PlayerData`，没有分支；角色差异通过 `let ch = ...id as usize & 3` 在 **10+ 处**直接当数组下标：`invuln`（`:492`）、`player_box_tables[ch]`（`:645`）、`command_time`（`:962`）、`heavy_fall_anim[ch*2+..]`（`:2216`）、`knee_spark`（`:3608`）、状态号数组 `[0x0416, 0x0428, 0x042A, 0x042C][ch]`（`:2488`）。
+
+也就是说：**dino 的角色差异是"同一段代码读不同行"**，连招式状态号的差异都做成 `[...; 4]` 常量数组。这与 §0 的边界不冲突——表本身是 ROM 里的原机数据（`0x6C3A` 等），移植者只是把它命名成 `PlayerData`。
+
+## 31.3 wof：五个武将各有自己的主状态机入口
+
+`Cps1PlayerMulti.cs:26-30` 定义 5 个 `CharId`；`:42-46` 是**每角色一条** `XXX_ATK_TABLE`，`:49` 是 `UPPERCUT_ATK_TABLE[5]`，`:51-60` 的 `GetAtkTable(charId)` 用 switch 选表，`:141-146` 的 `GetUppercutAtkType(charId)` 按 `charId` 取必杀类型——这些是**参数层**的数据驱动。
+
+但 `:198-213` 的 S02 注释给出了**结构层**的形状：
+
+```
+ROM JSR 1F7C：1ADB6 关羽徒步 / 1BC0A 张飞 / 1D4AA 黄忠 / 1DE16 魏延
+黄忠 1D4A2、关羽骑马 1ED1E、其它骑马 1F64A / 1FDD2 / 2055E / 20C50
+赵云 1CA46：内联 B0/B1 缓冲（jsr 0F98），**不** jsr 1F7C
+```
+
+即每个武将有**独立的主状态机入口段**，徒步与骑马还各有一套；赵云更特别——§27 已确认 `0x1CA46` 前 0x98 字节就是内联的 `RKey1` 搓招缓冲，因此不经过公共 `jsr 1F7C`。`:163` 还记着"张飞特有（抓取扣血等）"，`:65-83` 记着黄忠连射、`:106` 记着魏延距离感知下上拳——**角色特性是散在各角色段里的专属逻辑**，不是一张统一表的某一行。
+
+按 §0 边界，我不把"分函数"写成缺陷：wof 同样有 `GetAtkTable` / `UPPERCUT_ATK_TABLE` / 公共 `jsr 1F7C` / `检测下上搓招_1F7C` 这些共享零件，只是**角色级主状态机**这一层没有收成单段代码。
+
+## 31.4 逐项对照
+
+| 维度 | dino | wof |
+|---|---|---|
+| 角色数 | 4（`obj+$03`） | 5（`CharId` 常量） |
+| 主状态机 | 一套，`ch` 只影响读表 | 每角色一套 ROM 入口段；徒步 / 骑马再分 |
+| 移动 / 跳跃 | `speed[16][8][2]` / `jump[16][9]` 按 `class*4+ch` | 各角色段内处理 |
+| 攻击记录 | `attacks[ch][$58/2]`（§17） | `GetAtkTable(charId)` 每角色 3 项表 |
+| 必杀 / 搓招 | `command_time[ch]` 两窗（§27） | `UPPERCUT_ATK_TABLE[charId]`；赵云内联 `RKey1`（§27.3），魏延另走距离感知 |
+| 无敌时长 | `invuln[d0+ch]`（§29），4 种来源 × 4 角色 | `+0x78` 单字节（§29.5） |
+| 受伤系数 | `defense[ch]` | 本轮未展开，不臆断 |
+| 受击几何 | `player_box_tables[ch]` / `knockdown` 表 | 每 `CharId` 段表 `0x124D6` / `0x11878`（§22） |
+| 角色专属机制 | 本轮未见独立分支，均落表 | 张飞抓取扣血、黄忠连射、魏延距离感知 |
+| 扩展成本 | 加一行表 | 新增一整套状态机 + 骑马变体 |
+
+## 31.5 伪代码与分派形状
+
+```
+# dino：一套状态机 × 一张按角色索引的表族
+ch = obj.$03 & 3
+pd = assets.player                       # player_pd():205，无分支
+speed   = pd.speed[class/4*4 + ch][dir8]         # 0x5064
+jump    = pd.jump[class/4*4 + ch][dir]           # 0x53A2
+invuln  = pd.invuln[d0 + ch]                     # 0x6C3A；d0 = 起身/投掷/拾取/必杀
+[t1,t2] = pd.command_time[ch]                    # §27 搓招两窗
+atk     = pd.attacks[ch][obj.$58 / 2]            # §17 攻击记录
+defense = pd.defense[ch]                         # §17.2
+box     = assets.sprites.player_box_tables[ch]
+state   = [0x0416, 0x0428, 0x042A, 0x042C][ch]  # 连状态号都做成表
+
+# wof：按 CharId 分派到各角色自己的主状态机
+switch CharId:
+    关羽 -> 1ADB6 / 骑马 1ED1E
+    张飞 -> 1BC0A / 1F64A      (+ 抓取扣血)
+    赵云 -> 1CA46 / 1FDD2      (内联 RKey1 缓冲，不 jsr 1F7C)
+    黄忠 -> 1D4AA / 2055E      (+ 连射)
+    魏延 -> 1DE16 / 20C50      (+ 距离感知下上拳)
+GetAtkTable(charId)        -> 每角色 3 项 ATK_TABLE
+GetUppercutAtkType(charId) -> UPPERCUT_ATK_TABLE[charId]
+```
+
+```mermaid
+flowchart TB
+    subgraph dino_数据索引
+        I1[同一段 player_frame] --> I2[ch = obj+$03 & 3]
+        I2 --> I3[PlayerData 表族按 ch / d0+ch / class*4+ch 取行]
+        I3 --> I4[speed / jump / invuln / command_time / attacks / defense]
+    end
+    subgraph wof_分函数
+        O1[CharId] --> O2{switch 到哪个主状态机入口}
+        O2 --> O3[关羽 1ADB6]
+        O2 --> O4[张飞 1BC0A]
+        O2 --> O5[赵云 1CA46]
+        O2 --> O6[黄忠 1D4AA]
+        O2 --> O7[魏延 1DE16]
+        O3 & O4 & O5 & O6 & O7 --> O8[GetAtkTable / UPPERCUT_ATK_TABLE 局部表]
+    end
+```
+
+```mermaid
+flowchart LR
+    A[角色差异] --> B{放在哪一层}
+    B -- dino: 数据层 --> C[一张带 ROM 地址的表族]
+    C --> D[加角色 ≈ 加一行]
+    B -- wof: 结构层 --> E[每角色一套入口段]
+    E --> F[加角色 ≈ 写一套状态机 + 骑马变体]
+    C -. 共用 .-> G[共享检测 + 每类分派 第五次复现]
+    E -. 共用 .-> G
+```
+
+## 31.6 主线闭环与本轮边界
+
+| 出处 | 本轮对应 |
+|---|---|
+| §27 搓招 / 指令技 | `command_time[ch]` 是"一张表覆盖四角色"的出处；wof `RKey1` 内联在赵云段 |
+| §29 受击恢复链 | `invuln[d0+ch]` 的 `d0` 四种来源在这里展开；wof `+0x78` 单字节 |
+| §17 伤害流水线 | `attacks[ch]` / `defense[ch]` / `counter_scale` / `weakness` 是连乘因子的角色维 |
+| §22 受击反应 | wof 每 `CharId` 段表 `0x124D6` / `0x11878` 是"角色差异放到受击层" |
+| §16 / §11.2 / §22 / §27 | 「共享检测 + 每类自己的分派」第五次复现；这次 dino 站共享一侧 |
+| §0 边界 | `PlayerData` 每个字段标 ROM 地址 → 属原机数据组织，不是移植者工程分层 |
+| §6.1「dino 更成熟」 | 落到具体机制：角色差异做成数据维而非代码维，扩展成本差一个量级 |
+
+结论：角色差异在 dino 是**数据维度**（同一段状态机 × 不同表行），在 wof 是**结构维度**（不同角色段 × 局部共享表）。两者都能表达"五个人打起来不一样"，但 dino 把 `ch` 做成一个贯穿 10+ 处取值的索引，连状态号、无敌时长、搓招时间窗、攻击记录、受伤系数都收进同一张带 ROM 地址的表族；wof 让每个武将拥有自己的主状态机入口（徒步 / 骑马两套），角色专属机制（张飞抓取、黄忠连射、魏延距离感知）散在各段里。按 §0 不把"分函数"写成缺陷——wof 同样有 `GetAtkTable` / `UPPERCUT_ATK_TABLE` / 公共 `jsr 1F7C` 等共享零件；本轮只对照组织方式。
+
+- **未做（保留，不扩张）**：`PlayerData` 各表逐项数值（speed / jump / invuln / command_time / attacks 全表）；wof 5 个角色主状态机全文与各自 `ATK_TABLE` 数值；`0x1F7C` 公共检测内部；骑马 / 载具状态下角色差异；两游戏角色平衡性比较（不臆断）。
+- **未新增 ROM 取证**，全部以两份 repo 源码为准（§11.0）；**未考证发行先后**，沿用用户给定前提。
+- 按 §0 边界，wof 侧 `_无对应ASM` 宿主补偿未纳入设计对照；本轮不据此评价 rep 侧实现。
 
 
 
