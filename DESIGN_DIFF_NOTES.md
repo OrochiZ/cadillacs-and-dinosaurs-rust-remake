@@ -13,7 +13,7 @@
 
 ## 导读 / 章节导航（11-06 整理，压缩上下文后先读这里）
 
-> 规模：5885 行、35 轮、58 张 mermaid 图、1130 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§42 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
+> 规模：5971 行、36 轮、59 张 mermaid 图、1140 表格行、附录 A（A.1–A.13：A.8 当前文件核验 / A.9 引用一致性 / A.10 全笔记总核验 / A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计，回执位于 §33 之后）。§0–§43 全部结论以两份 repo 源码为准；ROM 只在"必要时"用于补 data 表内容（见 §11.0）。**附录 A 是隔离存放的阶段 A 工程结论存档，非游戏设计正文**。
 > 提交纪律（用户 11-06 提醒）：长会话单点损毁风险高，本笔记每完成一个分析块即提交一次，不攒到最后；提交号以 `git -C g:/wof/dino log -1` 为准。
 
 | 轮次 | 章节 | 内容 | 状态 |
@@ -43,7 +43,7 @@
 | 二十三 | §30 | 关卡结束 / 过关 / 续关（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof 共享出口 `0x42C2` / `flow_lag(1)`） | 有效 |
 | 二十四 | §31 | 角色差异化（`PlayerData` 按 `ch` 索引表族 / wof 5 武将各自主状态机入口 / 数据维 vs 结构维） | 有效 |
 | 二十五 | §32 | 地形与载具（例程表按类别分入口 / dino Cadillac 4 态复合主体 / wof 6 槽马池 + 玩家骑马分支） | 有效 |
-| 二十六~三十五 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 / §42 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态）；生成帧跨帧契约（`spawn_script_tick` 帧最后 / 首帧 AI 下一帧 / wof `0x1082E` 在 `0x22D8E` 之后 / 宿主 pending 按 §0 隔离） | 有效 |
+| 二十六~三十六 | §33 / §34 / §35 / §36 / §37 / §38 / §39 / §40 / §41 / §42 / §43 | 多人协作（`A5-0x3E` / `0x3E62` / 3 槽扫描 / 人数分档 + census；音频边界外）；一关内部的空间分段（`area` 状态字节 / `0xAA0E` 集中重置 / wof 脚本流 + 相机门闩）；非角色对象（pool B 统一契约 + 80 余 class vs wof 多池 `ObjId` 分派）；跨帧时序实例全表（`prev_input` / `latch` / `score_dirty`、§20.6 主线封顶）；命中反馈层（对象头 `hitstop` + 相机 `step_shake` 子状态机 vs wof `+0x62` 一字节三用 + 全局 VBlank 震动）；友军伤害与记分归属（`pass_10664` / 伤害 1 保底 1 HP / Z 差按人数分档 / HUD 归攻击者 `+$02`）；连击 / 连续技（`combo_t` 时间窗 + 4 段 finisher 接投技 vs wof `ComboLev` 按角色查表）；过关结算（tally 四分项 / 每帧 100 倒扣 / pool B class 25 数字对象按 sub step 对齐）；非战斗流程（Front 多 Scene / boot-attract 一条 Scene / 选人 3×12 字节记录 + 10 秒兜底 / join 四态）；生成帧跨帧契约（`spawn_script_tick` 帧最后 / 首帧 AI 下一帧 / wof `0x1082E` 在 `0x22D8E` 之后 / 宿主 pending 按 §0 隔离）；离场与回收（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收） | 有效 |
 | 附 | 附录 A | **阶段 A 工程路线结论存档**（三条路线 / VBCC·C89 / `AssetPack` / 帧存档 / lag / FBA vs MAME）+ **A.8 当前文件核验回执 / A.9 引用一致性核验 / A.10 全笔记总核验（§33 后、§34 前）/ A.11 规模与进度回执 / A.12 当前状态总核验 / A.13 作废结论残留审计（文末）** — 非设计正文 | 隔离存档 |
 
 **按主题找**：
@@ -58,7 +58,7 @@
 - 动态难度 / rank / 时间驱动 → **§25（`rank_tick` / `RANK_PERIOD` / Markov aggression / wof `A5-0x5A`）**
 - HUD / 分数 / 奖命 / 反馈时机 / 过关结算 → **§26（`score_dirty` 帧末重绘 vs `0xD000` 事件投递 / 回扣「执行次数不确定」）**、**§40（tally 四分项 / 每帧 100 倒扣进 score / `G.$735E` 与 intro 共享）**
 - 搓招 / 指令技 / 输入序列 / 连击 → **§27（`player_command_fsm` 三态时间窗 / `cmd_flag` 结果位 / wof `RKey1` 符号三态）**、**§39（`combo_t` 时间窗 / 4 段链 / finisher 接投技 vs wof `ComboLev` 查表）**
-- 关卡 / 波次 / 同屏预算 / 背压 / 生成帧时序 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**、**§42（`spawn_script_tick` 帧最后 / 首帧 AI 落下一帧 / wof `0x1082E` 在 `0x22D8E` 之后）**
+- 关卡 / 波次 / 同屏预算 / 背压 / 生成帧时序 / 离场回收 → **§28（`g.alive` vs `A5+0x1AD` 权重和 / `wave_timer 0x1C20` / `kill_all=2` / 相机门闩 / `MaxRecordsPerFrame=64`）**、**§42（`spawn_script_tick` 帧最后 / 首帧 AI 落下一帧 / wof `0x1082E` 在 `0x22D8E` 之后）**、**§43（`mode=6` free next frame / `enemy_free_pool_a` / wof `0x14B8` 公共回收）**
 - 受击恢复 / 倒地 / 起身 / 无敌 / 眩晕 → **§29（`b.act` 14+ 分支 / `invuln[16]` 查表 / `enemy_getup_or_die` / `dizzy_prev` 全局限流 / wof `+0x78`）**
 - 整局流程 / 过关 / 续关 / game over / 结局 → **§30（`flow.mode` 8 态 / 0xACEE 原子迁移 / wof `0x42C2` + `A5+0x188` / `flow_lag(1)`）**；一关内部的空间分段 / 区域推进 / 段切换 → **§34（`area` 字节 / 相机 `mode/sub` FSM / `0xAA0E` 批量重置 / wof `trigger <= cameraX` + 门闩）**；非角色对象 / 可破坏物 / 关卡推进器 → **§35（一个 pool B + 共享契约 vs 多池 `ObjId` 跳表 / 波次控制器本身是对象）**；跨帧时序 / `prev` 快照 / 执行次数 → **§36（7 个 dino 实例全表 + wof 队列·shadow 并排 / §20.6 主线封顶）**
 - 角色差异化 / 可选角色 / 按角色查表 → **§31（`PlayerData` 表族 `ch` 索引 / `invuln[d0+ch]` / wof 5 武将各自主状态机入口）**
@@ -5878,6 +5878,92 @@ flowchart TD
 - 两游戏"入场无敌帧是否存在"：不臆断。
 
 **结论**：§42 把"生成帧"补成固定帧序列 / 帧内命令顺序两条同构的跨帧契约；`长时间自主推进` 仍是开放目标，本节不宣称终止。
+
+---
+
+## 43. 离场与回收：从"跑出画面"到"槽位归还"
+
+> 触发：§42 写了"入场"，§35 写了 pool B 的 `prop_free`，§28 写了 `kill_all` 超时清场，§32 表里已有 wof 马池的 `0x04 离场 / 0x06 回收`——但"对象怎么退场、槽位怎么归还"从未单独成节。
+> 归属：设计正文（§0–§43），按"轮次线性追加"接在 §42 之后。纯 repo 侧，未新增 ROM 取证（§11.0）。
+> 分工：§42 生成帧跨帧契约、§29 受击恢复链（死亡起点）、§35 对象池组织、§28 同屏预算、§32 载具；本节讲**退场路径与槽位归还**。
+
+### 43.1 一句话
+
+两侧都不在判定的那一帧直接释放对象，而是**先切进一个"退场 / 回收"状态，由后续帧或公共回收例程真正归还槽位**；dino 用 `e.b.mode = 6`，wof 用 `ActStatA = 0x06 → 0x14B8`。与 §42「生成帧首帧 AI 落下一帧」正好成对：**生命周期的两端都跨帧**。
+
+### 43.2 dino：三条退场路径 + 一个 free 出口
+
+**A. 跑出画面（clamp / despawn）**
+
+- `enemy_clamp_to_playfield`（`enemy.rs:653-699`，`0x193E`）：普通场景把 X 夹在 `camX-0x50 .. camX+0x1D0`（`d = xi - cam_x + 0x50`，越界回推），Z 带宽 `0x100`；vertical scene 用固定 `0x10..0x160` / `0..0x140`。**`car_mode != 0` 时不夹，改调 `enemy_despawn_if_far`**（`:655-657`）——载具关卡里"离场"取代"夹回"。
+- `enemy_despawn_if_far`（`:701-715`，`0x173C`）：`d = xi - cam_x + 0xC0 >= 0x300` → `e.b.mode = 6`；vertical 用 `|X+0x80| >= 0x280` 或 `Z+Y+0x80 >= 0x200`。注释明写 **"free next frame (+$04 = 6)"**。
+- `enemy_despawn_near`（`:717-731`，`0x1760`）：更窄的门（"the barrel"），`d = xi - cam_x + 0x40 >= 0x240` → `mode = 6`。两档阈值说明"离场"不是一刀切。
+
+**B. 死亡 → 演出 → free**
+
+- `enemy_dying_basic`（`:978-990`，`0x3484E`）：`sub 0` 记击杀分 `enemy_award_kill_score`（`:970-976`，按 `who` 记给玩家）、设 `T80 = 0x78`（120 帧），之后每帧 `enemy_dying_blink`（`:992-1003`）闪烁，`t == 0` 时 `mode += 2`。与 §29「死亡记 `g.kills` 并重掷 aggression」呼应。
+
+**C. 超时清场**
+
+- `enemy_kill_all_check`（`:952-968`，`0x326F8`）：`kill_all != 0` 且 `hp != 0` → `hp=0 / state 0x0202_0000 / hitstop=2 / stun=0 / attacker=killer`；`kill_all == 2` 时 `who = 0xFF`（不记分，§28）。**不是直接 free，而是把全场变成 dying knockdown，让各自的死亡态去走完演出**。
+
+**D. 真正归还槽位**
+
+- `enemy_free_pool_a`（`:469-479`，`0x48FC`）：`clear_header` 清 `+$00..+$27` 与 `+$59 +$63 +$7D +$87 +$96`，但 **`+$84 / +$5C` 故意存活**（注释 "HT1: deliberately survive free and slot reuse"），最后 `self.enemies.release(i)`。
+- `:364` 与 `:1014` 是 free 的调用点（后者是 class2 `mode` 分派的默认分支）。
+
+即：**判定离场 → `mode=6` → 后续帧的 mode 分派 → `enemy_free_pool_a` → `release`**，中间还有"哪些字节要留着给下一个占用者"的约定。
+
+```mermaid
+flowchart TD
+    A[在画面内正常更新] --> B{退场原因?}
+    B -->|跑出画面| C[despawn_if_far / near<br/>两档阈值 → mode=6]
+    B -->|被打死| D[dying_basic: 记分 + 120 帧闪<br/>t=0 → mode+=2]
+    B -->|kill_all 超时| E[hp=0 / dying knockdown<br/>who=0xFF 不记分]
+    C --> F[后续帧 mode 分派]
+    D --> F
+    E --> F
+    F --> G[enemy_free_pool_a 0x48FC<br/>clear_header 但 +$84/+$5C 保留]
+    G --> H[enemies.release i<br/>槽位归还]
+```
+
+### 43.3 wof：公共回收例程 + 出场淡出 + 清槽
+
+- `Cps1EnemyAI.对象_死亡状态回收_对应ASM_14B8`：多个 Actor 的 `A=06 / case 0x06` 统一跳 **`0x14B8` 公共回收**（`Cps1Actor1BRuntime.cs:138-139, 167`、`Cps1Actor13Runtime.cs:77, 205`、`Cps1Actor1ARuntime.cs:63`、`Cps1Actor12Runtime.cs:771`；后者注释 `34e7c jmp 0x14b8` 在 `:774`）。
+- `Cps1Actor1CRuntime.出场淡出与回收_对应ASM_42DE`（`Cps1Actor16Runtime.cs:186 case 0x04`、`Cps1Actor13Runtime.cs:76, 205`）：`ActStatA = 0x04` 是"出场淡出与回收"，与 `0x06` 死亡回收并列两条退场路径。
+- `清槽_对应ASM_3628`（`Cps1Actor16Runtime.cs:2109-2110`）：清槽指针低字 + 落 `0x3812` 清空；同文件 `:1981` 注释"归零 ⇒ 清槽"。`Exist = 0`（`Cps1Actor1BRuntime.cs:22` f=1000 起）是对象存在位归零。
+- `共享_离场门与走位D分发_对应ASM_50EA`（`Cps1Actor16Runtime.cs:1587`）、`共用离场分发_对应ASM_5488`（`Cps1Actor12Runtime.cs:592`）：离场是**共享例程，各兵种自己调用**——§11.2「共享函数 + 每兵种各带表」在退场层的复现。
+- 逃跑结算 `0x1BB0A`（`Cps1PlayerLogic.cs:10886-10904`）：`ActStatC` 0→+2 或 `0x02` 逃跑分支，末尾 `jmp 0x1E62` 做 `边界钳制X`（`:10893` 注释"返回值丢弃"）——与 dino `enemy_clamp_to_playfield` 是同一类边界钳制，只是挂在逃跑结算尾部。
+- 笔记 §32 已记马池 `ActStatA` 4 态（初始化 / 待机 / **离场 0x04** / **回收 0x06**）——wof 把"离场 / 回收"直接编进载具对象的状态号，不是敌人专属。
+
+### 43.4 对照表
+
+| 维度 | dino | wof |
+|---|---|---|
+| 退场状态 | `e.b.mode = 6`（"free next frame"） | `ActStatA = 0x04 出场淡出 / 0x06 回收` |
+| 公共回收 | `enemy_free_pool_a 0x48FC` → `release(i)` | `对象_死亡状态回收_0x14B8`，各 Actor 的 `case 0x06` 调用 |
+| 退场路径 | 跑出画面（两档阈值）/ 死亡演出 / `kill_all` 清场 | 出场淡出 `0x42DE` / 死亡回收 `0x14B8` / 清槽 `0x3628` / 逃跑结算 `0x1BB0A` |
+| 离场判定 | `despawn_if_far 0x173C` / `despawn_near 0x1760`，car_mode 才启用 | `共享_离场门_50EA` / `共用离场分发_5488`；X 边界钳制 `0x1E62` |
+| 边界处理 | `enemy_clamp_to_playfield 0x193E` 夹回；car_mode 改为不夹直接 despawn | `边界钳制X_0x1E62` 挂在逃跑结算尾部 |
+| 死亡演出 | 记分 + 120 帧闪烁 → `mode += 2` → free | `Exist = 0` 后清槽 |
+| 槽位归还 | `clear_header` 但 `+$84 / +$5C` 故意存活供复用 | `清槽_0x3628` 清指针低字 + 落 `0x3812` 清空 |
+| 超时清场 | `kill_all` 把全场变 dying（`who=0xFF` 不记分） | §28 已记：推进波次状态，不清场 |
+
+### 43.5 "更成熟"落在哪（只谈设计本意）
+
+1. **生命周期两端都跨帧**（§42 入场 / 本节退场）：生成帧不跑 AI、离场帧不释放槽位，都交给后续帧的状态分派。中间态是数据（`mode=6` / `ActStatA=0x06`），不是立即副作用。
+2. **退场路径按原因分叉**：dino 把"跑出画面 / 被打死 / 超时清场"汇到同一条 dying / mode 链，但 `kill_all=2` 用 `who=0xFF` 掐掉记分；wof 把"出场淡出 / 死亡回收 / 清槽 / 逃跑"分成不同 ROM 例程与状态号，由各兵种 `case` 调用。
+3. **槽位复用有字节级契约**：dino `enemy_free_pool_a` 故意不清 `+$84 / +$5C`（下一个占用者会用），wof `清槽_0x3628` 清指针低字再落 `0x3812` 清空。两边都把"归还"做成有约定的操作，不是简单 drop。
+4. **共享例程 + 各兵种调用**：wof 的 `0x14B8 / 0x50EA / 0x5488` 是 §11.2「共享函数 + 每兵种各带表」在退场层的复现。
+
+### 43.6 未做（保留，不扩张）
+
+- dino 各 class 的 dying / mode 分派逐类展开（§29 已覆盖恢复链）；`+$84 / +$5C` 存活字段的下游读点（不臆断）。
+- wof `0x14B8 / 0x3628 / 0x3812` 逐指令语义、`Exist` 位完整生命周期（repo 注释已给语义，不逐条 ROM 对照）。
+- 两游戏"离场对象是否仍进碰撞 / 渲染队列"不臆断。
+- 音频（死亡音）按 §0 边界外。
+
+**结论**：§43 把"退场与回收"补成与 §42 成对的下游半环；`长时间自主推进` 仍是开放目标，本节不宣称终止。
 
 
 
