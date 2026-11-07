@@ -2,37 +2,41 @@
 
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 `DESIGN_DIFF_NOTES.md`（git 跟踪）。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
-> 本文件是收尾时删旧建新的新版：开工版（记着 §85 定题与取证）已全部消费落盘。
+> 本文件是开工读旧版（收尾版，记着 §87 候选）后删掉重建的新版：旧版残差已全部消费。
 
-## 30 秒版现状（收尾重建时）
+## 30 秒版现状（开工重建时）
 
-- 当场核：`HEAD 35e2331`，`git status --short` 为空，工作区干净。开放目标 `长时间自主推进` 仍 active，**未收口、不宣称完成**。
-- 当前 `DESIGN_DIFF_NOTES.md`：**13500 行** / **102 张 mermaid** / **2918 表格行**（历史 `^\|` 口径）/ **506 栅栏成对** / 表格块严格口径排除转义竖线 **370 块 0 不一致** / §0–§86 / A.1–A.50 正文 / 附录定义 50 / 超出 §86 的章号引用 0 / 全量 `file:line` 窄 **1760**、宽 **1827** 全命中、缺文件 0 越界 0 / LF 无 BOM `CR=0 BOM=False` / 未考证发行先后（沿用用户前提）。**下一轮写盘后按实测刷新顶部规模行，不引本文件旧数。**
-- 本轮提交链（共 5 笔，每块一提交）：`6cd48a6` DRAFT 开工删旧建新 → `aace74c` §85 → `18da0d4` A.49 → `504d66b` §86 → `35e2331` A.50。
+- 当场核：HEAD `b7d73ae`，`git status --short` 为空。开放目标 `长时间自主推进` 仍 active，**未收口、不宣称完成**。
+- 当前 `DESIGN_DIFF_NOTES.md`：13500 行 / 102 图 / 2918 表格行 / 506 栅栏 / 表格块严格口径 370 块 0 不一致 / §0–§86 / A.1–A.50 / 附录定义 50 / 双口径窄 1760 宽 1827 全命中 / LF 无 BOM。**写盘后按实测刷新顶部规模行，不引旧数。**
+- 上一轮 6 笔提交：`6cd48a6` DRAFT 开工 → `aace74c` §85 → `18da0d4` A.49 → `504d66b` §86 → `35e2331` A.50 → `b7d73ae` DRAFT 收尾。
 
-## 本轮已落盘的两个完整分析块
+## 本轮 §87 定题（先查重，不按扫描排序）
 
-- **§85 车开起来那一帧**：`car.rs` mode 2 驾驶态每帧数据流。六条结论：乘员位图与三份座位每帧清零重建（`bc0` 是玩家侧副本，`script.rs:386` 当过场输入门读）；N 人方向按 `d6` 分档合成单一 `(TVX,TVZ)`（0 默认 `0x800/0`、1 全量、2 `>>1`、3 `*6>>4`，每人先加 `0x800` 故 0/1/2 人巡航 `0x800`、3 人 `0x900`）；`b119=0x3D` 新按下窗口选 `PAIRS_B(0x8C896)` 或 `PAIRS(0x8C8B6)`；`vz` 立即、`vx` 每帧 ±0x30、位置被相对镜头窗口拉回；`prop_car_carry` 每帧覆写三英雄整数坐标；bump / smoke / 轮子是三条不读输入的线；**终点由 `cam_x >= 0xA000` 或 `car_mode == 2` 决定，不是车的位置**。§32.5「保留、不扩张」按 `9d8145f` 重评为历史范围声明后取用。
-- **§86 开场影片不是一段录像**：`flow/movie.rs` attract 开场影片时间线。状态只有 `mst` 脚本位置 / `task.count` / `task.sub`（步长 2 索引 `0x9C002` 与 `0x9C026`）；每 pass 固定 helper → `screen_shake` → pool B/A → 精灵表 → `count+1` → 撞表只跑一个 handler；两个 helper 由 `scroll`/`shake` 标志每帧跑（850/895 开、1120/1140/1150 关）；淡出 16 步 / 清层 1.3 帧 / 淡入 / `sleep 120` 都在 handler 内，走不到 `mst::PASS` 就不 `count+1`，**1480 计数跨 1745 帧**；没有「当前帧号」这份状态。§41.7 保留清单按 `9d8145f` 不作闸门。
-- A.49 / A.50 是各自的合规审计与规模回执：组 A 0 行 0 硬残留；组 B 严口径分别 2 / 1 行候选逐字核为显式否认；组 C 分别 11 / 11 行；双口径差额与新区引用数逐笔自洽；均不回改 A.13 起任何历史回执。
+**题目**：`item/blast.rs` —— 同一个「攻击者」身份下，池 E 六类对象各自的生命史。
+一句话结论：攻击者不是一类对象，而是池 E 里若干类对象**在某一帧共同声明的一种身份**；身份由「这一帧有没有进 `$671A`」决定，而每类对象自己决定「我这一生有几帧、第几帧登记、什么时候转成别的对象」。
 
-## 下一轮起步（§87 候选，务必先查重再定题）
+**排除链（本轮两次印证 A.50.3「函数名零匹配 ≠ 机制未展开」）**：
+- `item/weapon.rs`（63 函数 50 零匹配）**排除**：§21 已记 `KINDS` 三元组与 15 类型、`item/weapon.rs:1-26` / `:36-52`；§76 / L11614 已明写「设施共用，差异压在一个变体 / 分支里，不另起一套状态机」；L11564 `item_land_check`、L11560 `LIFE = 0x258`、§82 / §83 的 15 类型保留清单都已登记。想写的结论与既有正文重复。
+- `item/blast.rs` 的**共性**也已登记：§61 / L8378 引 `blast.rs:6-8`「explosions and projectiles are attackers」、L8388「`item_register_attacker`（`item.rs:248`）每帧登记」、L10244 三张注册列表、§70 命中下游。**因此 §87 只写差异面，不重写共性**：`item_blast` 的 5 个 kind 分支、4 族弹道、一帧攻击盒、火把 overlay 的各自生命史全零匹配。
+- `effect.rs`（`raw_load` / `raw_tick` / `fx_tick_sprite_frame`）与 `player_weapon.rs` 留作后续候选，本轮未用。
+- 已排除（沿用旧版）：`script.rs` / `flow/*` / `enemy/scenery.rs` / `car.rs` / `camera.rs` / `terrain.rs` / `hud.rs` / `snd.rs` / `trace.rs` / `flow/mame_check.rs` / `enemy_combat.rs` / `player.rs` / `enemy.rs`。
 
-- **本轮的方法校正是硬约束**：A.50.3 已登记「函数名零匹配 ≠ 机制未展开」——`script.rs` 89 函数 77 零匹配看似留白，实际 §19 / §7 / §12 早已用 ROM 地址完整展开解释器。**定题前必须核语义，不能按扫描排序直接写。**
-- 本轮扫描 `game/` 下 251 个 `.rs` 的零匹配函数名成组结果（供下轮筛，已排除的不再重复）：`item/weapon.rs` 63 函数 50 零匹配（`weapon_init:96` / `weapon_spawn_overlay:151` / `weapon_init_common:172` / `weapon_drop_flight:207`）；`item/blast.rs` 31 函数 23 零匹配（`blast_setup` / `blast_run` / `item_explosion_body`）；`effect.rs` 51 函数 29 零匹配（`fx_tick_sprite_frame` / `raw_load` / `raw_tick`）；`player_weapon.rs` 53 函数 41 零匹配（`player_pickup_entry` / `player_pickup`）。
-- 已知会撞上的既有登记：§21「道具 12 class / 拾取双向迁移 / sub 0 躺地·4 举起·8 手持·0xC 掉落·0x10+ 飞行·`+$F8` 拾取后 40 帧冷却」、§62「`act=2` 蹦出 → `$69EE` 拾取列表」、§61 / L8378「explosions and projectiles are attackers，加入 `$671A` 自带 attack id」、§82「自动开火节拍」、§58「火花生成与 `fx_free`」。**若选 `item/weapon.rs`，切口应收窄到「掉出去之后到落地可再拾取」的中间态或「15 类型初始化表协议」，不重做 §21 生命周期。**
-- 已排除：`script.rs`（§19/§7/§12）、`flow/{system,tally,select,join,boot,cards,movie,name_entry}`（§20/§25/§41/§55/§65/§67/§86）、`enemy/scenery.rs` class 54/56（§71）、`car.rs`（§85）、`camera.rs`/`terrain.rs`/`hud.rs`（§84/§83/§52）、`snd.rs`（音频边界外）、`trace.rs` / `flow/mame_check.rs`（工程与校验层）、`enemy_combat.rs` / `player.rs` / `enemy.rs`（大量展开）。
-- 按用户约束：只谈游戏逻辑本意；repo 侧为主、不过度怀疑 rep 侧；ROM 主要为 data，仅 `wof_cs` 非常可疑时才查（本轮 0 次，§11.6 未触发）；不评优劣、不把未登记写成缺失；wof 侧按 §11.0 只登记不同语境并列事实；不并入 §19 五套表；每块一提交。
+**dino 取证行号**（`dino-rs/crates/dino-game/src/game/item/blast.rs`）：`:1-8` 文件头六类清单与攻击者语义 / `:12-25` 七张表常量 / `:28-48` `item_explosion_body` 造爆炸（复制 who/id/坐标/airborne/`+$70` 为源，池满丢弃）/ `:50-58` 音效与 `item_d7 = 23 - slot` / `:60-65` `blast_setup` / `:67-77` `item_blast` 按 `var26` 五分派 / `:79-94` `blast_run` 与 `draw_list_add_visible_item` / `:96-129` kind0 / `:131-159` kind1 与撞墙停 / `:161-168` `blast_attack` 取一次 serial / `:170-189` kind2 / `:190-221` kind3 / `:222-247` kind4+ 小火焰闪烁 / `:248-268` `item_bullet` / `:269-337` `bullet_init` / `:338-376` `bullet_run` 隔帧碰撞 / `:377-437` `item_overlay` 跟随火把 / `:438-466` `item_shell` / `:467-497` `shell_run` / `:498-526` 尘土与 `shell_end` / `:527-553` `item_projectile` / `:554-585` `projectile_run` / `:586-615` `item_gun_shot` / `:616-633` `pellet_run` / `:634-649` `item_attack_box_spawn` / `:650-680` `item_attack_box` 只活一帧 / `:681-710` 单测。
+上游并列：`item.rs:248` `item_register_attacker`（§61 已登记）、`item.rs:367` `item_despawn_near`、`combat_lists_reset`（§48）。
 
-## 写盘工艺（本轮两次踩坑，勿再犯）
+**六条设计结论**：① `item_blast` 五 kind 共用 `mode 0 init → 2 run → 4/6 free`，`blast_run` 统一「动画步 → 播完 free → 每帧登记攻击者 → 按 `visible` 进绘制表」；② kind 差异全压在 init 的一次性写入（kind0 按 `airborne` 选 attack 0x54/0x56 与动画 0/1、落地 `cam.shake_req=3`；kind1 滚动要 `item_terrain`+`motion` 且撞墙 `sub+=2` 停；kind2 shake+0x6E；kind3 敌人炸弹 `who=0xFF` 不记分；kind4+ 小火焰**没有自己的攻击**）；③ `item_d7 = 23 - slot` 让**池槽号参与小火焰闪烁相位**（`(frame + d7)` 奇偶），与 §45 `(depth,handle)` 排序、§50 对象池同族；④ 四族弹道各自决定生命史：bullet 按 8 字节记录取 vx/anim/atk/aim、玩家枪按 `+$EA` 锁定目标、其余随机 vz、`bullet_run` **按槽号奇偶隔帧碰撞**、撞地/墙/水转 mode 4 火花；shell 抛物线+尘土+接触生成 class 1 kind 1 小爆炸；projectile 水平速度由距离 32 位除以 `0x39`、弧线 `vy=-0x500`、低于目标高度 `+$A2` 爆炸、非零 variant 还留 class 11 攻击盒；pellet 飞 `0xC0` 像素内、命中即 free；⑤ `item_attack_box`（class 11）**只活一帧**，把「一次攻击」做成池对象而不是玩家状态机里的 flag；⑥ `item_overlay`（class 6）跟随火把，靠宿主 `+$2C` 帧标志决定装载 swing / idle flame 列表，Z +2/-1 由帧奇偶决定前后，火把消失或不再是同一把武器就结束。
 
-- 唯一交付文档是 git 跟踪的 `DESIGN_DIFF_NOTES.md`；`R:\Temp\*` 只是脚手架，用**中性名 + 用完即删 + 落盘即入仓**，本轮用 `s85_patch.txt` / `a49_patch.txt` / `s86_patch.txt` / `a50_patch.txt`（不再用 `.md` 后缀）。
-- 大段中文 markdown 用 Write 工具落干净 UTF-8 片段 → .NET `ReadAllLines(...,UTF8)` 读回 → 按行号重建数组 → 逐项预校验 `cnt=1` 且 `new != old` → 一次 `WriteAllText`（`Join("`n")` + 末尾 LF，无 BOM）。
-- **坑 1（§85）**：PowerShell 数组字面量里写 `+$sum+` 会被解析错位，`@(46,'old','a'+$sum+'b')` 丢了中间与结尾，且长度恰好 +7/-7 抵消，`PRECHECK_FAIL=0` 也看不出来。**做法：所有含 `+` 拼接的字符串先赋给独立变量，再放进数组字面量；写盘后必须核 L46 的长度变化与 `EndsWith(' | 有效 |')`，不能只看预校验。**
-- **坑 2（A.49）**：回执里写「`§86+` 引用 0」这类说明文字会被简单悬空正则误报；改用「超出 §N 的章号引用 0」措辞，并逐行核命中行确为说明文字。
-- 导航同步固定 12 处：L16 七处（行数 / mermaid 数 / 表格行数 / `A.1–A.N` / A.N 条目 / A.N 位置 / `§0–§M 全部结论`）、L46 两处（章节列表 `/ §M |`、主题摘要 `；§M（…） | 有效 |`）、L47 两处、L50 / L54 / L63 / L65 各一处主题索引 `、**§M（…）**`、L70 一处 `、A.N`。**回执追加时不改导航结构，只刷新 L16 行数与表格行数两个数字（改内容不增行）并补 A.N 正文定义。**
+**wof 侧按 §11.0 只登记不同语境并列事实**（四格都是既有注释 / 调用面复述）：`Cps1EffectActorRuntime.cs:363` `效果对象_爆炸特效环_对应ASM_630E` / `:4007` `ObjId 9（落地爆炸体：0x6E0 动画 + 受击帧翻转）` / `:4315` `4E390..4E3B4：落地爆炸` / `Cps1PlayerLogic.cs:5417` `1C09E move.w #$A,(0x94,A0) ; 攻击盒 ID`（wof 攻击盒是玩家对象字段）。不串等价、不评优劣、不把未登记写成缺失；0 次 ROM 取证，§11.6 未触发。
+
+## 写盘工艺（沿用，勿再犯）
+
+- 唯一交付文档是 git 跟踪的 `DESIGN_DIFF_NOTES.md`；临时片段用**中性名 + 用完即删 + 落盘即入仓**，本轮用 `R:\Temp\s87_patch.txt` / `a51_patch.txt`。
+- 大段中文 markdown 用 Write 落干净 UTF-8 片段 → .NET `ReadAllLines(...,UTF8)` 读回 → 按行号重建数组 → 逐项预校验 `cnt=1` 且 `new != old` → 一次 `WriteAllText`（`Join` + 末尾 LF，无 BOM）。
+- **坑 1**：PowerShell 数组字面量里 `+$var+` 会解析错位（§85 的 L46 丢摘要与表格结尾，长度恰好抵消）。所有含 `+` 拼接的字符串**先赋独立变量**再进数组；写盘后核 L46 长度变化与 `EndsWith(' | 有效 |')`。
+- **坑 2**：回执里别写「`§N+` 引用 0」这种会被简单悬空正则误报的措辞，改写「超出 §N 的章号引用 0」。
+- 导航固定 12 处：L16 七处（行数 / mermaid 数 / 表格行数 / `A.1–A.N` / A.N 条目 / A.N 位置 / `§0–§M 全部结论`）、L46 两处（章节列表 `/ §M |`、主题摘要 `；§M（…） | 有效 |`）、L47 两处、L50 / L54 / L63 / L65 各一处 `、**§M（…）**`、L70 一处 `、A.N`。回执追加时不改导航结构，只刷新 L16 行数与表格行数两个数字并补 A.N 正文定义。
 - 校验固定项：片段逐行零缺失 / 表格块严格口径排除转义竖线 0 不一致 / 全量 `file:line` 双口径（`s[h]` / `p[y]` 字符类 + 多根索引）零缺零越界且差额等于新区引用数 / `CR=0 BOM=False` / `git diff -U0` 删除行逐条核为纯导航行。
-- `git diff` / `git log` 中文经 PowerShell 控制台显示成 GBK 乱码，文件本身 UTF-8；判断内容用 `Read` 或 .NET `ReadAllText(...,UTF8)`；提交用 `git -c i18n.commitEncoding=UTF-8 commit -F`。
+- `git diff` / `git log` 中文经 PowerShell 控制台是 GBK 乱码，文件本身 UTF-8；提交用 `git -c i18n.commitEncoding=UTF-8 commit -F`。
 
 ## 每轮收尾
 
