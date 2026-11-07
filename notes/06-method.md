@@ -2385,7 +2385,7 @@ flowchart TB
 
 **同样无人提问。** §94.12 收尾时把「`0x6E75F` / `0x6E662` 与 `0x6E754` 是否同一批表」标成未定。这一节只做一件事：算地址 + 反查消费者，把能闭合的闭合，不能闭合的继续留白。结果是**清册第一次自己把自己缩小了**——不是又多一条知识，是少了一格盲区。
 
-**纯地址算术就闭合了一半**：`0x6E75F − 0x6E754 = 0x0B`。`Cps1Types.cs:319` `[FieldOffset(0x7A)] public BS16 AtkType;` 坐实 `+0x7A` 就是 AtkType；`Cps1PlayerMulti.cs:13671` `addi.w #$10,(0x7A,A0)` 坐实 AtkType 是**已经乘好 16 字节步长的偏移值**，不是 0/1/2 的招式序号；`Cps1Collision.cs:497` / `:4772` 两处都是「基址 + AtkType」直接相加，`8D9C adda.w (0x7A,A0),A3`（`:3360`）同法。所以
+**纯地址算术就闭合了一半**：`0x6E75F − 0x6E754 = 0x0B`。`Cps1Types.cs:319` `[FieldOffset(0x7A)] public BS16 AtkType;` 坐实 `+0x7A` 就是 AtkType；`Cps1Actor18Runtime.cs:1678`（ROM `0x3D634 addi.w #0x10,(0x7a,A0)`；早期记在 `Cps1PlayerMulti.cs`，该文件拆分后只剩 5188 行，旧行号已失效）坐实 AtkType 是**已经乘好 16 字节步长的偏移值**，不是 0/1/2 的招式序号；`Cps1Collision.cs:497` / `:4772` 两处都是「基址 + AtkType」直接相加，`8D9C adda.w (0x7A,A0),A3`（`:3360`）同法。所以
 
 ```
 0x6E75F + AtkType  ≡  0x6E754 + AtkType + 0x0B
