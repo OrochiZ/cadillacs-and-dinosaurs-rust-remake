@@ -128,9 +128,17 @@ def check(root: pathlib.Path, overrides: dict[str, str] | None = None,
         for item in items:
             problems.append(f"{name}: {item}")
 
-    # 1. milestone status
+    # 1. milestone status. Guard against a silent column shift: if both tables
+    # ever gain a column, cols[4] could land on the same wrong column in both
+    # and the comparison would go green without checking any state at all.
     status = parse_milestones(text("STATUS.md"))
     plan = parse_milestones(text("plan/PLAN.md"))
+    valid = {"Done", "In progress", "Pending", "Next"}
+    for label, table in (("STATUS.md", status), ("plan/PLAN.md", plan)):
+        for m, word in sorted(table.items()):
+            if word not in valid:
+                report("milestones", [f"{label} {m}: unrecognised state {word!r} "
+                                      f"(table columns may have shifted)"])
     if not status or not plan:
         report("milestones", ["could not parse one of the two tables"])
     else:
@@ -242,6 +250,16 @@ def self_test(root: pathlib.Path) -> list[str]:
             "## Known Differences",
             "## Known Differences\n\n- **Fessenden with three heroes.** Drift probe.\n", 1)})
 
+    # 7. both tables gain a column at once: the fixed column index now lands on
+    # the same Hours value in both, so the naive comparison would go GREEN.
+    # The state-word guard must catch it instead.
+    shift = lambda t: re.sub(r"^(\| M\d+ \|)", r"\1 X |", t, flags=re.M)
+    run_case("column shift", "unrecognised state", {
+        **base,
+        "STATUS.md": shift(base["STATUS.md"]),
+        "plan/PLAN.md": shift(base["plan/PLAN.md"]),
+    })
+
     # 6. a ROM-derived file tracked in git
     run_case("git-leak", "git-leak", base,
              tracked=["re/out/assets/anims/hero_jack/x.gif"])
@@ -261,7 +279,7 @@ def main() -> int:
             for f in failures:
                 print(f"  - {f}", file=sys.stderr)
             return 1
-        print("check_docs --self-test: clean baseline + 6/6 drift cases caught")
+        print("check_docs --self-test: clean baseline + 7/7 drift cases caught")
         return 0
     try:
         problems = check(root)
