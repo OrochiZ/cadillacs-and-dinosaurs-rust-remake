@@ -33,23 +33,26 @@ timed pokes, probe segments as scenarios, picture compare, sound register compar
 
 ## Milestones
 
+Status as of 2026-10-21. This table is the short map; the detailed, authoritative state (with the
+evidence for each milestone) is `STATUS.md`. When they differ, `STATUS.md` wins.
+
 | M | Name | Hours | Status | What the user sees | Replaces |
 | --- | --- | --- | --- | --- | --- |
 | M0 | Every episode starts | 1.5 | Done (`f8e3c93`) | Episodes 2 to 8 start | new |
-| M1 | Attract loop, exact from power on | 24 | Next | boot, title, profiles, ranking, slides, movie, demos | phase 2 (first half) |
-| M2 | Coin, select, Episode 1 opening, clock, join, continue, game over, tally | 52 | Pending | the real start of a game and the link scenes | phase 2 (second half), phase 1 tasks 6 and 8 |
-| M3 | The whole game skeleton | 51 | Pending | power on to the ending through all 8 episodes, placeholder fights | phases 4, 12 (ending), 13 (part) |
-| M4 | Sound | 35 | Pending | music and effects | phase 3 |
-| M5 | Episode 1 for real | 37 | Pending | Episode 1 to Vice T. and the tally | phase 1 tasks 4 to 9, phase 5 (part) |
-| M6 | Episodes 2 and 3 | 59 | Pending | poachers, dinosaurs, the Butcher, the car, Hogg | phases 6, 7 |
-| M7 | Episodes 4 and 5 | 50 | Pending | Slice, Bludge, Zeke, Morgan and Morgue, the village | phases 8, 9 |
-| M8 | Episodes 6, 7 and 8 | 66 | Pending | the foot, Tyrog, Slisaurs, tanks, Fessenden, the real ending | phases 10, 11, 12 |
-| M9 | Small things pass | 25 | Pending | tag team, audit of every mechanics row, fixes | new |
-| M10 | Exactness and finish | 58 | Pending | whole episode runs against MAME, settings, sound, pacing, README | phase 13 |
-| | Total | 456 listed, about 600 expected | | | |
+| M1 | Attract loop, exact from power on | 24 | Done (2026-10-13) | boot, title, profiles, ranking, slides, movie, demos | phase 2 (first half) |
+| M2 | Coin, select, Episode 1 opening, clock, join, continue, game over, tally | 52 | Done (2026-10-19, 33 of 33) | the real start of a game and the link scenes | phase 2 (second half), phase 1 tasks 6 and 8 |
+| M3 | The whole game skeleton | 51 | Done (2026-10-19, 30 of 30) | power on to the ending through all 8 episodes, placeholder fights | phases 4, 12 (ending), 13 (part) |
+| M4 | Sound | 35 | Done (2026-10-19, 20 of 20) | music and effects | phase 3 |
+| M5 | Episode 1 for real | 37 | Done (2026-10-21, 23 of 23) | Episode 1 to Vice T. and the tally | phase 1 tasks 4 to 9, phase 5 (part) |
+| M6 | Episodes 2 and 3 | 59 | Done (2026-10-19, 33 of 33) | poachers, dinosaurs, the Butcher, the car, Hogg | phases 6, 7 |
+| M7 | Episodes 4 and 5 | 50 | Done (2026-10-21, 28 of 28) | Slice, Bludge, Zeke, Morgan and Morgue, the village | phases 8, 9 |
+| M8 | Episodes 6, 7 and 8 | 66 | Done (2026-10-21, 37 of 37) | the foot, Tyrog, Slisaurs, tanks, Fessenden, the real ending | phases 10, 11, 12 |
+| M9 | Small things pass | 25 | Done (2026-10-21, 14 of 14) | tag team, audit of every mechanics row, fixes | new |
+| M10 | Exactness and finish | 58 | In progress (2026-10-21, 23 of 26; M10-25 closeout and M10-26 final regression left) | whole episode runs against MAME, settings, sound, pacing, README | phase 13 |
+| | Total | 456 listed (about 610 expected) | | | |
 
-Order: M1, M2, M3, M4, M5, M6, M7, M8, M9, M10. Lane B tasks (documents, harness tools, MAME recordings) run beside the code tasks as soon as their needs are met.
-The first ten tasks to start are listed in D5 section 10 (M1-00 first).
+Order: M1, M2, M3, M4, M5, M6, M7, M8, M9, M10. Lane B tasks (documents, harness tools, MAME recordings) ran beside the code tasks as soon as their needs were met.
+The first ten tasks in the original build order are listed in D5 section 10 (M1-00 first).
 
 ## Phases of the old plan that are already done
 

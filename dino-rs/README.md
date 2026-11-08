@@ -199,7 +199,6 @@ The port was compared with the original (MAME) frame by frame in every episode, 
 - **Hurrying scenes.** If you hold attack or jump in a scripted scene (the walk after a boss, an entrance), the arcade runs as many game frames as it can per video frame; the port runs three. The scene speeds up a little differently.
 - **First seconds after power on.** In the very first loop of the attract mode, a few screens show their palette or logo one or two frames earlier or later than the arcade. The later loops are exact.
 - **Sound.** The same sounds play at the same moments. A few hit sounds can sweep the other way in the stereo field (the original reads a leftover value there).
-- **Fessenden with three heroes.** One extra piece of debris from his quake may show for about three seconds.
 - **Keys the arcade does not have.** P pauses, Q turns the combo toggle on and off, A S D F G play the special moves with one key, F1 shows the hit boxes. The arcade's operator test menu, other region sets and the debug mode are not included (see above).
 
 ## Developer and Test Options
