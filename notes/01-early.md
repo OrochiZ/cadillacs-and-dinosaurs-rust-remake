@@ -1481,7 +1481,7 @@ flowchart TB
 | 分派层数 | 一层：受击者状态机按 `act` 查共享表族 | 两层：`0x7E4A` 通用 9 项 → 按 `CharId` 专属段表 |
 | 表组织 | 12 张共享表（LAUNCH/THROW/SLIDE/LIE/COUNTER/DIZZY_*）+ 共享函数 0x2A606 | 通用 9 项跳表 0x7E68 + 每兵种一级表（0x124D6 / 0x11878 …）+ 共享族落点 |
 | 死亡分支 | 命中帧不处决，击杀来自下一次 update（§12） | `Hp<0 && ObjId>4` 当帧改读"死亡备用 reaction 字节"；`0x7ECE` 分支发事件队列 |
-| 韧性 / 眩晕 | `stun` 累积 + `stun_refill=0x78` + DIZZY_* 表族 | `StunLeft / StunVal` 清零或累加 |
+| 韧性 / 眩晕 | `stun` 累积 + `stun_refill=0x78` + DIZZY_* 表族 | `StunLeft / StunVal` 清零或累加；两边累计的**形态**差异见 02 卷 §37.3「累计本身是什么形状」 |
 | hitstop | 写攻击者 / 被击者 / 合体技 partner 三处 | `命中双方硬直_可能对应ASM_7EA2` 双方 |
 | 反击 | `counter` 因子进 §17.1 伤害连乘 | 走 `DmgReaction` 分派 |
 | 掉武器 | 命中帧无条件 `item_type=0; drop=1`（:52-54） | 由 0x7E86 骑乘 / 0x7E92 等分支处理 |
