@@ -20,7 +20,10 @@ merged. Review aids: `--episode N --area A --camx X`, `--autoplay`, `--debug-key
 
 ## Milestones
 
-Work resumed 2026-10-21 after the M4 checkpoint (M1 to M4 and M6 done). Open leads: `re/out/cli/pending_fixes.md` (git-ignored). Play and test commands: `run.md`. Recording sweep (2026-10-21): 379 of 418 recordings equal MAME in step mode.
+M0 to M9 are done; M10 is at 23 of 26 (see the table below). Open leads: `re/out/cli/pending_fixes.md`
+(git-ignored, a local file). Play and test commands: `run.md`. For the current exactness figures and
+every known difference with its cause, see `re/harness/allow/final.txt` (M10-26; section 9 has the
+2026-10-21 checks).
 
 | M | What the player gets | Agent hours (plan) | State |
 | --- | --- | --- | --- |
