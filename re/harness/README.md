@@ -2011,6 +2011,10 @@ python re/harness/check_docs.py --help         # usage (an unknown flag is an er
 
 It needs only `python` (standard library) and `git`. Unlike everything above it needs no MAME,
 no `dino.zip`, no `re/.venv` and no built binary, so it also runs on a fresh clone with no ROM.
+Checked on 2026-11-08 with a `git clone --depth 1 --no-local` into a clean directory (no
+`dino.zip`, `dino-rs/target`, `re/out`, `re/rom` or `re/.venv`): the six checks and `--self-test`
+both pass there, and changing one milestone back to `Pending` in that clone makes the check
+fail with `milestones: M1: STATUS.md says 'Done', PLAN.md says 'Pending'`.
 
 | # | check | sources compared |
 | --- | --- | --- |
