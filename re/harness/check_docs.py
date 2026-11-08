@@ -19,7 +19,8 @@ Checks:
   3. config keys: README's Available Settings vs OPTIONS in config.rs.
   4. CLI flags: flags named in run.md / README exist as strings in the Rust crates.
   5. git leak: no ROM-derived data is tracked (M10-26 release checklist).
-  6. known differences: README must not list a difference final.txt marks GONE.
+  7. documented command lines must not combine mutually exclusive flags.
+  8. known differences: README must not list a difference final.txt marks GONE.
      This one is a sentinel table, not a semantic parser: when a new cause is
      marked GONE in final.txt, add its marker below with the source. It is kept
      explicit on purpose rather than guessing at prose.
@@ -42,6 +43,19 @@ ROM_PREFIXES = ("re/rom/", "re/out/", "re/ghidra/proj/", "re/ghidra/log")
 # marked GONE in final.txt must not be advertised as current. (marker, source)
 GONE_MARKERS = (
     ("Fessenden with three heroes", "final.txt N1 (GONE: M10-19 / M10-20 merge)"),
+)
+
+# main.rs rejects these combinations at startup (fail()). A documented example
+# that combines them would fail for a player copying it. Labels are the checks.
+FLAG_EXCLUSIONS = (
+    ("--jump vs --episode/--stage/--area/--camx",
+     lambda f: "--jump" in f and bool(f & {"--episode", "--stage", "--area", "--camx"})),
+    ("--episode vs --stage",
+     lambda f: "--episode" in f and "--stage" in f),
+    ("--headless vs --viewer/--view/--windowed",
+     lambda f: "--headless" in f and bool(f & {"--viewer", "--view", "--windowed"})),
+    ("--trace vs --ally",
+     lambda f: "--trace" in f and "--ally" in f),
 )
 
 
@@ -109,6 +123,26 @@ def parse_code_flags(sources: list[str]) -> set[str]:
     out: set[str] = set()
     for src in sources:
         out.update(re.findall(r'"(--[a-z0-9][a-z0-9-]*)"', src))
+    return out
+
+
+def parse_command_lines(text: str) -> list[str]:
+    """Real command lines only. Prose that merely *mentions* flags (for example
+    the run.md line that explains the exclusions) must be excluded: mixing all
+    flags named in a sentence into one set produces false violations."""
+    out: list[str] = []
+    in_fence = False
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not s or s.startswith("#"):
+            continue
+        if "dino-game" not in s and "dino-sound" not in s and "dino-extract" not in s:
+            continue
+        if in_fence or re.match(r"^(cargo|\./|\$|dino-game)", s):
+            out.append(s.split(" #")[0])
     return out
 
 
@@ -180,11 +214,19 @@ def check(root: pathlib.Path, overrides: dict[str, str] | None = None,
     report("flags", [f"documented but not parsed: {f}"
                      for f in sorted(doc_flags - code_flags - CARGO_FLAGS)])
 
-    # 6. a fixed difference must not be advertised to players as current
+    # 8. a fixed difference must not be advertised to players as current
     differences = parse_readme_differences(readme_text)
     for marker, source in GONE_MARKERS:
         if marker in differences:
             report("known-differences", [f"README still lists {marker!r} ({source})"])
+
+    # 7. documented command lines must not combine flags main.rs rejects
+    run_text = text("run.md")
+    for cmd in parse_command_lines(run_text + "\n" + readme_text):
+        flags = set(parse_doc_flags(cmd))
+        for label, bad in FLAG_EXCLUSIONS:
+            if bad(flags):
+                report("commands", [f"{label}: {cmd[:150]}"])
 
     # 5. no ROM-derived data in git (M10-26)
     if tracked is None:
@@ -260,6 +302,11 @@ def self_test(root: pathlib.Path) -> list[str]:
         "plan/PLAN.md": shift(base["plan/PLAN.md"]),
     })
 
+    # 8. a documented command with two flags main.rs rejects together
+    run_case("commands", "commands", {
+        **base, "run.md": base["run.md"]
+        + "\n```sh\ncargo run -p dino-game -- --jump ep4a2 --episode 4\n```\n"})
+
     # 6. a ROM-derived file tracked in git
     run_case("git-leak", "git-leak", base,
              tracked=["re/out/assets/anims/hero_jack/x.gif"])
@@ -269,8 +316,8 @@ def self_test(root: pathlib.Path) -> list[str]:
 
 USAGE = """usage: check_docs.py [--self-test]
 
-  (no args)    run the 6 static doc/code consistency checks
-  --self-test  verify a clean baseline and that 7 deliberate drifts are caught
+  (no args)    run the 7 static doc/code consistency checks
+  --self-test  verify a clean baseline and that 8 deliberate drifts are caught
   -h, --help   show this message
 """
 
@@ -301,7 +348,7 @@ def main() -> int:
             for f in failures:
                 print(f"  - {f}", file=sys.stderr)
             return 1
-        print("check_docs --self-test: clean baseline + 7/7 drift cases caught")
+        print("check_docs --self-test: clean baseline + 8/8 drift cases caught")
         return 0
     try:
         problems = check(root)
@@ -313,8 +360,9 @@ def main() -> int:
         for p in problems:
             print(f"  - {p}", file=sys.stderr)
         return 1
-    print("check_docs: 6/6 checks passed "
-          "(milestones, jumps, config keys, CLI flags, known differences, git leak)")
+    print("check_docs: 7/7 checks passed "
+          "(milestones, jumps, config keys, CLI flags, commands, "
+          "known differences, git leak)")
     return 0
 
 

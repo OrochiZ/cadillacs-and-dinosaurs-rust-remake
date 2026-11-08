@@ -2004,15 +2004,15 @@ re/.venv/bin/python -I re/harness/coverage/map.py            # the numbers and r
 quietly stops describing the code or the repo. Run it from the repo root before a release:
 
 ```sh
-python re/harness/check_docs.py                # 6 checks, exit 0 = clean, 1 = problems, 2 = cannot run
-python re/harness/check_docs.py --self-test    # clean baseline + 7 deliberate drifts must all be caught
+python re/harness/check_docs.py                # 7 checks, exit 0 = clean, 1 = problems, 2 = cannot run
+python re/harness/check_docs.py --self-test    # clean baseline + 8 deliberate drifts must all be caught
 python re/harness/check_docs.py --help         # usage (an unknown flag is an error, never a silent normal run)
 ```
 
 It needs only `python` (standard library) and `git`. Unlike everything above it needs no MAME,
 no `dino.zip`, no `re/.venv` and no built binary, so it also runs on a fresh clone with no ROM.
 Checked on 2026-11-08 with a `git clone --depth 1 --no-local` into a clean directory (no
-`dino.zip`, `dino-rs/target`, `re/out`, `re/rom` or `re/.venv`): the six checks and `--self-test`
+`dino.zip`, `dino-rs/target`, `re/out`, `re/rom` or `re/.venv`): the seven checks and `--self-test`
 both pass there, and changing one milestone back to `Pending` in that clone makes the check
 fail with `milestones: M1: STATUS.md says 'Done', PLAN.md says 'Pending'`.
 
@@ -2022,11 +2022,16 @@ fail with `milestones: M1: STATUS.md says 'Done', PLAN.md says 'Pending'`.
 | 2 | jump point names | the `--jump` table in `run.md` vs `JUMPS` in `jumps.rs` (both directions) |
 | 3 | settings keys | README "Available Settings" vs `OPTIONS` in `game/flow/config.rs` (both directions) |
 | 4 | CLI flags | every flag named in `run.md` / `dino-rs/README.md` exists as a string in a Rust crate |
-| 5 | git leak | `git ls-files` contains no ROM-derived file (M10-26 release checklist) |
-| 6 | known differences | README does not advertise a difference `allow/final.txt` marks GONE |
+| 5 | CLI flags | every flag named in `run.md` / `dino-rs/README.md` exists as a string in a Rust crate |
+| 6 | git leak | `git ls-files` contains no ROM-derived file (M10-26 release checklist) |
+| 7 | known differences | README does not advertise a difference `allow/final.txt` marks GONE |
+| 8 | command lines | a documented command does not combine flags `main.rs` rejects |
 
-Check 6 uses an explicit sentinel table (`GONE_MARKERS` in the script) rather than parsing prose;
-when a new cause is marked GONE in `final.txt`, add its marker there with the source. Checks 1 to 4
-and 6 compare text only, so a regression can be reproduced from any past revision with
-`git show REV:path`. This is a static consistency check, not a substitute for `cargo build
---release`, `cargo test`, `regress.sh` or the MAME comparisons above.
+Check 7 uses an explicit sentinel table (`GONE_MARKERS` in the script) rather than parsing prose;
+when a new cause is marked GONE in `final.txt`, add its marker there with the source. Checks 1 to 5
+and 7 compare text only, so a regression can be reproduced from any past revision with
+`git show REV:path`. Check 8 parses only real command lines (a fenced block or a line starting with
+a binary); prose that merely names several flags — such as the `run.md` line explaining these very
+exclusions — is deliberately skipped, otherwise it would read as a false violation. This is a
+static consistency check, not a substitute for `cargo build --release`, `cargo test`, `regress.sh`
+or the MAME comparisons above.
