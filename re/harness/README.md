@@ -2005,7 +2005,8 @@ quietly stops describing the code or the repo. Run it from the repo root before 
 
 ```sh
 python re/harness/check_docs.py                # 6 checks, exit 0 = clean, 1 = problems, 2 = cannot run
-python re/harness/check_docs.py --self-test    # clean baseline + 6 deliberate drifts must all be caught
+python re/harness/check_docs.py --self-test    # clean baseline + 7 deliberate drifts must all be caught
+python re/harness/check_docs.py --help         # usage (an unknown flag is an error, never a silent normal run)
 ```
 
 It needs only `python` (standard library) and `git`. Unlike everything above it needs no MAME,

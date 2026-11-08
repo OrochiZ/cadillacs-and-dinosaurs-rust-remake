@@ -267,9 +267,31 @@ def self_test(root: pathlib.Path) -> list[str]:
     return failures
 
 
+USAGE = """usage: check_docs.py [--self-test]
+
+  (no args)    run the 6 static doc/code consistency checks
+  --self-test  verify a clean baseline and that 7 deliberate drifts are caught
+  -h, --help   show this message
+"""
+
+# Only these are accepted. An unknown flag must not silently fall through to a
+# normal run: a typo like `--slft-test` would then print "6/6 passed" and look
+# as if the self-test had succeeded.
+VALID_ARGS = {"--self-test", "-h", "--help"}
+
+
 def main() -> int:
     root = pathlib.Path(__file__).resolve().parents[2]
-    if "--self-test" in sys.argv[1:]:
+    argv = sys.argv[1:]
+    unknown = [a for a in argv if a not in VALID_ARGS]
+    if unknown:
+        print(f"check_docs: unknown argument(s): {' '.join(unknown)}\n{USAGE}",
+              file=sys.stderr)
+        return 2
+    if any(a in ("-h", "--help") for a in argv):
+        print(USAGE, end="")
+        return 0
+    if "--self-test" in argv:
         try:
             failures = self_test(root)
         except (FileNotFoundError, ValueError) as exc:
