@@ -1087,6 +1087,8 @@ aggression reroll 0x182A2（capstone + SPEC §6.5 Markov）:
 
 `SPEC.md §14` 的设计结论（值得原文引用）：*"**How a mode is chosen: no central brain.** Each class has its own state machine"*；*"there is **no attack-token system**"*；拥挤靠四件事控制：目标选择偏好 <3 敌人、6 个接近槽位轮换、低 aggression 下低攻击概率（Ferris 在 aggr 0 时 2/32）、波次阈值。
 
+**〔本轮回源补层：census 的第四个计数没人读〕** 上面转述漏了 SPEC §14 紧接着的半句：`+$7D` 标记正在攻击的敌人，census 也按玩家数了这笔账（`+$E5`），但原文写着 **nothing reads that count**（标 [O]，作者 grep 过 `$e1`/`$e5`）。repo 侧全域穷尽复核：`census_prev` 的读点只有 `enemy.rs:838`（`enemy_pick_target` 用 `prev[p][0]` 做 `<3` 负载均衡）与 `enemy.rs:1665`（`retarget_slot` 用 `[2]/[3]` 选侧翼槽）；`lib32.rs:167` 读的是**本帧** `census[p][2]/[3]`；`census[p][1]` 只有 `enemy.rs:798` 的累加写入，`trace.rs` 逐帧对拍字段与 `boss_common.rs:470` 的 Boss 特例写 `prev[2][0]` 按 §0 剥掉。⇒ 四个计数里三个参与分工，「现在有几个正在打你」那格只是记着。**倒推（说人话）**：dino 没有一条「最多几个人能同时打你」的硬规则，连专门数的那本账都没人翻开；玩家觉得「怪围着却不会一起糊脸」，是四件各自局部的事叠出来的——新敌人优先去人少的一侧、六个站位轮流、走到站位才按难度掷一次低概率出手、波次别一次放太多。拥挤控制不住在一本共享账上，而是散在四道小门里。按 §94.17 只限定到 repo 与 SPEC 这两个检索面，不写「原机所有版本都没人读」；按 §11.0 不推断 wof 对应物有无，也不把「记了没人读」写成缺陷。**边界**：SPEC 同节还留了一条 `[I]`（推断，非观测）——debug 名单里的 TAIKI/KOUGEKI/ZETTAI 暗示**其他 class 内部**可能有「等待 / 攻击 / 必攻」的出手节奏。那是单体何时出手的节奏，不是「全场同时几人能打」的配额，不推翻上面 `[O]` 的「那格没人读」；按 §11.0 只登记这条线索、不据推断改写结论，也不去追 debug 名单的逐项值（§94.2 举例层）。
+
 **Boss/近远决策的 ROM 反汇编**（capstone）：
 
 ```
