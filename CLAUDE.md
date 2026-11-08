@@ -3,9 +3,13 @@
 - `dino.zip` is the user's ROM (MAME set "dino"). Never commit it, program/graphics images, the Ghidra
   database, decompiled C or raw disassembly dumps, and never paste ROM bytes or tables into source
   files (code reads the zip at run time through `dino-extract`). `.gitignore` covers these.
-- Exception (user decision 2026-10-12, the repo is always private): the rendered asset dump
-  `re/out/assets/` (made by `re/tools/dump_assets.sh`, browse `re/out/assets/index.html`) IS committed,
-  so nobody has to extract it again. Re-run the dump and commit when the dump tool changes.
+- The rendered asset dump `re/out/assets/` (made by `re/tools/dump_assets.sh`, browse
+  `re/out/assets/index.html`) was committed by user decision 2026-10-12 but is **not in git now**:
+  `4c5c8b4` (2026-11-05, "del out") removed it and `55160d3` commented out the two
+  `!re/out/assets/` exceptions in `.gitignore`. `re/out/*` ignores the whole dump
+  (`git ls-files re/out` is empty; `git check-ignore -v re/out/assets/index.html` confirms it).
+  Generate it locally when you need it. To restore the committed dump, uncomment those two lines,
+  re-run the dump tool and commit it: the 2026-10-12 decision still allows it (the repo is private).
 - `re/`: reverse-engineering workspace. Start with `re/README.md` and `re/specs/CONTEXT.md`;
   topic specs are in `re/specs/{anim,stage,player,enemy}/SPEC.md`. Decompiled C: `re/ghidra/decomp.c`.
 - `dino-rs/`: the Rust port (native logic, no emulation). Read `dino-rs/ARCHITECTURE.md` before

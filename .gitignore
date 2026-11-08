@@ -1,6 +1,9 @@
 # Never commit the ROM itself, program images, the Ghidra database or decompiled code.
-# Exception (user decision 2026-10-12, the repo is always private): the asset dump re/out/assets/
-# (pictures, animations, maps, text, samples rendered by re/tools/dump_assets.sh) IS committed.
+# The rendered asset dump re/out/assets/ (pictures, animations, maps, text, samples made by
+# re/tools/dump_assets.sh) was committed by user decision 2026-10-12, but is NOT in git now:
+# 4c5c8b4 (2026-11-05, "del out") removed it and the two !re/out/assets/ exceptions below are
+# commented out (55160d3), so re/out/* ignores the whole dump. Generate it locally when needed;
+# uncomment those two lines, re-run the dump tool and commit it to restore (see CLAUDE.md).
 *.zip
 re/rom/
 re/out/*
