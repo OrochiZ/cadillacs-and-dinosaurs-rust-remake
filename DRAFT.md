@@ -36,6 +36,8 @@
 - CLI flag 集合：文档 42 vs `main.rs` 38，差集仅 cargo/libtest 的 3 个与 `--rom`（由 `dino-extract/src/rom.rs:70` 的 `Rom::find` 自己扫 args）。反向空。
 - 22 个 `--jump` 名与 `jumps.rs` 双向差集空；README 11 个 settings key 与 `config.rs` `OPTIONS` 一一对应且默认值逐项一致；6 步配置查找顺序与 `config.rs:18-19`、`main.rs:299-301` 一致。
 - `dino-rs/ARCHITECTURE.md` ownership 表 72 个显式 `.rs` 路径按 basename 在 `dino-rs/` 全树（303 个 .rs）**零悬空**。第一版按固定根解析报 40 个 missing 是判据错（表里写的是相对不同根的路径），已纠正。
+- Cargo workspace（M10-25「fresh clone builds」的静态前提）：4 个 members 都有目录、4 个 package 名与 `Cargo.lock` 及 `ARCHITECTURE.md` 一致、`edition = "2024"` 与 README 一致、`main.rs` 的 15 个 `mod` 声明零缺失。
+- 文档里 23 个 `re/harness/*.sh|py` 脚本引用按 `git ls-files` 全部存在、零悬空（这次用 Python 做，避开前两次 PowerShell 反引号/子表达式被安全策略拦的写法）。
 - `regress.sh` 是纯 MAME step-mode 回归（要 ROM 与 traces），**没有**把静态检查挂进去：会让轻量检查依赖重环境，是倒退。
 - 历史文档里的「committed」旧措辞（`D5-final-plan.md:108/3721`、`re/specs/sound/SPEC.md:23`、`HANDOFF.md:5`、`re/notes/DECISIONS.md:140`）有意不扩散改；`re/README.md:14`、`asset-catalog.md:5`、`NEW-PLAN.md:34` 本来就写「git-ignored」，与现状一致。
 - `final.txt` 有 10+ 处 GONE，但绝大多数是 `Player sees: no` 的 trace/harness 差异，README 的 Known Differences 只列玩家可见的 6 条；工具用显式哨兵表（`GONE_MARKERS`）而非强制每个 GONE 都有 marker，避免噪音。**不再给工具加第 8、9 项检查**：继续加会变成「为不停制造边际活」。
