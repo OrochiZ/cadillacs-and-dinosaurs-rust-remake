@@ -224,21 +224,20 @@ steer_slot(e):
     # state 2 approach / state 6 MAAI 悬停 / rotate_slot 卡住轮换 都用这套槽位
 ```
 
-关键点只有一句：**`census` 把"当前帧谁瞄谁"存成 `census_prev`，`pick_target` / `retarget_slot` 读的是上一帧的值**。于是"某个玩家被瞄的人多了"这件事，要到**下一帧**才会让新敌人改选目标、并让人少一侧得到包抄。这是刻意的一帧延迟，不是 bug。
+关键点只有一句：**`enemy_census` 在帧首先把上一帧那本账封存成 `census_prev`（`census_prev = census`）、清零 `census`，再当场重扫敌人写出本帧新账；`pick_target` / `retarget_slot` 读的始终是 `census_prev` 这本旧账**。于是本帧里敌人刚改的目标、刚发起的攻击，要等**下一帧帧首**才被重新统计进新账。这是刻意把「读」和「写」用帧边界错开，不是 bug。
+
+**〔帧序就地订正（本轮回源）〕** 早期本节把 census 写成「统计在帧末」、流程图把它画在 `frame N-1 末尾` / `本帧末`，是**帧序写反**：`mod.rs:360-372` 里 `enemy_census 0x3242E` 是 `objects_update` 的**第一项**（帧首），`enemy.rs:769-805` 明写先 `census_prev = census` 封存旧账、清零 `census`、再当场重扫敌人写出本帧新账；`dino-rs/ARCHITECTURE.md:84-88`、00 卷 §2.1:210-214、本卷 §15.0:419 三处笔记也都把 census 排在 `players_update` / `enemies_update` 之前。下面流程图与本节对照表已就地回改；总入口清册、02 卷 §38.2 数据定义表、06 卷 §94.22 的「帧末滚动」同源，一并收窄。**按 A.13 的例外**：这是位置事实写反、会改变「为什么隔一帧」的因果，不是措辞宽窄，故就地回改而不是只点名作废；§13 其余结论（负载均衡 / 侧翼槽位 / 与难度联动）不变，跨卷倒推记在 06 卷 §94.22 帧序段。本轮 0 次查 ROM，帧序取自 repo 内已登记的 ROM 语义。
 
 ```mermaid
 flowchart TD
-    subgraph FN1[frame N-1 末尾]
-    C1[enemy_census 0x3242E<br/>统计 census 每玩家 4 计数] --> CP[(census_prev<br/>上一帧快照)]
-    end
     subgraph FN[frame N]
+    C1["帧首 objects_update 第一项：enemy_census 0x3242E<br/>先 census_prev = census 封存旧账、清零 census<br/>再重扫敌人写出本帧新账"] --> CP[(census_prev<br/>供本帧决策读的旧账)]
     CP --> PT[pick_target 0x32032<br/>min prev c0 小于3 则负载均衡<br/>否则 最近/分数/HP/动作 加权]
     PT --> RS[retarget_slot 0x35172<br/>按 prev 左右人数选 6 槽]
     RS --> SS[steer_slot 0x351C4<br/>查 SLOTS 表 转向槽位]
     SS --> MV[state2 approach / state6 MAAI<br/>at_slot 攻击概率 / rotate_slot]
-    MV --> C2[本帧末 enemy_census<br/>写入新的 census]
     end
-    C2 -.成为下一帧.-> CP
+    MV -.本帧变化等下一帧帧首才进新账.-> C1
     K[每个敌人死亡 0x2AFCA] -.reroll aggression.-> R[Rank: level/aggression]
     R --> PT
 ```
@@ -281,7 +280,7 @@ flowchart TD
 | 不扎堆 | `census_prev[p][0] < 3` 优先补人少的玩家，是**全局负载均衡** | 无全局统计；`0x3E62` 表在多人活跃时用 `rng&3` 轮转（111 行 `00 01 02 ff`），是**概率分散** |
 | 侧翼包抄 | 6 个接近槽位 + `retarget_slot` 按上一帧左右人数选槽 + `rotate_slot` 卡住轮换 | 未见等价的 census 驱动槽位系统；`0x3F0C` 只做站位偏置 |
 | 决策依据 | 上一帧的**群体状态**（谁被瞄几个、左右分布）+ 本帧的多维个体加权（最近/分数/HP/动作/朝向/走路） | 本帧的**活跃玩家组合** + rng；个体维度只有 `0x39A0` 的"最近" |
-| 反馈延迟 | 刻意一帧：统计在帧末，决策读 `prev` | 无（当帧闭环） |
+| 反馈延迟 | 刻意一帧：**帧首**封账 + 重统计，本帧决策读 `prev` 旧账（不是统计在帧末） | 无（当帧闭环） |
 | 目标锁定 | 目标存在 `e.TARGET`，每次 `reset_ai` / 受击 / 入场后重选 | `OBJ+0xC3` 显式选择锁，`0x4244` 用位图校验，玩家消失才清锁 |
 | 与难度联动 | census / 槽位攻击概率都读 `Rank.aggression`（§9.5 / §10.2） | 位图与难度无关（§11.1 已收敛：不是 AI 档位） |
 

@@ -1620,7 +1620,7 @@ for a in list { for v in list {
 
 | 角 | 事实 |
 |---|---|
-| 数据定义 | `G.$4F3` 存活敌人数，帧末 census 滚动，`flow.rs:430` 换区清零 |
+| 数据定义 | `G.$4F3` 存活敌人数，**帧首** `enemy_census` 内 `alive = alive_run; alive_run = 0` 封账（`enemy.rs:775-776`，不是帧末滚动），`flow.rs:430` 换区清零 |
 | 谁读 | `pass_10664` 的 `player_g4f3()`（`player_combat.rs:204-208`）；同一字节另被 `boss.rs:211/250` 放怪闸门（§94.22）、`prop.rs:562` 波次阈值、`enemy_combat.rs:1379` 眩晕概率表、`class6_ai.rs:361` 出招脚本表索引共读 |
 | 玩家看得见 | 场上敌人 0 / 1 / 2 个时，两名玩家隔着高度层还能互相打到；敌人到 3 个，玩家互伤整段不判 —— 乱战里不再自己人打自己人 |
 
