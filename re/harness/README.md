@@ -1997,3 +1997,31 @@ to the port. Results, method and the list of code that normal play reaches but n
 re/harness/coverage/all.sh                                   # every job (about three hours, one MAME process at a time), then the map
 re/.venv/bin/python -I re/harness/coverage/map.py            # the numbers and re/out/coverage/*.tsv from the hits
 ```
+
+## Static doc/code checks (M10-26 closeout; no MAME, no ROM, no venv)
+
+`check_docs.py` catches the class of drift that MAME comparisons cannot see: a document that
+quietly stops describing the code or the repo. Run it from the repo root before a release:
+
+```sh
+python re/harness/check_docs.py                # 6 checks, exit 0 = clean, 1 = problems, 2 = cannot run
+python re/harness/check_docs.py --self-test    # clean baseline + 6 deliberate drifts must all be caught
+```
+
+It needs only `python` (standard library) and `git`. Unlike everything above it needs no MAME,
+no `dino.zip`, no `re/.venv` and no built binary, so it also runs on a fresh clone with no ROM.
+
+| # | check | sources compared |
+| --- | --- | --- |
+| 1 | milestone states | `plan/PLAN.md` short map vs the authoritative `STATUS.md` table |
+| 2 | jump point names | the `--jump` table in `run.md` vs `JUMPS` in `jumps.rs` (both directions) |
+| 3 | settings keys | README "Available Settings" vs `OPTIONS` in `game/flow/config.rs` (both directions) |
+| 4 | CLI flags | every flag named in `run.md` / `dino-rs/README.md` exists as a string in a Rust crate |
+| 5 | git leak | `git ls-files` contains no ROM-derived file (M10-26 release checklist) |
+| 6 | known differences | README does not advertise a difference `allow/final.txt` marks GONE |
+
+Check 6 uses an explicit sentinel table (`GONE_MARKERS` in the script) rather than parsing prose;
+when a new cause is marked GONE in `final.txt`, add its marker there with the source. Checks 1 to 4
+and 6 compare text only, so a regression can be reproduced from any past revision with
+`git show REV:path`. This is a static consistency check, not a substitute for `cargo build
+--release`, `cargo test`, `regress.sh` or the MAME comparisons above.
