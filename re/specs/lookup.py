@@ -16,6 +16,8 @@
     python re/specs/lookup.py frame 12 0A01 8000 0100 0405 1A02 0011    解码 12 字节帧记录
     python re/specs/lookup.py anim 10 0A01 8000 0100 0405 1A02 0A01 8000 0100 0085 1A02
                                                          把一串帧记录翻成一段动画时间线
+    python re/specs/lookup.py comp 0002 0002 0005 0003 0802 0803 FFF8 FFE0 0008 FFF0
+                                                         把一串 SPR composition 翻成「几块图 / 贴在哪」
     python re/specs/lookup.py box -1 10 -68 59 29 42     六个 i16 判定盒 -> 打哪儿 / 够多远
     python re/specs/lookup.py spawn 04D0 0141 0008 0120 0040 0000 0000   解码 14 字节生成记录
     python re/specs/lookup.py spawn 16 04D0 0141 0008 0120 0040 0000 0000 0000
@@ -53,7 +55,7 @@ DOMAINS = DB["domains"]
 
 # 这些域的「数字」是字节偏移或位编号，不是游戏里读到的取值；
 # 只给一个取值反查时必须排除，否则会把 "+4 字段" 当成 "取值 4"。
-OFFSET_KEY_DOMAINS = ("attack_field", "box_field", "wof_atk_field")
+OFFSET_KEY_DOMAINS = ("attack_field", "box_field", "wof_atk_field", "comp_extra")
 
 # SPEC §3.6 只逐段列了 Jack 的前三套；第 3/4/5 套只有套级用途。
 SET_DOMAINS = {0: "jack_anim_set0", 1: "jack_anim_set1", 2: "jack_anim_set2"}
@@ -505,6 +507,100 @@ def cmd_anim(tokens: list[str]):
     return 0
 
 
+def s16(b: bytes, off: int) -> int:
+    """layout 里的 dx/dy 是有符号 16 位。"""
+    v = u16(b, off)
+    return v - 0x10000 if v & 0x8000 else v
+
+
+def describe_attr(n: int) -> str:
+    """把 CPS1 OBJ attr 字翻成人话；位含义取自 sprite_attr 域的登记。"""
+    p = n & 0x1F
+    w = ((n >> 8) & 0xF) + 1
+    h = ((n >> 12) & 0xF) + 1
+    parts = [f"调色板 {p}"]
+    if n & 0x20:
+        parts.append("X 翻转")
+    if n & 0x40:
+        parts.append("Y 翻转")
+    parts.append(f"块 {w}×{h} 个 16×16")
+    return "；".join(parts)
+
+
+def cmd_comp(tokens: list[str]):
+    """把一串 SPR composition 字节翻成『这帧由几块零件拼成、贴在哪、什么形状』。"""
+    if not tokens:
+        print("用法：comp <hex bytes...>   composition 记录（8 字节头 + entries）")
+        print("      后面若还接了 n×4 字节，就当 layout 的 (dx,dy) 摆位一起解")
+        return 1
+    raw = "".join(t.replace("0x", "").replace(" ", "") for t in tokens)
+    try:
+        b = bytes.fromhex(raw)
+    except ValueError as e:
+        print(f"十六进制读不出：{e}")
+        return 1
+    if len(b) < 8:
+        print(f"字节不够：拿到 {len(b)}，composition 头就要 8 字节")
+        return 1
+    count, n, hattr, layout_idx = u16(b, 0), u16(b, 2), u16(b, 4), u16(b, 6)
+    alt = bool(hattr & 0x8000)
+    esize = 4 if alt else 2
+    need = 8 + n * esize
+    if n == 0 or len(b) < need:
+        print(f"entry 读不全：n={n}、{'alt' if alt else 'normal'} 格式要 {need} 字节，实际 {len(b)}")
+        return 1
+
+    print(f"SPR composition：{len(b)} 字节，{n} 个 entry")
+    print("=" * 78)
+    print(f"  +0 count  = 0x{count:04X}  总 16×16 硬件图块数（各 entry 的 块宽×块高 之和）；"
+          "只喂调试用的 sprite-usage 计数，不参与绘制")
+    print(f"  +2 n      = {n}      这一帧由几块零件拼成（SPEC 里 1..55）")
+    _, cv = match_value(DOMAINS["comp_format"], "1" if alt else "0")
+    print(f"  +4 hattr  = 0x{hattr:04X}  → {cv['meaning']} {fmt(cv['tag'])}")
+    print(f"            low5 = {hattr & 0x1F}  " +
+          ("（alt 格式这一格只占位，调色板逐 entry 自带）" if alt
+           else "（normal 格式：这一格就是全帧共用的调色板）"))
+    print(f"  +6 layout = 0x{layout_idx:04X}  layout 索引（不是字节偏移），指向 n×(dx,dy) 摆位表；"
+          "同一组摆位可被多帧共享")
+    print("-" * 78)
+
+    entries = []
+    for i in range(n):
+        off = 8 + i * esize
+        code = u16(b, off)
+        attr = u16(b, off + 2) if alt else hattr
+        entries.append((code, attr))
+        print(f"  entry #{i:02d}  code=0x{code:04X}  attr=0x{attr:04X}  → {describe_attr(attr)}")
+
+    has_layout = len(b) >= need + 4 * n
+    print("-" * 78)
+    if has_layout:
+        for i in range(n):
+            off = need + i * 4
+            dx, dy = s16(b, off), s16(b, off + 2)
+            print(f"  entry #{i:02d}  dx={dx:6d}  dy={dy:6d}  "
+                  "→ 相对对象原点（X、脚底）的左上偏移；朝右时整体镜像")
+    else:
+        print(f"  （没接 layout 字节：还差 {4 * n} 字节才能知道每块贴在哪；"
+              "把 layout 的 n×4 字节接在 composition 后面一起喂）")
+
+    print("=" * 78)
+    print("这一帧的形状（只靠数字，不看 GFX）：")
+    print(f"  · 由 {n} 块零件拼成；数据里第一块最先发出 = 优先级最高，画在最上层")
+    print("  · entry 按头 → 脚排：涉水时按 +$4C / +$4D 从末尾藏掉脚 / 腿，"
+          "附带的 4 字节查 `lookup.py comp_extra`")
+    print("  · " + ("alt 格式：每块自带 attr，允许块精灵（一块占多个 16×16 图块）"
+                    if alt else "normal 格式：全帧共用同一个 attr，且都是 1×1 图块"))
+    print("  · layout 与 composition 分开存：同一批零件换一组摆位就是另一帧，"
+          "不用重画人 —— 动作改的是摆位和编号，不是整张图")
+    print("  · 朝右（facing != 0）时整体镜像，盒的 X 区间也跟着翻")
+    print("\n  看不到 GFX 不能说：code 只是图块编号，不知道这块是拳头、刀光还是衣褶，"
+          "也不知道色板实际长相")
+    print("  衔接：`frame` 的 +0/+2 指到这里；判定形状交给 `box`；"
+          "整段身份用 `anim`；三层串起来就是 `chain` 讲的那条线")
+    return 0
+
+
 def cmd_anim_id(tokens: list[str]):
     """按「套号 + 段号」查 Jack 的动画编号是哪一招（ANI 表 u16 offset[id] 的 id）。"""
     if len(tokens) != 2:
@@ -715,6 +811,23 @@ def cmd_selftest():
     ck("box 六个数能复算出打击形状",
        "X 区间 [-68, -9]" in out and "Y 区间 [29, 71]" in out and "Z 区间 [-1, 9]" in out)
 
+    # SPR composition：ANI -> SPR -> 判定框 中间那一环也能离线查
+    out = capture(cmd_comp, ["0002", "0002", "0005", "0003", "0802", "0803",
+                             "FFF8", "FFE0", "0008", "FFF0"])
+    ck("comp normal 格式能解出共用调色板与摆位",
+       "normal 格式" in out and "调色板 5" in out and "2 个 entry" in out and "dx=" in out)
+    ck("comp 明说 count 不参与绘制、entry 按头到脚、GFX 边界",
+       "不参与绘制" in out and "头 → 脚" in out and "看不到 GFX 不能说" in out)
+    out = capture(cmd_comp, ["0005", "0002", "800D", "0010", "1000", "112D",
+                             "1010", "006E", "FFF8", "FFE0", "0008", "FFF0"])
+    ck("comp alt 格式逐 entry 拆 attr",
+       "alt 格式" in out and "逐 entry 自带" in out and "调色板 14" in out and "Y 翻转" in out)
+    ck("comp alt 能读出块精灵尺寸", "块 2×2 个 16×16" in out)
+    ck("composition 附带 4 字节已进缓存",
+       "comp_extra" in DOMAINS and "+$4C" in DOMAINS["comp_extra"]["values"])
+    out = capture(cmd_collide, "4")
+    ck("字段偏移域 comp_extra 不参与按取值反查", "comp_extra ->" not in out)
+
     # 生成记录解码：命令字（flags 低字节 bit7 = 0x0080）/ 池 / 人数条件
     out = capture(cmd_spawn, ["04D0", "0084", "0004", "0000", "0000", "0000", "0000"])
     ck("spawn 命令记录识别成脚本命令", "脚本命令" in out and "重掷" in out)
@@ -898,6 +1011,8 @@ def main(argv: list[str]) -> int:
         return cmd_frame(rest)
     if cmd == "anim":
         return cmd_anim(rest)
+    if cmd == "comp":
+        return cmd_comp(rest)
     if cmd == "box":
         return cmd_box(rest)
     if cmd == "spawn":

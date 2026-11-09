@@ -101,6 +101,18 @@
         "1": { "meaning": "alt 格式：每个 entry 自带 attr，允许块精灵", "tag": "O" }
       }
     },
+    "comp_extra": {
+      "label": "SPR composition 附带 4 字节（obj+$4C..+$4F）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §2.6；由 0x11D220 + comp_index 拷入对象",
+      "note": "这 4 字节不决定『画什么』，决定『画的时候哪些零件要藏、影子怎么跟』；composition 里的 entry 按头 → 脚排，所以藏的是末尾的脚 / 腿。字段键不是取值，按数值反查时要排除。",
+      "values": {
+        "+$4C": { "meaning": "水位 0 时，从末尾藏掉几个 entry（脚 / 腿）", "tag": "O" },
+        "+$4D": { "meaning": "水位 1 时，从末尾藏掉几个 entry", "tag": "O" },
+        "+$4E": { "meaning": "bit7=1 不画影子 / 不生成水花；高半字节选影子与水花图集；0x70 另把影子下移 4 px", "tag": "O" },
+        "+$4F": { "meaning": "用途未明，不从字段名猜", "tag": "U" }
+      }
+    },
     "frame_timer": {
       "label": "帧记录 byte+7（时长与末帧标志）",
       "scope": "dino",
@@ -918,7 +930,7 @@
   "coverage": {
     "note": "按回源 SPEC 列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么不转。给压缩恢复后用，不当待办清单。",
     "registered": [
-      { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id", "jack_anim_set0", "jack_anim_set1", "jack_anim_set2", "combo_counter"] },
+      { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "comp_extra", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id", "jack_anim_set0", "jack_anim_set1", "jack_anim_set2", "combo_counter"] },
       { "source": "notes/06-method.md §94.12–§94.18", "domains": ["wof_reaction", "wof_atk_field", "wof_player_reaction", "wof_hurt_book"] },
       { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "attack_id", "weapon_kind", "weapon_attack_state", "input_buffer"] },
       { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant", "wave_ctrl_r4", "wave_ctrl_r5"] },
@@ -976,7 +988,7 @@
         "key": "data_format",
         "label": "数据层与绘制",
         "question": "看不到 GFX 也能读出的帧 / 盒 / 属性字形状，以及声音编号与声像怎么走",
-        "domains": ["anim_set", "draw_flags", "sprite_attr", "comp_format", "frame_timer", "box_mode", "facing", "param_a", "jack_anim_set0", "jack_anim_set2", "weapon_kind", "sound_command", "sound_code", "sound_header_type", "pan_mode"]
+        "domains": ["anim_set", "draw_flags", "sprite_attr", "comp_format", "comp_extra", "frame_timer", "box_mode", "facing", "param_a", "jack_anim_set0", "jack_anim_set2", "weapon_kind", "sound_command", "sound_code", "sound_header_type", "pan_mode"]
       }
     ]
   }
