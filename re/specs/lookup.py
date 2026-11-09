@@ -21,6 +21,7 @@
     python re/specs/lookup.py box -1 10 -68 59 29 42     六个 i16 判定盒 -> 打哪儿 / 够多远
     python re/specs/lookup.py spawn 04D0 0141 0008 0120 0040 0000 0000   解码 14 字节生成记录
     python re/specs/lookup.py spawn 16 04D0 0141 0008 0120 0040 0000 0000 0000
+    python re/specs/lookup.py script 2C 00 05 01 000A   解码 6 字节过场脚本记录
     python re/specs/lookup.py chain                   ANI -> SPR -> 判定框 能推断什么
     python re/specs/lookup.py find 攻击                按意义关键词反查
     python re/specs/lookup.py collide 4               只给一个取值，列出它在各域的所有意义
@@ -364,6 +365,82 @@ def cmd_spawn(tokens: list[str]):
         ek, ev = match_value(DOMAINS["entrance"], str(b[14]))
         if ev:
             print(f"入场方式 b5b=0x{b[14]:02X} → {ev['meaning']} {fmt(ev['tag'])}")
+    return 0
+
+
+def cmd_script(tokens: list[str]):
+    """解码一条 dino 英雄过场脚本记录（6 字节）：翻成『这一条在等什么 / 覆写什么 / 放行什么』。"""
+    if not tokens:
+        print("用法：script <6 bytes...>   例：script 2C 00 05 01 000A")
+        print("      6 字节 = action, floor_only(G.$4F0), argument(G.$4FD), "
+              "no_clamp(G.$506), timer:word(BE)")
+        return 1
+    raw = "".join(t.replace("0x", "").replace(" ", "") for t in tokens)
+    try:
+        b = bytes.fromhex(raw)
+    except ValueError as e:
+        print(f"十六进制读不出：{e}")
+        return 1
+    if len(b) < 6:
+        print(f"字节不够：拿到 {len(b)}，一条过场脚本记录要 6 字节")
+        return 1
+    b = b[:6]
+    action, floor_only, argument, no_clamp = b[0], b[1], b[2], b[3]
+    timer = u16(b, 4)
+    act_dom = DOMAINS["dino_script_action"]
+    rec = DOMAINS["dino_script_record"]["values"]
+
+    print(f"过场脚本记录 6 字节：{' '.join(f'{x:02X}' for x in b)}   "
+          "（dino 英雄过场，script.rs 0x1DB5E 每帧读一条）")
+    print(f"  src={DOMAINS['dino_script_record']['source']}")
+    print("-" * 78)
+    _, av = match_value(act_dom, f"0x{action:02X}")
+    print(f"  +0 action = 0x{action:02X}  → " +
+          (f"{av['meaning']} {fmt(av['tag'])}" if av
+           else "不在 41 项里，走 script_action 的 default 空分支 [O]"))
+    print("        └ 这是跳表 0x1DBD6 的字节偏移，不是动作序号；"
+          "全部 41 项查 `lookup.py dino_script_action`")
+    # +1/+3 是布尔档位字（player.rs 按 ==0 / !=0 读）；文案取自缓存，开/关按本条取值实时判
+    f1 = rec["+1"]["meaning"].split("：", 1)[-1]
+    f3 = rec["+3"]["meaning"].split("：", 1)[-1]
+    print(f"  +1 floor_only (G.$4F0) = 0x{floor_only:02X}  "
+          f"[{'开' if floor_only else '关'}] 置位时：{f1}"
+          + ("" if floor_only else "；这一位是 0，墙照常挡人（默认地形判定）"))
+    print(f"  +2 argument   (G.$4FD) = 0x{argument:02X}  "
+          f"{rec['+2']['meaning'].split('：', 1)[-1]}")
+    print(f"  +3 no_clamp   (G.$506) = 0x{no_clamp:02X}  "
+          f"[{'开' if no_clamp else '关'}] 置位时：{f3}"
+          + ("" if no_clamp else "；这一位是 0，留在屏幕钳制范围内、路过照常捡东西"))
+    if timer == 0xFFFF:
+        print("  +4 timer:word = 0xFFFF  → wait-until：条件没达就每帧重跑本条，"
+              "绝不推进到下一条")
+    else:
+        print(f"  +4 timer:word = 0x{timer:04X}  → 本条动作跑 {timer} 帧，"
+              "逐帧递减到 0 才读下一条")
+    print("-" * 78)
+    print("这一条在干嘛（只靠六个字节，不看画面）：")
+    if av:
+        head = av["meaning"].split("：")[0]
+        print(f"  · 动作是「{head}」——41 个 action 里多数不是播动画："
+              "要么在等一个条件，要么覆写输入让角色走自己完整的玩家状态机，少数才直接改世界")
+        if "G.$7A9" in av["meaning"]:
+            print("  · 它直接改世界：把镜头锁的放行字 G.$7A9 置 1 —— "
+                  "和波次收尾 `wave_end` 写的是同一个 GO，查 `lookup.py wave_end` 对得上")
+    else:
+        print("  · action 不在 41 项里，这条什么都不做（default 空分支），输入原样通过")
+    print(f"  · 两个规则档位现在是 floor_only {'开' if floor_only else '关'} / "
+          f"no_clamp {'开' if no_clamp else '关'}；它们不是本条专属，"
+          "会保留到后续每一条记录（含 END），直到下一个脚本首记录才重置")
+    print("  · 状态字 +$04 != 0x0200（受击 / 死亡 / 复活）时整条脚本挂起，本条不执行")
+    print("  · 下一条何时读：" +
+          ("条件满足那一刻才推进（0xFFFF wait-until，条件没达就每帧重跑本条）"
+           if timer == 0xFFFF else
+           f"本条跑满 {timer} 帧、timer 减到 0 时翻到下一条 6 字节记录"))
+    print("\n  看不到画面也能知道：这条在等什么 / 覆写什么 / 放行什么、跑几帧、"
+          "下一拍什么时候翻页。")
+    print("  看不到画面不能知道：字幕写了什么字、声音长什么样、姿势具体造型 "
+          "—— 那在文本 / 声音表 / GFX 里。")
+    print("  单看一条不够：档位会跨记录延续，连着上一条一起读才知道这一帧按什么规则跑。")
     return 0
 
 
@@ -834,6 +911,33 @@ def cmd_selftest():
     ck("过场脚本置 GO 与镜头放行链能对上",
        "G.$7A9" in DOMAINS["dino_script_action"]["values"]["0x2C"]["meaning"]
        and "$7A9" in DOMAINS["wave_end"]["values"]["0"]["meaning"])
+
+    # 喂一条 6 字节记录就翻成人话（frame / comp / box / spawn 同款解码器）
+    out = capture(cmd_script, ["2C", "00", "05", "01", "000A"])
+    ck("script 6 字节能解码出 action 意义",
+       "过场脚本记录 6 字节" in out and "置 GO" in out and "G.$7A9" in out)
+    ck("script 说清 action 是字节偏移不是序号", "字节偏移，不是动作序号" in out)
+    ck("script 两个规则档位按取值说开还是关",
+       "[关] 置位时" in out and "[开] 置位时" in out and "0x0200" in out)
+    ck("script timer 说清几帧与何时翻下一条",
+       "本条动作跑 10 帧" in out and "timer 减到 0 时翻到下一条" in out)
+    ck("script 说清档位跨记录保留、action 多数不是播动画",
+       "会保留到后续每一条记录" in out and "多数不是播动画" in out)
+    out = capture(cmd_script, ["20", "00", "00", "00", "FFFF"])
+    ck("script 0xFFFF 认成 wait-until 而不是 65535 帧",
+       "wait-until" in out and "每帧重跑本条" in out and "65535" not in out)
+    ck("script 把置 GO 与波次收尾的同一个 GO 对上",
+       "G.$7A9" in capture(cmd_script, ["2C", "00", "05", "01", "000A"])
+       and "wave_end" in capture(cmd_script, ["2C", "00", "05", "01", "000A"]))
+    out = capture(cmd_script, ["2D", "00", "00", "00", "0001"])
+    ck("script 对未登记的奇数 action 不硬答、说走 default 空分支",
+       "default 空分支" in out and "不在 41 项里" in out)
+    out = capture(cmd_script, ["2C", "00"])
+    ck("script 字节不够时报清楚要 6 字节", "字节不够" in out and "要 6 字节" in out)
+    nr = DB["coverage"]["not_registered"]
+    ck("五套脚本里 #3 Boss 攻击脚本按『单个 Boss 专属』边界不转、理由已进索引",
+       any("Boss 攻击脚本" in x["what"] and "专属" in x["why"] for x in nr))
+
     _, v = match_value(DOMAINS["spawn_pool"], "3")
     ck("spawn_pool 3 → 池 E", bool(v) and "池 E" in v["meaning"], v["meaning"] if v else "miss")
     _, v = match_value(DOMAINS["box_field"], "10")
@@ -1074,6 +1178,8 @@ def main(argv: list[str]) -> int:
         return cmd_box(rest)
     if cmd == "spawn":
         return cmd_spawn(rest)
+    if cmd == "script":
+        return cmd_script(rest)
     if len(rest) == 0:
         return cmd_domain(cmd)
     return cmd_lookup(cmd, rest[0], as_json)
