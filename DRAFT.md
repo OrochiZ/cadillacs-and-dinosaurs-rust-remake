@@ -3,47 +3,33 @@
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 git 跟踪的耐久层。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
 
-## 本轮做了什么：把讲两侧的证据底座接上 wof 半边（第二十八格）
+## 本轮做了什么：让一条判断能挂多条真跑样本（第二十九格）
 
-**背景**：第二十七格 `3165d856` 已提交（wof 16 字节参数行解码，
-67 域 / 532 条，182/182，工作区干净）。这一格做一次底座一致性核对：
-用 PowerShell 读 `semantics.json` 扫九条 `legacy`，看每条挂了几个
-`wof_` 域、`can_check` / `cannot_check` 有没有提到 wof。
-
-### 扫描结果：两条真缺，三条是纪律不是漏
-
-- `swing`（第三节）判断正文明确讲 wof 三帧锁依次解锁 3–5 人，
-  可查域 8 个全是 dino 的帧 / 盒 / 攻击记录 ⇒ 真缺。
-- `beat`（第一节）外推文第 473 行补充讲「定格是双方共同持有的一份
-  时间（dino 三处同写、wof `+0x62` 双方同写）」，底座 13 域无 wof ⇒ 真缺。
-- `values` 的 `can_check` 写「0 在 dino 是关盒 / wof 是合法表项」，
-  靠 `box_index_zero` 一个域就覆盖两侧，不是缺（按 `wof_` 前缀数太粗，
-  人工核过）。
-- `continuity` 提 wof 是在 `cannot_check`（关卡脚本数量概括 + C# 空桩，
-  按 wof 边界不转）；`crowd` / `difficulty` 主体是 dino census / 波次，
-  wof 那半边按 §11.0 不臆断 ⇒ 这三条「没有 wof 域」是纪律，别硬塞。
+**背景**：第二十八格 `a651d996` 已提交（swing / beat 底座接上 wof 半边，
+186/186，工作区干净）。这一格收掉最后一处不对称：那两条判断的
+`can_check` 现在讲了两侧，可跑样本却仍只有 dino 一条。历史上
+`74a1ba38` 正是因为「把能查写宽了」降级过两条，这是同一类风险。
 
 ### 落盘内容
 
-- `semantics.json`：
-  - `legacy.beat` 加 `wof_shake_left`，`can_check` 补「wof 那一拍由双方
-    同写的 `+0x62` 一起数完」。
-  - `legacy.swing` 加 `wof_shake_left` / `wof_atk_field` / `wof_reaction`，
-    `can_check` 补 wof 半边能查什么，`cannot_check` 补「『能依次打到
-    3–5 人』是注释读法、没有逐帧实测」守证据强度。
-  - 没新增域 / 键，coverage / themes / probe 不用动。
-- `lookup.py`：自测加 4 条断言（swing / beat 接上两侧、swing 的 wof
-  半边真跑 `wof_attack ours`、按边界不转的三条没硬塞 wof 域），
-  182 → **186/186**。
-- `DESIGN_DIFF_NOTES.md`：`legacy` 入口段补一句「判断讲两侧的，底座
-  也得跟到两侧」，并写明另三条「缺域」是纪律不是漏查。
+- `semantics.json`：`legacy.note` 改成「probe 可以挂一条或多条，每一条
+  都是 --selftest 真跑过的样本；判断讲两侧的，两侧都得有各自的样本」；
+  `legacy.beat.probe` 改两条（`frame_timer bit7=1` / `wof_shake_left 0`）；
+  `legacy.swing.probe` 改三条（`frame 10 ...` / `wof_attack ours ...` /
+  `wof_shake_left 3`）。其余七条保持单对象，向后兼容。
+- `lookup.py`：新增 `legacy_probes(item)` 把单对象 / 列表统一成列表；
+  `cmd_legacy` 逐条打印样本；自测把「九条 probe」断言改成逐条校验、
+  实跑循环改成双层，并加一条「讲到两侧的判断，两侧各有一条真跑样本」。
+  186 → **190/190**。
+- `DESIGN_DIFF_NOTES.md`：`legacy` 段「每条带一个真跑样本」改成
+  「判断讲两侧的，两侧各挂一条」。
 
-**没有新增设计判断**：这两条只是把已经能查的数据接回已有判断，
-按 §94.23 不重复计数。
+**没新增设计判断**：按 §94.23 不重复计数，这一格只把「声明不算证明」
+补到 wof 半边。
 
-**验证**：`--selftest 186/186`、`py_compile`、`git diff --check`、
+**验证**：`--selftest 190/190`、`py_compile`、`git diff --check`、
 CR=False / BOM=False、`over2000` 除 `DESIGN_DIFF_NOTES.md` 既存 3 行外全 0、
-实跑 `legacy swing` / `legacy beat` 核过更新后的文案。
+实跑 `legacy swing` 核过三条样本都打印出来。
 
 ### 长期口径（细则在耐久层，不在本文件展开）
 
@@ -58,10 +44,11 @@ CR=False / BOM=False、`over2000` 除 `DESIGN_DIFF_NOTES.md` 既存 3 行外全 
   离散编号不连成范围；位域 / 字段偏移域继续被 `collide` 排除。
 - 示例数据（Jack 专属）一律带角色限定，不套到别的角色 / 敌人；盒索引要连盒表一起读。
 - `legacy` 是顶层索引不是 `domains`；每条必须同时写 can_check / cannot_check /
-  probe，probe 必须能被 `--selftest` 真跑通；有 [O] 回源但没转成域的另带 source。
-- 判断讲两侧的，底座也得跟到两侧；但「按 wof 边界不转」的那几条没 wof 域
-  是纪律，别见零就补。按 `wof_` 前缀数域只是粗筛，`box_index_zero` 这类
-  单域覆盖两侧，人工核过再判缺口。
+  probe。`probe` 可以是单个对象也可以是列表，`legacy_probes()` 统一成列表，
+  每条样本都要能被 `--selftest` 真跑通；有 [O] 回源但没转成域的另带 source。
+- 判断讲两侧的，底座也得跟到两侧，两侧各挂一条真跑样本；但「按 wof 边界不转」
+  的那几条没 wof 域是纪律，别见零就补。按 `wof_` 前缀数域只是粗筛，
+  `box_index_zero` 这类单域覆盖两侧，人工核过再判缺口。
 - 每次加命令都要同步 doc 用法与 `cmd_list()` 末尾导航，自测留一条防回归。
 - 工具报错先分「真问题」还是「我的判据不对」；**证据强度也要双向守**：
   不把 [I] 写成 [O]，也不把 [O] 级代码观察降成「叙事」。降级前先回源。

@@ -1195,7 +1195,7 @@
     ]
   },
   "legacy": {
-    "note": "GAMEPLAY_LEGACY.md 九条外推判断 → 缓存里哪些域是它的数据底座。与 themes 正交：themes 按玩法问题归域，这里按一句设计判断归域，并且必须写清「能查到什么」和「查不到什么、为什么」。只列本 rep 已登记的证据；右栏「当代同类常见做法」是外推观察，不占域。每条 probe 是 --selftest 里真跑一次的命令样本，不是又一份声明；can_check 只写缓存里真有取值或真有命令能翻出来的东西；没有对应可查取值的说法一律放 cannot_check，并写明它是量、是未验命名、还是「有 [O] 回源但没转成域」的结构观察——后一类另带 source，别把「缓存没登记」写成「没有证据」。给压缩恢复后从一句判断走回可查数据用，不当待办清单。",
+    "note": "GAMEPLAY_LEGACY.md 九条外推判断 → 缓存里哪些域是它的数据底座。与 themes 正交：themes 按玩法问题归域，这里按一句设计判断归域，并且必须写清「能查到什么」和「查不到什么、为什么」。只列本 rep 已登记的证据；右栏「当代同类常见做法」是外推观察，不占域。probe 可以挂一条或多条，每一条都是 --selftest 里真跑过的命令样本，不是又一份声明；判断讲到两侧的，两侧都得有各自的样本，别让 can_check 写宽了却只有半边有证明。can_check 只写缓存里真有取值或真有命令能翻出来的东西；没有对应可查取值的说法一律放 cannot_check，并写明它是量、是未验命名、还是「有 [O] 回源但没转成域」的结构观察——后一类另带 source，别把「缓存没登记」写成「没有证据」。给压缩恢复后从一句判断走回可查数据用，不当待办清单。",
     "list": [
       {
         "key": "beat",
@@ -1204,7 +1204,10 @@
         "domains": ["frame_timer", "frame_type", "input_buffer", "combo_counter", "entrance", "enemy_ai_state", "spawn_command", "wave_ctrl_r4", "wave_ctrl_r5", "camera_lock", "camera_mode", "dino_script_action", "wave_end", "wof_shake_left"],
         "can_check": "一拍几 tick 由帧记录给、命中定格与续拳缓冲各自怎么攒、进场 / 站位 / 出手 / 收势由谁挑、波次按什么阈值放行、镜头锁到哪个字才松、过场脚本哪些动作在等世界回话；wof 那一拍由双方同写的 +0x62 一起数完，查 wof_shake_left 看这段生命周期怎么同时管硬直门、闪白与群体命中解锁",
         "cannot_check": "玩家实际感到的节奏与「句读」是读法，没有逐帧 trace；波次逐条挑的那几个数是量，按 §94.3 不转成取值语义",
-        "probe": {"argv": ["frame_timer", "bit7=1"], "expect": "link word"}
+        "probe": [
+          {"argv": ["frame_timer", "bit7=1"], "expect": "link word"},
+          {"argv": ["wof_shake_left", "0"], "expect": "解锁"}
+        ]
       },
       {
         "key": "combo",
@@ -1222,7 +1225,11 @@
         "domains": ["frame_type", "attack_field", "box_field", "box_index_zero", "jack_box_example", "jack_attack_record", "anim_set", "comp_format", "wof_shake_left", "wof_atk_field", "wof_reaction"],
         "can_check": "喂一条帧记录翻出身份 / 时长 / 盒索引，喂六个 i16 或示例盒索引翻出前伸与高度，喂 8 字节攻击记录翻出这一拳的后果；wof 半边能查 +0x62 的 0 / 3 / 4 / 5 怎么把一套动作排成依次解锁的几个目标，也能喂 16 字节参数行翻出那一招的反应门票与 shake",
         "cannot_check": "造型长相、拳脚外观、色板 —— 看不到 GFX 就不猜；命中火花的实际观感无实证；wof 侧『一套动作能依次打到 3–5 人』是代码注释给的读法，没有逐帧实测，别写成实测手感",
-        "probe": {"argv": ["frame", "10", "0A01", "8000", "0100", "0405", "1A02"], "expect": "59 像素"}
+        "probe": [
+          {"argv": ["frame", "10", "0A01", "8000", "0100", "0405", "1A02"], "expect": "59 像素"},
+          {"argv": ["wof_attack", "ours", "00", "00", "00", "00", "0A", "00", "03", "00", "56", "00", "00", "00", "06", "0E", "03", "00"], "expect": "群体命中锁"},
+          {"argv": ["wof_shake_left", "3"], "expect": "解锁"}
+        ]
       },
       {
         "key": "death",

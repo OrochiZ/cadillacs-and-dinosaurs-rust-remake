@@ -965,6 +965,14 @@ def cmd_themes(tokens: list[str]):
     return 0
 
 
+def legacy_probes(item: dict) -> list[dict]:
+    """probe 可以是单个样本，也可以挂多条；统一成列表，老数据不用改。"""
+    p = item.get("probe")
+    if isinstance(p, list):
+        return p
+    return [p] if p else []
+
+
 def cmd_legacy(tokens: list[str]):
     """外推文九条判断 → 缓存里哪些域是它的数据底座，以及查不到什么。"""
     items = DB.get("legacy", {}).get("list", [])
@@ -991,8 +999,7 @@ def cmd_legacy(tokens: list[str]):
             print(f"  另有 [O] 回源（结构观察与边界看这里）：{x['source']}")
         print(f"  可查域（{len(x['domains'])}）：{', '.join(x['domains'])}")
         print("    直接翻：" + " / ".join(f"lookup.py {d}" for d in x["domains"][:3]))
-        if x.get("probe"):
-            pr = x["probe"]
+        for pr in legacy_probes(x):
             print(f"    可跑样本：lookup.py {' '.join(pr['argv'])}"
                   f"  → 输出里应有「{pr['expect']}」（--selftest 会真跑一次）")
     print("\n  这是证据底座盘点，不是又九条设计判断；"
@@ -1452,12 +1459,17 @@ def cmd_selftest():
        and "rank / aggression" in out and "五、一群敌人" not in out)
     out = capture(cmd_legacy, ["nope"])
     ck("legacy 未知 key 直说并给出可用列表", "没有这一条" in out and "beat" in out)
-    ck("九条 probe 都带 argv 与 expect",
-       all(it["probe"]["argv"] and it["probe"]["expect"] for it in items))
+    ck("九条 probe 都带 argv 与 expect（挂多条的逐条都要有）",
+       all(pr["argv"] and pr["expect"]
+           for it in items for pr in legacy_probes(it)))
     for it in items:
-        pr = it["probe"]
-        out = capture(main, pr["argv"])
-        ck(f"legacy {it['key']} 的可查样本跑得通", pr["expect"] in out)
+        for pr in legacy_probes(it):
+            out = capture(main, pr["argv"])
+            ck(f"legacy {it['key']} 的样本 {' '.join(pr['argv'])} 跑得通",
+               pr["expect"] in out)
+    ck("讲到两侧的判断，两侧各有一条真跑样本",
+       all(len(legacy_probes(next(x for x in items if x["key"] == k))) >= 2
+           for k in ("beat", "swing")))
     ck("crowd 说清缺的是可查域、不是缺证据",
        any(it["key"] == "crowd" and "[O] 级回源" in it["cannot_check"]
            and "不是叙事" in it["cannot_check"] and "不硬编" in it["cannot_check"]
