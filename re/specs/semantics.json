@@ -1,0 +1,479 @@
+{
+  "meta": {
+    "purpose": "把散在 re/specs 与各卷笔记里的『某个变量取某个值 = 什么抽象意义』收成一份机器可读缓存，供查询脚本与分析时直接读。",
+    "not": "这不是 ROM 数据表，不复制原始字节表；只登记语义。数值本身请回源各 SPEC / tables.txt。",
+    "scope_note": "每条都带 scope 与 source；同一取值在不同游戏、不同链里含义可以不同，查询必须带域（必要时带 side）。",
+    "tags": { "O": "代码或数据里观察到", "I": "有强证据的推断", "U": "未登记 / 未知" },
+    "rom_free": true,
+    "maintainer": "新增条目必须写 source；没有出处的意义标 U，不要从字段名猜。"
+  },
+  "domains": {
+    "frame_type": {
+      "label": "帧类型（帧记录 byte+6 → obj+$2E）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §4.4",
+      "note": "决定这一帧在碰撞循环里算什么身份；命中循环要求攻方 +$2E == 4 才出手。",
+      "values": {
+        "0": { "meaning": "中立帧；若这一帧 +$49 非 0，则它是抓投探测", "tag": "I", "note": "SPEC §4.4 此行整条标 [I]：player handler 0x108FA，探测目标限定在 state 0x0200" },
+        "2": { "meaning": "行走帧；+$49 作抓投探测，命中后双方分别进『抓住』与『被抓』", "tag": "O" },
+        "4": { "meaning": "攻击生效帧：+$49 攻击盒与防守方 +$48 身体盒相交才算命中", "tag": "O" },
+        "6": { "meaning": "特殊 / 必杀攻击帧", "tag": "I", "note": "Jack set1 anim 8 此帧 body box = 0，等于无敌" },
+        "8": { "meaning": "受击反应帧：命中循环跳过 type 8 的防守方", "tag": "O" },
+        "10": { "meaning": "倒地 / 下落帧：同样被命中循环跳过", "tag": "O", "alias": "0xA" },
+        "12": { "meaning": "正抓住对手的姿势帧", "tag": "O", "alias": "0xC" },
+        "14": { "meaning": "正被对手抓住的姿势帧", "tag": "O", "alias": "0xE" }
+      }
+    },
+    "anim_set": {
+      "label": "玩家动画套编号（6 套 × 4 角色）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §3.2；套的用途标 [I] 由美术与代码推断",
+      "note": "套号决定去哪张动画表取首帧；同一个人换套 = 换一整类行为，不是换一帧图。",
+      "values": {
+        "0": { "meaning": "移动类：待机、走、跑、跳、落地、拾取、投掷物品", "tag": "I" },
+        "1": { "meaning": "攻击类：拳连段、必杀、跳跃攻击", "tag": "I" },
+        "2": { "meaning": "受伤类：受击、击倒、起身、眩晕", "tag": "I" },
+        "3": { "meaning": "抓住对手时的动作与投技", "tag": "I" },
+        "4": { "meaning": "被抓住时的动作", "tag": "I" },
+        "5": { "meaning": "持械 / 上半身姿势（分身绘制模式）", "tag": "I" }
+      }
+    },
+    "draw_flags": {
+      "label": "绘制标志位（obj+$25）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §1",
+      "bitfield": true,
+      "values": {
+        "0": { "meaning": "分身绘制：上半身另走 +$30 那条腿层动画状态机", "tag": "O" },
+        "4": { "meaning": "不画动态影子", "tag": "O" },
+        "5": { "meaning": "不生成入水水花", "tag": "O" },
+        "6": { "meaning": "帧记录改用 8 字节原始 sprite list 格式", "tag": "O" },
+        "7": { "meaning": "屏幕空间绘制：不受镜头偏移影响", "tag": "O" }
+      }
+    },
+    "box_mode": {
+      "label": "盒表模式（obj+$4A）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §1 / §4.2",
+      "values": {
+        "0": { "meaning": "单盒表：box = 表基址 + 12 × 索引", "tag": "O" },
+        "1": { "meaning": "多盒表：一帧可取多个盒", "tag": "O" }
+      }
+    },
+    "facing": {
+      "label": "朝向（obj+$24）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §1",
+      "values": {
+        "0": { "meaning": "按原样绘制；素材本身朝左", "tag": "O" },
+        "nonzero": { "meaning": "水平镜像；朝右", "tag": "O", "note": "盒的 X 区间也随朝向镜像" }
+      }
+    },
+    "presence": {
+      "label": "玩家槽位状态（玩家对象 $00）",
+      "scope": "dino",
+      "source": "re/specs/player/SPEC.md 对象字段表",
+      "values": {
+        "0": { "meaning": "槽位空闲", "tag": "O" },
+        "1": { "meaning": "活跃且可被命中", "tag": "O" },
+        "2": { "meaning": "活跃但无敌：bit1 令所有命中测试跳过", "tag": "O" }
+      }
+    },
+    "sprite_attr": {
+      "label": "SPR 属性字 attr 的位含义（CPS1 OBJ）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §2.3",
+      "bitfield": true,
+      "values": {
+        "0-4": { "meaning": "调色板号 0..31", "tag": "O" },
+        "5": { "meaning": "X 翻转", "tag": "O" },
+        "6": { "meaning": "Y 翻转", "tag": "O" },
+        "8-11": { "meaning": "块宽度减一（单位：16×16 图块）", "tag": "O" },
+        "12-15": { "meaning": "块高度减一", "tag": "O" }
+      }
+    },
+    "comp_format": {
+      "label": "SPR composition 头 hattr bit15（帧记录由 w0/w1 指向）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §2.2",
+      "values": {
+        "0": { "meaning": "normal 格式：全部 entry 共用一个 attr，且都是 1×1 图块", "tag": "O" },
+        "1": { "meaning": "alt 格式：每个 entry 自带 attr，允许块精灵", "tag": "O" }
+      }
+    },
+    "frame_timer": {
+      "label": "帧记录 byte+7（时长与末帧标志）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §3.1",
+      "values": {
+        "bit7=1": { "meaning": "本段末帧：紧随其后有一个 i16 link word，指向下一帧（可回环或跳到另一段）", "tag": "O" },
+        "low7=0": { "meaning": "时长 256 tick（0 不是『不显示』）", "tag": "O" },
+        "low7=n": { "meaning": "本帧显示 n tick", "tag": "O" }
+      }
+    },
+    "box_index_zero": {
+      "label": "盒索引取 0 的含义（两边相反，最容易误读的一处）",
+      "scope": "both",
+      "source": "re/specs/anim/SPEC.md §1；notes/03-frame.md §49.5",
+      "context_dependent": true,
+      "values": {
+        "dino": { "meaning": "0 = 没有盒 / 显式关盒：攻击 pass 直接早退，这一帧不打人", "tag": "O" },
+        "wof": { "meaning": "0 = 表第 0 项，合法且有实体矩形；禁止加 ==0 早退门", "tag": "O", "note": "wof 靠动画阶段与 +$62 之类的门表达『这帧不打人』" }
+      }
+    },
+    "attack_field": {
+      "label": "AttackRecord 8 字节逐字段语义（一招一行）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §4.5；dino-assets/src/sprites.rs:149-158",
+      "values": {
+        "+0": { "meaning": "伤害基值（还要过反击 / 弱点 / 等级等多因子流水线）", "tag": "O" },
+        "+1": { "meaning": "韧性削减量，扣防守方眩晕槽 +$78", "tag": "I" },
+        "+2": { "meaning": "受击反应编号：写进被击者身上，由受击状态机决定演出", "tag": "O", "note": "编号只是门票，不是死法名" },
+        "+3": { "meaning": "命中定格帧数：同时写攻方与守方 +$59，双方共用同一份时间", "tag": "O" },
+        "+4": { "meaning": "音效 id；0 = 无", "tag": "O" },
+        "+5": { "meaning": "得分：作为 score_bcd 的字节偏移", "tag": "I" },
+        "+6": { "meaning": "命中火花类型，交给特效对象", "tag": "O" },
+        "+7": { "meaning": "写防守方 +$9A，用途未登记", "tag": "U" }
+      }
+    },
+    "box_field": {
+      "label": "判定盒记录 12 字节（6 × i16）逐字段语义",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §4.1",
+      "note": "六个有符号数合起来就是『这一下打哪儿、够多远、容许多大深度差』；不需要看图也能读出打击形状。",
+      "values": {
+        "+0": { "meaning": "zoff：纵深近边，相对 obj+$10", "tag": "O" },
+        "+2": { "meaning": "zsize：纵深跨度", "tag": "O" },
+        "+4": { "meaning": "xoff：X 近边，相对 obj+$08（朝左时）", "tag": "O" },
+        "+6": { "meaning": "xsize：X 宽度（朝右时整体镜像）", "tag": "O" },
+        "+8": { "meaning": "yoff：高度下沿，相对 obj+$0C", "tag": "O" },
+        "+10": { "meaning": "ysize：向上高度跨度", "tag": "O" }
+      }
+    },
+    "wof_reaction": {
+      "label": "wof 受击反应编号 → 敌人受击入口（0x11878 表）",
+      "scope": "wof",
+      "source": "notes/06-method.md §94.14；§94.16 链路",
+      "context_dependent": true,
+      "note": "编号后面还隔着入口路径选手册、状态档位、按 ObjId 的动画 / 碎尸链；同一编号不同对象演出来可以不同。",
+      "values": {
+        "0": { "meaning": "默认族：击倒前硬直 → 后退 → 起身", "tag": "O" },
+        "2": { "meaning": "无专门分支：默认击倒飞行", "tag": "O" },
+        "4": { "meaning": "抓投弹飞族 + 撞边反转：被打飞、撞墙反弹", "tag": "O" },
+        "6": { "meaning": "无专门分支：击倒飞行；死亡时投递击杀加分事件（repo 内不通向火烧）", "tag": "O" },
+        "8": { "meaning": "分身替换族：复制自身到另一对象、抬升 PosZ", "tag": "O", "alias": "0x08" },
+        "10": { "meaning": "下跳命中翻滚", "tag": "O", "alias": "0x0A" },
+        "12": { "meaning": "碎片生成：生成碎片对象", "tag": "O", "alias": "0x0C" },
+        "14": { "meaning": "碎尸族：造 ObjId=0x0B 的碎尸 1C 对象", "tag": "O", "alias": "0x0E" },
+        "16": { "meaning": "分身替换族（与 0x08 同族）", "tag": "O", "alias": "0x10" }
+      }
+    },
+    "wof_atk_field": {
+      "label": "wof 一招一行 16 字节参数行的字段语义（两张表布局不同）",
+      "scope": "wof",
+      "source": "notes/06-method.md §94.12 / §94.13",
+      "context_dependent": true,
+      "note": "同一字节在不同命中链里会被读成不同东西；查这一域必须说明是我方表还是敌方表、哪条链。",
+      "values": {
+        "ours:+0..3": { "meaning": "伤害随机偏移 long；HP>0x10 取高 half", "tag": "O" },
+        "ours:+4..5": { "meaning": "攻击力基值，直接加进 damage", "tag": "O" },
+        "ours:+6..7": { "meaning": "击退距离 + 火花 / 特效等级，写目标 +0x72", "tag": "O" },
+        "ours:+8..9": { "meaning": "事件 / 音效 word，投进事件记录", "tag": "O" },
+        "ours:+0xC": { "meaning": "平时反应编号", "tag": "O" },
+        "ours:+0xD": { "meaning": "致死时改用的另一个反应编号（不是死法名）", "tag": "O" },
+        "enemy:+4..5": { "meaning": "难度索引增量，伤害另从 0x6EE84+d6 查表", "tag": "O" },
+        "enemy:+0xA": { "meaning": "平时反应编号", "tag": "O" },
+        "enemy:+0xB": { "meaning": "致死反应候选（HP<0 && ObjId>4 时改取它）；在 0x8D00 链里又变成硬直时长", "tag": "O" }
+      }
+    },
+    "wave_terminator": {
+      "label": "波次 / 分组记录的收尾值",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §8.2；notes/02-mid.md §28",
+      "values": {
+        "negative": { "meaning": "首字为负（如 0x9FFF）= 分组结束标记；没有另写 end marker", "tag": "O" },
+        "end&0xE": { "meaning": "收尾值低位编码『怎么收』（给 GO / 换区 / 通关）", "tag": "O" }
+      }
+    },
+    "credit_player": {
+      "label": "生成记录 +02 击杀归属",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md 生成记录字段表；GAMEPLAY_LEGACY.md 超时清场条",
+      "values": {
+        "0-2": { "meaning": "归第几个玩家（记分用）", "tag": "O" },
+        "255": { "meaning": "0xFF 或负值 = 不记给任何人；超时清场时掐掉的只有归属，对象退场照常演完", "tag": "O" }
+      }
+    },
+    "param_a": {
+      "label": "帧记录 byte+4 → obj+$2C（param A）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §1 / §3.1 / §8 Open gaps",
+      "context_dependent": true,
+      "note": "SPEC 明写 per-state meaning；除拳类动画外逐项意义未登记，脱离处境没有固定答案。",
+      "values": {
+        "1": { "meaning": "在拳类动画里表示连段取消窗口开放（此帧起允许续拳）", "tag": "I" },
+        "other": { "meaning": "其余取值按状态而定，未登记", "tag": "U" }
+      }
+    },
+    "sound_id": {
+      "label": "攻击记录 +4 音效 id",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §4.5",
+      "values": {
+        "0": { "meaning": "不发声", "tag": "O" },
+        "nonzero": { "meaning": "触发音效例程（具体音色属音频层，不在本题范围）", "tag": "O" }
+      }
+    },
+    "pool_tag": {
+      "label": "对象池标签（obj+$82）",
+      "scope": "dino",
+      "source": "re/specs/CONTEXT.md 对象池表（标注为 likely）",
+      "values": {
+        "4": { "meaning": "pool A：24 个 0xE0 槽，推断为敌人", "tag": "I" },
+        "8": { "meaning": "pool B：24 个 0xC0 槽，推断为道具 / 场景物", "tag": "I" }
+      }
+    },
+
+    "spawn_command": {
+      "label": "生成脚本命令字（记录 +4，表 0xFD60；flags & 0x80 时生效）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §8.1 command()",
+      "note": "这是『事件脚本』里真正下命令的那一格：它不是生成一个对象，而是改一条场上规则。触发条件仍是记录 +0 的镜头位置。",
+      "values": {
+        "0": { "meaning": "跳过下一条 list-1 记录（从 list 1 发出时无效，因为 s.l1 会被覆盖）", "tag": "O", "alias": "0x00" },
+        "4": { "meaning": "立刻重掷 aggression（敌人进攻性）", "tag": "O", "alias": "0x04" },
+        "8": { "meaning": "把 aggression 强制成记录 +0xC 的值，直到镜头 X 越过记录 +6 的值", "tag": "O", "alias": "0x08" },
+        "12": { "meaning": "设定本关时限（记录 +6，BCD 分:秒）", "tag": "O", "alias": "0x0C" },
+        "16": { "meaning": "加时（记录 +6），上限 04:00", "tag": "O", "alias": "0x10" },
+        "other": { "meaning": "未登记命令字：代码里是空分支，什么都不做", "tag": "O" }
+      }
+    },
+    "spawn_flags": {
+      "label": "生成记录 +2 的 flags 位含义（14 / 16 字节记录共用）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §8.1 spawn_record() / §9",
+      "note": "一个 word 里同时塞了『是不是命令』『去哪个池』『几人才出』『什么难度才出』四件事；查这一域要按位读，不是查一个单独取值。",
+      "values": {
+        "0x80": { "meaning": "这一条不是生成对象，而是脚本命令；命令字取记录 +4", "tag": "O" },
+        "&0x60=0x40": { "meaning": "仅 2 人以上才生成（1 人局跳过）", "tag": "O" },
+        "&0x60=0x60": { "meaning": "仅 3 人局才生成", "tag": "O" },
+        "&0x18=0x10": { "meaning": "难度门：当前 level 必须 <= 高字节 hi，否则跳过", "tag": "O" },
+        "&0x18=0x08": { "meaning": "难度门：当前 level 必须 >= 高字节 hi，否则跳过", "tag": "O" },
+        "hi=f>>8": { "meaning": "高字节不是数量，是难度阈值的比较值", "tag": "O" },
+        "&7": { "meaning": "低 3 位选对象池，见 spawn_pool 域", "tag": "O" }
+      }
+    },
+    "spawn_pool": {
+      "label": "生成 flags & 7 → 对象池（表 0xFD46）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §1 池表；§8.1 931 行",
+      "values": {
+        "0": { "meaning": "池 A：敌人 / Boss / 恐龙 / 场景物，24 个 0xE0 槽", "tag": "O" },
+        "1": { "meaning": "池 B：控制器 / 道具 / 场景物，24 个 0xC0 槽", "tag": "O" },
+        "2": { "meaning": "null，从不使用", "tag": "O" },
+        "3": { "meaning": "池 E：武器 / 食物 / 宝物 / 弹药 / 容器 / 弹丸，24 个 0xC0 槽", "tag": "O" },
+        "4-7": { "meaning": "表外值，SPEC 未登记用途", "tag": "U" }
+      }
+    },
+    "wave_end": {
+      "label": "波次收尾字 end & 0xE（这一波打完后怎么翻页）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §8.2 wave_ctrl() r5=4 分支；§8.3",
+      "note": "等所有玩家回到正常控制态才执行；这是『一关的空间也是一份谱』里翻页的那一拍。",
+      "values": {
+        "0": { "meaning": "GO：立刻把 $7A9 置起、镜头解锁、显示前进箭头", "tag": "O" },
+        "2": { "meaning": "自动走向下一区域（不显示 GO）", "tag": "O" },
+        "4": { "meaning": "关卡结束 / 出口，走 stage_end", "tag": "O" },
+        "6-14": { "meaning": "代码走 default 分支，与 4 一样是关卡结束", "tag": "O" }
+      }
+    },
+    "kill_all": {
+      "label": "$50E 清场原因",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §8.5；§8.2 2-minute rule",
+      "values": {
+        "1": { "meaning": "Boss 死或特殊道具（stage 3 radio）触发的清场，记给 $4E0", "tag": "O" },
+        "2": { "meaning": "波次 7200 帧超时：清场但不记分", "tag": "O" }
+      }
+    },
+    "entrance": {
+      "label": "敌人入场方式（生成 var 低字节，class 2 等）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §9 1007 行注记；§7.3",
+      "note": "这是怪物策略里『进场那一拍』：不是简单地把人放出来，而是决定它怎么进入这段舞。",
+      "values": {
+        "0": { "meaning": "走进", "tag": "O" },
+        "2": { "meaning": "冲进（dash in）", "tag": "O" },
+        "4": { "meaning": "站着或坐着等，玩家靠近才进", "tag": "O" },
+        "6": { "meaning": "淡入", "tag": "O" },
+        "8": { "meaning": "跳进", "tag": "O" },
+        "10": { "meaning": "从上方落下（drop）", "tag": "O", "alias": "0xA" }
+      }
+    },
+    "player_mode": {
+      "label": "玩家状态机最上层档位（$04..$07 的 $04 字节）",
+      "scope": "dino",
+      "source": "re/specs/player/SPEC.md §3.2 状态图末段",
+      "note": "档位之下还有 sub（$05）与状态字 $06；同一个档位 2 里装着地面 / 跑 / 空中 / 受击 / 抓 / 被抓几套完全不同的表。",
+      "values": {
+        "0": { "meaning": "(重)生成 / 入场", "tag": "O" },
+        "2": { "meaning": "正常可操作；sub 0=地面/跑/空中, 2=受击, 4=抓人, 6=被抓", "tag": "O" },
+        "4": { "meaning": "死亡", "tag": "O" },
+        "6": { "meaning": "已移除", "tag": "O" }
+      }
+    },
+    "player_ground_state": {
+      "label": "玩家地面状态字（mode 2 / sub 0 / $06=0，表 0x190F4）",
+      "scope": "dino",
+      "source": "re/specs/player/SPEC.md §3.2 状态表",
+      "note": "状态机设计的主表：连段不是一段动画，是几个各占一格的独立状态，靠命中确认才往下翻。",
+      "values": {
+        "0": { "meaning": "待机 idle", "tag": "O" },
+        "2": { "meaning": "走 walk", "tag": "O" },
+        "4": { "meaning": "刺拳 jab（连段第 1 下）", "tag": "O" },
+        "6": { "meaning": "命中确认：定格 + 连段输入缓冲", "tag": "O" },
+        "8": { "meaning": "第 2 拳", "tag": "O" },
+        "10": { "meaning": "第 3 拳", "tag": "O" },
+        "12": { "meaning": "终结拳", "tag": "O" },
+        "14": { "meaning": "必杀 / desperation", "tag": "O" },
+        "16": { "meaning": "跑动攻击（Jack）", "tag": "O" },
+        "18": { "meaning": "跑动攻击收招", "tag": "O" },
+        "20": { "meaning": "拾取物品", "tag": "O" },
+        "22": { "meaning": "武器攻击（通用）", "tag": "O" },
+        "24": { "meaning": "定时姿势（$10E）[用途未登记]", "tag": "U" },
+        "26": { "meaning": "未登记状态", "tag": "U" },
+        "28": { "meaning": "持枪站立射击", "tag": "O" },
+        "30": { "meaning": "持枪行走射击", "tag": "O" },
+        "32": { "meaning": "蓄力武器（type 0x203）", "tag": "O" },
+        "34": { "meaning": "后坐力武器（type 0x209）", "tag": "O" },
+        "36": { "meaning": "指令冲刺（下、上+攻击）", "tag": "O" },
+        "38-44": { "meaning": "杂项 / 脚本专用状态，未逐项登记", "tag": "U" }
+      }
+    },
+    "player_hurt_reaction": {
+      "label": "玩家受击反应编号（mode 2 / sub 2 的 $06，表 0x1C03E）",
+      "scope": "dino",
+      "source": "re/specs/player/SPEC.md §5.2 / §5.3-§5.5",
+      "context_dependent": true,
+      "note": "编号不是死法名，是一张门票：轻击在 HP=0 / 眩晕槽空 / $5A!=0 / 腾空时会被改判成击倒。同一个 0x1A、0x1C 在敌人侧是完全不同的东西，见 enemy_hurt_reaction。",
+      "values": {
+        "0": { "meaning": "正面轻击（anim 0）", "tag": "O" },
+        "2": { "meaning": "轻击变体（anim 1）", "tag": "O" },
+        "4": { "meaning": "击倒 A", "tag": "O" },
+        "6": { "meaning": "重击倒 B", "tag": "O" },
+        "8": { "meaning": "被投掷", "tag": "O" },
+        "10": { "meaning": "火烧击倒（0xA）", "tag": "O", "alias": "0x0A" },
+        "12": { "meaning": "火烧击倒（0xC）", "tag": "O", "alias": "0x0C" },
+        "14": { "meaning": "击退（0xE），改判时回落击倒 4", "tag": "O" },
+        "16": { "meaning": "击退（0x10），改判时回落击倒 4", "tag": "O" },
+        "18": { "meaning": "击退（0x12），改判时回落击倒 4", "tag": "O" },
+        "20": { "meaning": "击退（0x14），改判时回落击倒 6", "tag": "O" },
+        "22": { "meaning": "击退（0x16），改判时回落击倒 6", "tag": "O" },
+        "24": { "meaning": "击退（0x18），改判时回落击倒 6", "tag": "O" },
+        "26": { "meaning": "来自背后的轻击：翻转朝向", "tag": "O", "alias": "0x1A" },
+        "28": { "meaning": "来自背后的击倒", "tag": "O", "alias": "0x1C" },
+        "30": { "meaning": "起身", "tag": "O", "alias": "0x1E" },
+        "32": { "meaning": "撞墙反弹", "tag": "O", "alias": "0x20" },
+        "34": { "meaning": "特殊（与抓投相关），用途未登记", "tag": "U", "alias": "0x22" }
+      }
+    },
+    "enemy_hurt_reaction": {
+      "label": "敌人受击反应编号（+$06，派发表 0x2A620）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §10.2",
+      "context_dependent": true,
+      "note": "与玩家侧共用一套编号，但分派表不同：0x1A 在玩家侧是『背后轻击』，这里是『起身 / 眩晕』；0x1C 在玩家侧是『背后击倒』，这里是『贴墙滑落』。不先确认对象是谁，编号就会读反。",
+      "values": {
+        "0": { "meaning": "轻畏缩（anim 0）；HP=0 / 韧性=0 / 腾空时改判击倒 4", "tag": "O" },
+        "2": { "meaning": "轻畏缩（anim 1）；同样可改判击倒 6", "tag": "O" },
+        "4": { "meaning": "击倒 A（anim 2）", "tag": "O" },
+        "6": { "meaning": "击倒 B（anim 3）", "tag": "O" },
+        "8": { "meaning": "被玩家投掷；落地弹一次，撞墙则贴墙滑落", "tag": "O" },
+        "10": { "meaning": "火烧击倒（0xA）", "tag": "O", "alias": "0x0A" },
+        "12": { "meaning": "火烧击倒（0xC）；HP=0 时焦尸死亡", "tag": "O", "alias": "0x0C" },
+        "14": { "meaning": "无抬升的后滑（0xE，flinch anim 0）", "tag": "O" },
+        "16": { "meaning": "无抬升的后滑（0x10，flinch anim 0）", "tag": "O" },
+        "18": { "meaning": "无抬升的后滑（0x12，flinch anim 0）", "tag": "O" },
+        "20": { "meaning": "无抬升的后滑（0x14，flinch anim 1）", "tag": "O" },
+        "22": { "meaning": "无抬升的后滑（0x16，flinch anim 1）", "tag": "O" },
+        "24": { "meaning": "无抬升的后滑（0x18，flinch anim 1）", "tag": "O" },
+        "26": { "meaning": "起身 / 眩晕：起身动画结束后可能转星星，全场同时只许一个", "tag": "O", "alias": "0x1A" },
+        "28": { "meaning": "贴墙滑落：30 帧后下滑到地面", "tag": "O", "alias": "0x1C" }
+      }
+    },
+    "pool_e_class": {
+      "label": "池 E 对象类别（+$20 = class * 4）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §13.1；§1 池表",
+      "note": "类别编号决定这份对象归谁演；+$26 才是它内部的具体种类。",
+      "values": {
+        "0": { "meaning": "武器（15 种，+$26 = type*2）", "tag": "O" },
+        "1": { "meaning": "爆炸（+$26 = kind 0..4）", "tag": "O" },
+        "2": { "meaning": "弹药箱（kind 0x0100）", "tag": "O" },
+        "3": { "meaning": "持枪射出的子弹", "tag": "I" },
+        "4": { "meaning": "食物（+$26 = 1..18）", "tag": "O" },
+        "5": { "meaning": "可破坏 / 可举 / 可投的容器", "tag": "O" },
+        "6": { "meaning": "武器 type 11 的辅助对象，用途未登记", "tag": "U" },
+        "7": { "meaning": "开枪副作用", "tag": "I" },
+        "8": { "meaning": "池 B class 18 发出的弹道投射物", "tag": "I" },
+        "9": { "meaning": "宝物（+$26 = 1..16）", "tag": "O" },
+        "10": { "meaning": "枪弹变体", "tag": "I" },
+        "11": { "meaning": "隐形攻击盒（玩家必杀）", "tag": "I" }
+      }
+    },
+    "item_kind": {
+      "label": "物品 kind 字 +$A0 的高字节（决定拾取物大类）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §13.1 1371-1373 行",
+      "note": "低位 kind 越小拾取优先级越高；这里只登记高字节，低字节是具体种类。",
+      "values": {
+        "0": { "meaning": "食物（0x00tt）", "tag": "O" },
+        "1": { "meaning": "弹药（0x0100）", "tag": "O" },
+        "2": { "meaning": "武器 / 容器（0x02kk）", "tag": "O" },
+        "3": { "meaning": "宝物（0x03tt）", "tag": "O" }
+      }
+    },
+    "drop_code": {
+      "label": "掉落表里的一个 byte（RNG & 0x1F 选中）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §13.3；items_drops.py 头注",
+      "note": "同一个 +$96 值在敌人表和容器表里意义不同（两张表），查时要带来源。",
+      "context_dependent": true,
+      "values": {
+        "0": { "meaning": "不掉落", "tag": "O" },
+        "15": { "meaning": "若屏上有枪则掉弹药，否则改查 fallback 行（NECKLACE/RING/WATCH/DIME 等）", "tag": "O", "alias": "0x0F" },
+        "1-14": { "meaning": "武器，type = code-1", "tag": "O" },
+        "16-19": { "meaning": "武器，type = code-1", "tag": "O" },
+        "20-39": { "meaning": "食物，编号 = code-0x13", "tag": "O" },
+        "40-255": { "meaning": "宝物，编号 = code-0x27", "tag": "O" }
+      }
+    },
+    "camera_mode": {
+      "label": "镜头模式（camera segment 的 mode 字节，表 0x2092E）",
+      "scope": "dino",
+      "source": "re/specs/stage/SPEC.md §6.6；§8.3 wave lock",
+      "note": "镜头不是被动跟随：mode 4 会把镜头钉在战斗起点，直到波次收尾字放行。关卡空间是按这份表一页页翻的。",
+      "values": {
+        "0": { "meaning": "正常游玩：跟随 X/Y + 流式补图", "tag": "O" },
+        "1": { "meaning": "区域结束（带淡出淡入、换整套调色板）", "tag": "O" },
+        "2": { "meaning": "向右下斜行", "tag": "O" },
+        "3": { "meaning": "向右上斜行", "tag": "O" },
+        "4": { "meaning": "战斗锁镜头：钉在 segment X，等 GO 才解锁", "tag": "O" },
+        "5": { "meaning": "stage 6 电梯下行程（带屏震）", "tag": "O" },
+        "6": { "meaning": "关卡结束：等 GO 后写 stage clear 标志", "tag": "O" },
+        "7": { "meaning": "随玩家一起下降", "tag": "O" },
+        "8": { "meaning": "不重载地换子区域", "tag": "O" },
+        "9": { "meaning": "慢速淡出过渡", "tag": "O" },
+        "10": { "meaning": "跟随 X，Y 由 camX 线性算出", "tag": "O" },
+        "11": { "meaning": "跟随 X，Y 走下坡（位移量右移 shift）", "tag": "O" },
+        "12": { "meaning": "max_x60 >= 0x750 时每帧 camY -= 1（不低于 0），其余照常跟随", "tag": "O" },
+        "13": { "meaning": "跟随 X，Y 走上坡", "tag": "O" },
+        "14-15": { "meaning": "debug：只流式补图（0x0E 另画属性视图）", "tag": "O" },
+        "16": { "meaning": "等 GO 后写 stage clear，回到 mode 0", "tag": "O" },
+        "17": { "meaning": "自动卷轴：camX 每帧 +3（stage 0 开场）", "tag": "O" },
+        "18": { "meaning": "不带淡出地换区域", "tag": "O" },
+        "19": { "meaning": "关卡结束（带淡出，HUD 保留）", "tag": "O" }
+      }
+    }
+  }
+}
