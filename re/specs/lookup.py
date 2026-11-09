@@ -2023,6 +2023,17 @@ def cmd_selftest():
        any(pr["argv"] == ["enemy_ai_state", "14"] for pr in legacy_probes(diff))
        and "aggression" in diff["can_check"]
        and "逐帧实证" in diff["cannot_check"])
+    beat = next(x for x in items if x["key"] == "beat")
+    ck("拍子那条判断也挂上「被打倒那一侧的时间」，且边界没写宽",
+       "player_hurt_anim" in beat["domains"]
+       and "enemy_hurt_anim" in beat["domains"]
+       and "躺地" in beat["can_check"] and "搓招" in beat["can_check"]
+       and any(pr["argv"] == ["player_hurt_anim", "2"] for pr in legacy_probes(beat))
+       and "没有逐帧 trace" in beat["cannot_check"]
+       and "不逐档登记" in beat["cannot_check"])
+    ck("玩家段表写明改判不挂进 reactions，免得读成同一拍同时播",
+       "改写成反应 0x1A" in DOMAINS["player_hurt_anim"]["note"]
+       and "同时播" in DOMAINS["player_hurt_anim"]["note"])
     for it in items:
         for pr in legacy_probes(it):
             out = capture(main, pr["argv"])

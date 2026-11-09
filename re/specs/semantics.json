@@ -406,7 +406,7 @@
       "scope": "dino / 玩家侧通用",
       "source": "re/specs/player/SPEC.md:979-1115（§5.3–§5.6 各反应里的 anim2(p,N) 调用与倒地时间结构）",
       "context_dependent": true,
-      "note": "查之前先分清两层：这里登记的是「受击代码会去播第几段」，[O] 级、四个角色通用；`jack_anim_set2` 登记的是「那一段长什么样」，[I] 美术推断、只适用于 Jack。同一个段编号可被多个反应共用（正面轻击与正面击退都播 #0），所以按段编号查得到的是一组触发情形，不是一一对应；reactions 里存十进制反应编号，与 player_hurt_reaction 的键同一套。§3.6 的 Jack set2 只逐段列到 #7，#8 / #9 只在受击代码里出现（重击倒 / tech roll 死路径），#5 在 §5 里根本没有调用点——都不把 Jack 的美术标签套过去；Mustapha / Hannah / Mess 的逐段造型按 coverage.not_registered 不转。 敌人侧不适用：敌人的 anim 编号还要按兵种 e.w84 翻一张表，见 enemy_hurt_reaction 的 note 与 re/specs/enemy/SPEC.md:1135-1145；敌人侧另有一张槽位表 enemy_hurt_anim，编号体系不同，别互套。",
+      "note": "查之前先分清两层：这里登记的是「受击代码会去播第几段」，[O] 级、四个角色通用；`jack_anim_set2` 登记的是「那一段长什么样」，[I] 美术推断、只适用于 Jack。同一个段编号可被多个反应共用（正面轻击与正面击退都播 #0），所以按段编号查得到的是一组触发情形，不是一一对应；reactions 里存十进制反应编号，与 player_hurt_reaction 的键同一套，且只列直接分派到该槽的反应：正面轻击在背后命中时会被改写成反应 0x1A 再走 light_behind 分派到 #6，所以不把 0 / 2 也挂进 #6，免得读成同一拍同时播两段。§3.6 的 Jack set2 只逐段列到 #7，#8 / #9 只在受击代码里出现（重击倒 / tech roll 死路径），#5 在 §5 里根本没有调用点——都不把 Jack 的美术标签套过去；Mustapha / Hannah / Mess 的逐段造型按 coverage.not_registered 不转。 敌人侧不适用：敌人的 anim 编号还要按兵种 e.w84 翻一张表，见 enemy_hurt_reaction 的 note 与 re/specs/enemy/SPEC.md:1135-1145；敌人侧另有一张槽位表 enemy_hurt_anim，编号体系不同，别互套。",
       "values": {
         "0": { "meaning": "正面轻击（反应 0）与正面击退（0xE / 0x10 / 0x12 / 0x14 / 0x16 / 0x18）都播这一段；击退还要先定格 $59 帧，再滑 15 / 18 / 20 帧，背后命中改播 #6 并翻转朝向", "tag": "O", "reactions": [0, 14, 16, 18, 20, 22, 24] },
         "1": { "meaning": "轻击变体（反应 2）；与 #0 同一套 light() 流程，定格数完就 recover 回 idle", "tag": "O", "reactions": [2] },
@@ -1239,12 +1239,13 @@
         "key": "beat",
         "title": "一、Beat 是拍子：一场架是被编舞出来的",
         "question": "这一拍谁排、多长、谁跟谁对齐、下一波什么时候进",
-        "domains": ["frame_timer", "frame_type", "input_buffer", "combo_counter", "entrance", "enemy_ai_state", "spawn_command", "wave_ctrl_r4", "wave_ctrl_r5", "camera_lock", "camera_mode", "dino_script_action", "wave_end", "wof_shake_left"],
-        "can_check": "一拍几 tick 由帧记录给、命中定格与续拳缓冲各自怎么攒、进场 / 站位 / 出手 / 收势由谁挑、波次按什么阈值放行、镜头锁到哪个字才松、过场脚本哪些动作在等世界回话；wof 那一拍由双方同写的 +0x62 一起数完，查 wof_shake_left 看这段生命周期怎么同时管硬直门、闪白与群体命中解锁",
-        "cannot_check": "玩家实际感到的节奏与「句读」是读法，没有逐帧 trace；波次逐条挑的那几个数是量，按 §94.3 不转成取值语义",
+        "domains": ["frame_timer", "frame_type", "input_buffer", "combo_counter", "entrance", "enemy_ai_state", "spawn_command", "wave_ctrl_r4", "wave_ctrl_r5", "camera_lock", "camera_mode", "dino_script_action", "wave_end", "wof_shake_left", "player_hurt_anim", "enemy_hurt_anim"],
+        "can_check": "一拍几 tick 由帧记录给、命中定格与续拳缓冲各自怎么攒、进场 / 站位 / 出手 / 收势由谁挑、波次按什么阈值放行、镜头锁到哪个字才松、过场脚本哪些动作在等世界回话；wof 那一拍由双方同写的 +0x62 一起数完，查 wof_shake_left 看这段生命周期怎么同时管硬直门、闪白与群体命中解锁；被打倒那一侧也各有自己的拍子：玩家倒地躺 5 / 15 / 30 帧（按 rank）或搓招提前起身、起身动画走完可能转眩晕，敌人击倒姿态后同样走落地弹起 / 躺地计时 / 起身或死亡——查 player_hurt_anim 与 enemy_hurt_anim，看得出这几拍归谁、谁能提前结束",
+        "cannot_check": "玩家实际感到的节奏与「句读」是读法，没有逐帧 trace；波次逐条挑的那几个数是量，按 §94.3 不转成取值语义；躺地帧数按 rank 分的逐档表、眩晕时间窗的具体数值也是量，只登记『有这一拍、由谁数完』，不逐档登记意义",
         "probe": [
           {"argv": ["frame_timer", "bit7=1"], "expect": "link word"},
-          {"argv": ["wof_shake_left", "0"], "expect": "解锁"}
+          {"argv": ["wof_shake_left", "0"], "expect": "解锁"},
+          {"argv": ["player_hurt_anim", "2"], "expect": "躺地"}
         ]
       },
       {
