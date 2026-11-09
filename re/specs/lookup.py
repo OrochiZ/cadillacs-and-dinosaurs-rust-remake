@@ -631,8 +631,8 @@ def cmd_selftest():
             if not v.get("meaning") or not v.get("tag") or v["tag"] not in ("O", "I", "U"):
                 bad.append(f"{name}.{k} 缺 meaning/tag")
     ck("每个域都有 scope/source，每条都有 meaning/tag", not bad, "; ".join(bad))
-    ck("域数量 >= 55（Jack 三套 ANI 段编号与连段计数也进了缓存）",
-       len(DOMAINS) >= 55, str(len(DOMAINS)))
+    ck("域数量 >= 57（wof 受击手册选择、玩家输入契约也进了缓存）",
+       len(DOMAINS) >= 57, str(len(DOMAINS)))
     for dn in ("player_ground_state", "player_run_state", "player_air_state"):
         ck(f"状态表 {dn} 已登记", dn in DOMAINS)
 
@@ -795,6 +795,24 @@ def cmd_selftest():
     out = capture(cmd_collide, "3")
     ck("collide 3 现在也列出连段计数与 Jack 动画表",
        all(x in out for x in ("combo_counter", "jack_anim_set0", "jack_anim_set1")))
+
+    # wof 受击手册选择 + 玩家输入契约
+    _, v = match_value(DOMAINS["wof_hurt_book"], "0x11878")
+    ck("入口地址 0x11878 → 绝大多数敌人共用的受击手册",
+       bool(v) and "共用" in v["meaning"])
+    _, v = match_value(DOMAINS["wof_hurt_book"], "0x11720")
+    ck("入口地址 0x11720 → 玩家本体手册",
+       bool(v) and "玩家本体" in v["meaning"])
+    ck("按角色分的是动画不是受击逻辑，note 已写明",
+       "动画数据" in DOMAINS["wof_hurt_book"]["note"])
+    out = capture(cmd_lookup, "input_buffer", "$C9", False)
+    ck("输入缓冲 $C9 → 受击中必杀攒 10 帧", "10 帧" in out)
+    ck("输入契约明写没有输入队列",
+       "没有输入队列" in DOMAINS["input_buffer"]["label"])
+    nr = DB["coverage"]["not_registered"]
+    ck("街机前端硬件位按用户边界不转，理由已进索引",
+       any("街机前端" in x["what"] and "硬件" in x["why"] and "游戏性" in x["why"]
+           for x in nr))
 
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:

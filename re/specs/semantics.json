@@ -886,14 +886,41 @@
         "2": { "meaning": "勾拳：set1 anim 3，状态 0x0200000A，$58 = 2；命中后转 anim 5", "tag": "O" },
         "3": { "meaning": "终结拳：set1 anim 4（角色 1 在 $2C = 0 时改用 anim 7），状态 0x0200000C，$58 = 4；命中后转 anim 6，若抓着可投敌人且推方向则改投掷", "tag": "O" }
       }
+    },
+    "wof_hurt_book": {
+      "label": "wof 受击入口路径 → 翻哪本 9 项受击手册",
+      "scope": "wof",
+      "source": "notes/06-method.md §94.16 / §94.17（调用点集合与表值注释）",
+      "context_dependent": true,
+      "note": "完整链路是「reaction 编号 → 入口路径对应的 9 项表 → 状态档位 → 按 ObjId 查 0x25DC 动画表」。真正按角色分的是动画数据，不是受击逻辑；宿主函数名带角色 / 序号的（如「小兵9_受击处理」）是命名误导，按 §11.0 不当成原机事实。键也可用入口地址查（alias 已登记）。",
+      "values": {
+        "shared": { "meaning": "绝大多数敌人共用 0x11878（表 0x11884，9 项）——所谓「小兵9 专属」其实是共享受击体", "tag": "O", "alias": "0x11878" },
+        "variant": { "meaning": "少数变体走 0x124CA（源码明写与 Actor18 / 宿主共用同一实现）", "tag": "O", "alias": "0x124CA" },
+        "generic_tail": { "meaning": "敌人受击总入口 0x117FA 尾部的 0x1185A（表 0x11866），与共享体只在 idx6 / idx8 不同", "tag": "O", "alias": "0x1185A" },
+        "boss_exit": { "meaning": "Boss 濒死退场路径 0x11A46（表 0x11A52），落玩家受击入口族", "tag": "O", "alias": "0x11A46" },
+        "player": { "meaning": "玩家本体 0x11720；五个角色的 B=2 受击段都复用它", "tag": "O", "alias": "0x11720" }
+      }
+    },
+    "input_buffer": {
+      "label": "玩家输入契约：没有输入队列，只有四处各自绑在处境上的缓冲",
+      "scope": "dino",
+      "source": "re/specs/player/SPEC.md §2 Input notes [O]；§4.4 连段缓冲",
+      "note": "「新按下」是 `cur & (cur ^ prev)` 的 1 帧上升沿，不做全局缓冲；能攒起来的只有下面四处，且各自由具体处境兑现。这是「这一拍要问什么」在数据层的落点：不是把所有输入先存起来再统一分派，是每一处自己决定攒不攒、攒多久。",
+      "values": {
+        "$A8": { "meaning": "本帧新按下：1 帧上升沿，不是缓冲区；过了这一帧就没了", "tag": "O" },
+        "$AD": { "meaning": "命中定格期间按下的攻击键，攒到状态放行时兑现（连段续拳靠它）", "tag": "O" },
+        "$C9": { "meaning": "受击中按下的必杀键，攒 10 帧", "tag": "O" },
+        "$BC": { "meaning": "双击计时器（跑步 / 冲刺的前置检测）", "tag": "O" },
+        "$F4/$F5": { "meaning": "指令搓招 FSM：一串方向跨几帧才凑成一招", "tag": "O" }
+      }
     }
   },
   "coverage": {
     "note": "按回源 SPEC 列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么不转。给压缩恢复后用，不当待办清单。",
     "registered": [
       { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id", "jack_anim_set0", "jack_anim_set1", "jack_anim_set2", "combo_counter"] },
-      { "source": "notes/06-method.md §94.12–§94.18", "domains": ["wof_reaction", "wof_atk_field", "wof_player_reaction"] },
-      { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "attack_id", "weapon_kind", "weapon_attack_state"] },
+      { "source": "notes/06-method.md §94.12–§94.18", "domains": ["wof_reaction", "wof_atk_field", "wof_player_reaction", "wof_hurt_book"] },
+      { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "attack_id", "weapon_kind", "weapon_attack_state", "input_buffer"] },
       { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant", "wave_ctrl_r4", "wave_ctrl_r5"] },
       { "source": "re/specs/stage/SPEC.md", "domains": ["camera_mode"] },
       { "source": "re/specs/flow/SPEC.md", "domains": ["game_mode", "game_phase"] },
@@ -908,6 +935,7 @@
       { "what": "wof 民间资料「死 / 附 / 效 / 呆」四列的编号 → 效果名（06 烧死、0C 全碎、02 击倒…）", "why": "§94.14 三方对账只核到数据 ↔ 代码两角，玩家可见现象一角未验；资料把编号直接读成效果名，中间还隔着受击状态机、血量、ObjId 与状态档位。转进来会把未验命名固化成语义，与 debug 词汇表同性质" },
       { "what": "状态字 / 字段里用途未明的项", "why": "已在对应域标 [U]，不从字段名猜；新增条目必须带 source" },
       { "what": "Mustapha / Hannah / Mess 的逐段动画编号表", "why": "SPEC §3.2 只给了这三角色每套的有效 id 数量，§3.6 只逐段列了 Jack 的 set 0/1/2；不能把 Jack 的编号意义套到别人身上，按『不从单个角色推全表』不转" },
+      { "what": "街机前端 G.$1A 的 START / TEST / SERVICE 位、G.$20 投币位、EEPROM 设置字节", "why": "用户明确排除『适配古代硬件特色和低性能』的部分；这些是机台 / 硬件层，不参与关卡里那场架怎么排，转进来会把机台适配误当游戏性" },
       { "what": "位域与字段偏移域里的数字", "why": "那是位号或 +N 字节，不是游戏里读到的取值，按取值反查时要排除" }
     ]
   }

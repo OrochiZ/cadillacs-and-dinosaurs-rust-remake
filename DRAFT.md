@@ -3,35 +3,61 @@
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 git 跟踪的耐久层。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
 
-## 本轮做了什么：把「一次连段的四本册子」倒推回外推文（第六格）
+## 本轮做了什么：补 wof 受击手册选择与玩家输入契约（第七格）
 
-**背景**：第五格 `9d29c20e` 把 ANI 段编号与连段计数转进缓存（55 域 / 431 条、
-66/66 自测），工作区干净。Stop hook 催办后继续。缓存刚补上的四个域正好
-把用户最初关心的「状态机 / 打击逻辑」再倒推一层，按「得到细节后还得倒推
-设计架构和意图」写回耐久层。
+**背景**：`a08c2b8f` 把「一次连段的四本册子」倒推回外推文，工作区干净，
+缓存 55 域 / 431 条、66/66。Stop hook 催办后继续。回源找仍贴主线、
+有出处的符号层。
 
-### 回源与落点
+### 回源与取舍
 
-- 读 `GAMEPLAY_LEGACY.md` 第二节（157-163 行）：已有「命中确认才续拳」、
-  「打空有真实代价」、「当代做法把互动换成表演」，但没写这次「等回答」
-  具体等在哪。新段不重复这三层，补的是**机制落点**。
-- 四本册子：`jack_anim_set1` 的动画段号、`attack_id` 的 `$58`、
-  `player_ground_state` 的状态字、`combo_counter` 的 `+$B2`。
-  回源 `re/specs/anim/SPEC.md §3.6 Punch chain [O]`：命中确认（攻方 `$59 != 0`）
-  才 `+$B2 += 1`，状态 6 里缓存的按键等动画演完才按计数翻页。
-- 写成一句人话：四个编号各管一件事、没有「连段第 3 下」这种全局编号，
-  靠同一拍的命中结果交接；连段不是四拳做进一段动画，是四个小状态机
-  用「碰到人没有」对齐。接回「世界会不会回嘴」主线。
-- 主语收在 dino 侧 Jack 连段，边界行明写不放大成两款游戏共同架构、
-  不与 wof「动画播完加窗口内新按键沿」并成同一套因果。
+- 读 `notes/06-method.md §94.16 / §94.17`：wof 受击是「编号 → 入口路径
+  对应的 9 项表 → 状态档位 → 按 ObjId 查 0x25DC 动画表」四层；
+  且 §94.17 明确「真正按角色分的是动画数据，不是受击逻辑」，
+  宿主函数名带角色 / 序号是命名误导。
+- 读 `re/specs/player/SPEC.md §2 Input notes [O]`：**没有输入队列**，
+  新按下是 1 帧上升沿，能攒的只有 `$AD` / `$C9` / `$BC` / `$F4/$F5` 四处，
+  各自绑在具体处境上。
+- 读了 `re/specs/flow/SPEC.md §6` 的 G.$1A / G.$20 前端输入位与 EEPROM
+  设置字节，**决定不转**：用户明确排除「适配古代硬件特色和低性能」的部分，
+  这些是机台层，不参与关卡里那场架怎么排。理由写进 `coverage.not_registered`，
+  免得以后把机台适配误当游戏性。
+- `re/specs/enemy/SPEC.md §6.4 rank events`：全是 ±N 的量，按既有
+  `not_registered` 第一条不转，不另立域。
 
-### 交付与验证
+### 交付
 
-- 只改 `GAMEPLAY_LEGACY.md` 一处（第二节内插一段 + 一行边界）。
-- `CR=0 BOM=False`、全文件超 2000 字节行数 0、新增两行 868 / 243 字节、
-  `git diff --check` 干净、`git status --short` 只有一处 M。
-- **0 次 ROM**；只读 rep 内 SPEC 与外推文；不碰产物层，不修 `check_docs.py` 假红。
-- 环境硬限制照旧（无 Rust 工具链 / `dino.zip` / `re/rom` / `target`）。
+- `semantics.json` 新增 2 域：
+  - `wof_hurt_book`（5 条描述性键，每条 alias 是入口地址，看到 `0x11878`
+    这类地址也能直接查；context_dependent，note 写清四层链路与命名误导）；
+  - `input_buffer`（5 条字段语义，明写没有输入队列）。
+- `coverage.registered` 06 卷组补 `wof_hurt_book`、player 组补 `input_buffer`；
+  `not_registered` 加街机前端硬件位一条。
+- `lookup.py`：域数量断言 `>= 57`，新增 6 条自测。
+
+### 一处工具失败与订正
+
+- 首跑 `--selftest` 71/72，**唯一 FAIL 是断言写窄了**：条目 `what` 写的是
+  「街机前端」而断言找「硬件」。按「工具失败先分两种」核了实际文本，
+  数据没错，把判据改成检查 `what` 含「街机前端」且 `why` 同时含
+  「硬件」「游戏性」。重跑 72/72。没有为迁就断言去改数据。
+
+### 实跑验证
+
+- `--selftest` → **72/72 通过**。
+- `coverage` → 「合计 57 个域 / 441 条；索引缺 0 个域、多 0 个域」。
+- 抽查：`wof_hurt_book 0x11878` → 绝大多数敌人共用的受击手册（别名生效）；
+  `input_buffer $C9` → 受击中必杀攒 10 帧。
+- `py_compile` OK；`git status --short` 只有两处 M。
+- 注：`coverage | Select-Object -Last 3` 经 PowerShell 管道出现中文乱码，
+  属已知显示问题；完整 coverage 直接运行正常，且 selftest 已断言其内容。
+
+### 边界
+
+- **0 次 ROM**；只读 rep 内 SPEC / 笔记与离线脚本，未碰 `g:/wof/wt1` 源码。
+- 不碰 `re/out/assets/` 产物层，不修 `check_docs.py` 假红，不改 `CLAUDE.md` / `.gitignore`。
+- 不恢复「以 ROM 审 repo」框架；不把 `[I]` 写成 `[O]`；不从字段名 / 常量名猜意义。
+- 环境硬限制照旧（无 Rust 工具链 / `dino.zip` / `re/rom` / `target`），新脚本 ROM-free。
 
 ### 长期口径（细则在耐久层，不在本文件展开）
 
@@ -47,4 +73,5 @@
 
 ## 收尾
 
-- `git add` 两份文件 → `git commit -F` → `Remove-Item` → `git status --short` 复核。
+- 校验三份文件 `CR=0 BOM=False`、新增行 `over2000=0`、`git diff --check`、
+  `git status --short`；`git commit -F` 后 `Remove-Item` 临时信息，再复核干净工作区。
