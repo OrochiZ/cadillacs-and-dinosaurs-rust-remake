@@ -800,6 +800,19 @@ def cmd_selftest():
        and all(str(k) in DOMAINS["player_ground_state"]["values"] for k in (38, 40, 42, 44)))
     out = capture(cmd_collide, "39")
     ck("不存在的奇数状态编号不再被范围键误答", "player_ground_state ->" not in out)
+    _, v = match_value(DOMAINS["dino_cmd_state"], "4")
+    ck("dino 指令技 4 → t2 窗里等按住上+攻击", bool(v) and "t2" in v["meaning"])
+    _, v = match_value(DOMAINS["wof_rkey1"], "0xFF")
+    ck("wof RKey1 0xFF → 已确认倒计时", bool(v) and "倒计时" in v["meaning"])
+    ck("指令技两域写明检测与执行分离 / 合一",
+       "检测与执行分离" in DOMAINS["dino_cmd_state"]["note"]
+       and "检测与执行合一" in DOMAINS["wof_rkey1"]["note"])
+    ck("wof 脚本轨道按边界不转，理由已进索引",
+       any("关卡脚本" in x["what"] and "空桩" in x["why"]
+           for x in DB["coverage"]["not_registered"]))
+    out = capture(cmd_collide, "2")
+    ck("同一个 2 现在也列出两边指令技状态",
+       "dino_cmd_state" in out and "wof_rkey1" in out)
     _, v = match_value(DOMAINS["spawn_pool"], "3")
     ck("spawn_pool 3 → 池 E", bool(v) and "池 E" in v["meaning"], v["meaning"] if v else "miss")
     _, v = match_value(DOMAINS["box_field"], "10")

@@ -946,6 +946,31 @@
         "player": { "meaning": "玩家本体 0x11720；五个角色的 B=2 受击段都复用它", "tag": "O", "alias": "0x11720" }
       }
     },
+    "dino_cmd_state": {
+      "label": "指令技搓招 FSM 的 cmd_state（0 / 2 / 4）",
+      "scope": "dino",
+      "source": "notes/02-mid.md §27.2（player_command_fsm 0x6AC8，player.rs:960-1005）",
+      "note": "这是与玩家主状态机并行跑的独立 FSM，只回答「这段时间里输入序列对不对」。命中的结果压成 cmd_flag = 2，不自己出招，由主状态机按当前 mode/sub/act 决定在哪儿消费（:1255 / :3489）——检测与执行分离。两段时间窗 t1/t2 按角色查 command_time 表，是量不是符号。",
+      "values": {
+        "0": { "meaning": "空闲：等「上一帧恰好是下且输入变化」；超时 / 作废都回到这里", "tag": "O" },
+        "2": { "meaning": "已吃到「下」，在 t1 窗内等摇到「上」；超时或中途按攻击就回 0", "tag": "O" },
+        "4": { "meaning": "在 t2 窗内等「按住上 + 按下攻击」；命中置 cmd_flag=2 并回 0", "tag": "O" }
+      }
+    },
+    "wof_rkey1": {
+      "label": "wof 搓招字节 RKey1(+0xB0) 的符号三态",
+      "scope": "wof",
+      "source": "notes/02-mid.md §27.3（Cps1PlayerZhaoyun1CA46.cs:102-147 逐条 ROM listing 直译；Cps1PlayerMulti.cs 共享检测）",
+      "context_dependent": true,
+      "note": "一个带符号字节的符号就编码了三态，省掉显式状态枚举。检测与执行合一：同一入口先判搓招，再按 ActStatA 查跳表分派（赵云 case 0x0E 直接是必杀态），不经过中间结果位。每角色一整套主状态机，ActStatA 的状态号按角色解释，不能把赵云的 0x0E 套到别人身上。RKey1Left(+0xB1) 既是蓄力计数也是倒计时，是量不是符号。",
+      "values": {
+        "0": { "meaning": "空闲：允许按下键蓄力 RKey1Left 到 4；松开且蓄满才进入搓招中", "tag": "O" },
+        "2": { "meaning": "搓招中（正数）：判输入低 4 位的方向序列（上 / 下+右 / 下+左）", "tag": "O" },
+        "0xFF": { "meaning": "已确认倒计时（带符号字节为负）：递减 RKey1Left，归零就清回空闲", "tag": "O", "alias": "-1" },
+        ">0": { "meaning": "凡是正数字节都按「搓招中」读；2 只是笔记里点名的那一个", "tag": "O" },
+        "<0": { "meaning": "凡是负数字节都按「已确认倒计时」读；0xFF 只是笔记里点名的那一个", "tag": "O" }
+      }
+    },
     "input_buffer": {
       "label": "玩家输入契约：没有输入队列，只有四处各自绑在处境上的缓冲",
       "scope": "dino",
@@ -970,7 +995,8 @@
       { "source": "re/specs/stage/SPEC.md", "domains": ["camera_mode", "camera_lock", "camera_event"] },
       { "source": "re/specs/flow/SPEC.md", "domains": ["game_mode", "game_phase"] },
       { "source": "re/specs/sound/SPEC.md", "domains": ["sound_command", "sound_code", "sound_header_type", "seq_command", "pan_mode"] },
-      { "source": "re/specs/CONTEXT.md", "domains": ["pool_tag"] }
+      { "source": "re/specs/CONTEXT.md", "domains": ["pool_tag"] },
+      { "source": "notes/02-mid.md §27.2 / §27.3（指令技状态编码，两边对照）", "domains": ["dino_cmd_state", "wof_rkey1"] }
     ],
     "not_registered": [
       { "what": "伤害、帧数、距离、血量、得分、命中定格长度这类量", "why": "换大换小只改手感，不是『取值 → 抽象意义』；按 §94.3 那一刀归数据层，具体值回源 tables.txt" },
@@ -982,7 +1008,8 @@
       { "what": "Mustapha / Hannah / Mess 的逐段动画编号表", "why": "SPEC §3.2 只给了这三角色每套的有效 id 数量，§3.6 只逐段列了 Jack 的 set 0/1/2；不能把 Jack 的编号意义套到别人身上，按『不从单个角色推全表』不转" },
       { "what": "街机前端 G.$1A 的 START / TEST / SERVICE 位、G.$20 投币位、EEPROM 设置字节", "why": "用户明确排除『适配古代硬件特色和低性能』的部分；这些是机台 / 硬件层，不参与关卡里那场架怎么排，转进来会把机台适配误当游戏性" },
       { "what": "位域与字段偏移域里的数字", "why": "那是位号或 +N 字节，不是游戏里读到的取值，按取值反查时要排除" },
-      { "what": "re/specs/*/HANDOFF.md 六份工程交接（Ported / Stubbed / Next steps、函数地址、pool C 效果类 handler 表、验证记录）", "why": "本 rep 是回顾分析而不是移植开发阶段，这些是工程台账，不是『取值 → 抽象意义』的玩法表；pool C 类编号多数只给 handler 地址与调用点、意义未明，少数点名的也是特效对象（火花 / 水花 / 火焰 / 水波）。已核过一遍，别再当漏查重复翻" }
+      { "what": "re/specs/*/HANDOFF.md 六份工程交接（Ported / Stubbed / Next steps、函数地址、pool C 效果类 handler 表、验证记录）", "why": "本 rep 是回顾分析而不是移植开发阶段，这些是工程台账，不是『取值 → 抽象意义』的玩法表；pool C 类编号多数只给 handler 地址与调用点、意义未明，少数点名的也是特效对象（火花 / 水花 / 火焰 / 水波）。已核过一遍，别再当漏查重复翻" },
+      { "what": "wof 关卡脚本约 25 种 type / 事件队列 9 种 type、1C 池两张按 ObjId 的跳表（15 / 27 项）、A5-0x60 的其余阶段值", "why": "notes/06-method.md §94.10 只给了数量与职责概括，没有逐项『编号 → 意义』；C# 侧还有未覆盖命令空桩（notes/08-wof-cs-gaps.md），不能当原机证据；02 卷 §30.7 把 A5-0x60 其他取值明列保留、按 §11.0 不扩张。已核过，别把概括或宿主空桩固化成语义" }
     ]
   },
   "themes": {
@@ -992,7 +1019,7 @@
         "key": "state_machine",
         "label": "状态机",
         "question": "这一拍谁拿着控制权、演完往哪翻页；同一个编号在不同对象身上是不是同一个回答",
-        "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "enemy_hurt_reaction", "enemy_ai_state", "weapon_attack_state", "combo_counter", "input_buffer", "wof_hurt_book", "wof_player_reaction"]
+        "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "enemy_hurt_reaction", "enemy_ai_state", "weapon_attack_state", "combo_counter", "input_buffer", "wof_hurt_book", "wof_player_reaction", "dino_cmd_state", "wof_rkey1"]
       },
       {
         "key": "hit_logic",
