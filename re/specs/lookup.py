@@ -41,6 +41,7 @@
     python re/specs/lookup.py attack_id 0x5A          查一个攻击编号是哪一招
     python re/specs/lookup.py anim_id 1 4             查这一招是哪段，并带出这一拳的后果
     python re/specs/lookup.py player_hurt_anim 2      挨打后会播受击动画的第几段、后面还有几拍
+    python re/specs/lookup.py enemy_hurt_anim 3       敌人挨打分派到哪个受击姿态槽（按兵种翻表）
     python re/specs/lookup.py coverage                哪些表已转、哪些按纪律不转、为什么
     python re/specs/lookup.py unknown                  一次列出「还没弄明白」的取值与整类不转的表（每条带回源止于何处）
     python re/specs/lookup.py unknown player_ground_state   只看某一册里哪些编号还没登记
@@ -505,10 +506,24 @@ def hurt_anim_for(react: int) -> list[str]:
             if react in v.get("reactions", [])]
     if not hits:
         return []
-    out = [f"  → 接着播 set2 #{k}：{say(v)}" for k, v in hits]
+    out = [f"    → 接着播 set2 #{k}：{say(v)}" for k, v in hits]
     if len(hits) > 1:
-        out.append("  （上面几段按正面 / 背后等条件分岔，不是同时播）")
+        out.append("    （上面几段按正面 / 背后等条件分岔，不是同时播）")
     return out
+
+
+def enemy_hurt_anim_for(react: int) -> list[str]:
+    """敌人册子后面那一环：受击代码分派到哪个姿态槽。
+
+    和玩家侧分开反查：同一个反应编号两侧不是同一个意思，下游自然
+    各走各的。只列直接分派；改判击倒那种条件分支不在这里冒充同时播。
+    """
+    dom = DOMAINS.get("enemy_hurt_anim")
+    if not dom:
+        return []
+    hits = [(k, v) for k, v in dom["values"].items()
+            if react in v.get("reactions", [])]
+    return [f"    → 敌人姿态槽 #{k}：{say(v)}" for k, v in hits]
 
 
 def reaction_brief(react: int) -> list[str]:
@@ -524,9 +539,13 @@ def reaction_brief(react: int) -> list[str]:
             generic = "（兜底键，不是这个编号的专门登记）" \
                 if k in ("nonzero", "other", "negative", "low7=n") else ""
             out.append(f"  {name:24s} → {say(v)}{generic}   [{REACTION_LABELS[name]}]")
+            # 各自的下游紧跟自己那本册子：同一编号两侧各走各的链，别串
+            if name == "player_hurt_reaction":
+                out.extend(hurt_anim_for(react))
+            elif name == "enemy_hurt_reaction":
+                out.extend(enemy_hurt_anim_for(react))
     if not out:
         out.append("  这个编号两本册子都没登记：不硬答，回源各自的 source")
-    out.extend(hurt_anim_for(react))
     return out
 
 
@@ -718,10 +737,12 @@ ANI（帧记录 / 动画表）        SPR（composition）              判定�
   第几段」，以及倒地后躺多久、搓招能不能提前起来、什么时候进眩晕；
   `lookup.py player_hurt_anim <段号>` 可以按段号反查哪些反应会播它。
   段编号是代码调用号、四个角色通用；那一段长什么样仍是 Jack 的美术推断，不混。
-  这一环只在玩家侧成立：敌人侧的 anim 编号还要按兵种 e.w84 再翻一张表，
-  不是通用段号（见 `lookup.py enemy_hurt_reaction` 的注意）。
+  两侧都能再往下一环，但走的不是同一套：玩家侧是通用的 set2 段号，
+  敌人侧是「按兵种 e.w84 查 L[0x2E68C + e.w84] 之后」的姿态槽
+  （`lookup.py enemy_hurt_anim`），所以解码输出把两条下游各自紧跟
+  自己那本册子，别串成一条链。
   所以 ANI -> SPR -> 判定框 -> 这一拳的后果 -> 挨打的人怎么演，
-  五个环节都能不靠 GFX 读出来，但最后一环别跨对象套。
+  五个环节都能不靠 GFX 读出来，但最后一环两侧各讲各的。
 
 【看不到 GFX 就不能说的】
   code 只是图块编号；没有 gfx.npy 就不知道画的是拳头、刀光还是衣服褶皱，
@@ -2310,8 +2331,28 @@ def cmd_selftest():
                 bad_note.append(f"{n}:{m.group(0)}({nl} 行)")
     ck("两侧边界 note 里新写的回源路径与行号真能点开",
        not bad_note, ", ".join(bad_note))
-    ck("chain 说明版点明最后一环只在玩家侧成立",
-       "只在玩家侧成立" in capture(cmd_chain))
+    ck("chain 说明版点明两侧下游各走各的、不串成一条链",
+       "两侧都能再往下一环" in capture(cmd_chain)
+       and "别串成一条链" in capture(cmd_chain))
+    ck("敌人册子也接上下一环：分派到哪个受击姿态槽",
+       "敌人姿态槽 #3" in out_atk and "击倒 B 的姿态" in out_atk)
+    ck("两侧下游各自紧跟自己那本册子，不串成同一条链",
+       out_atk.index("player_hurt_reaction") < out_atk.index("接着播 set2 #8")
+       < out_atk.index("enemy_hurt_reaction") < out_atk.index("敌人姿态槽 #3"))
+    ck("上一轮悬空的 not_registered 引用已落实为第 14 条",
+       len(DB["coverage"]["not_registered"]) == 14
+       and any("e.w84" in x["what"] and "enemy_hurt_anim" in x["why"]
+               for x in DB["coverage"]["not_registered"])
+       and "coverage.not_registered" in DOMAINS["enemy_hurt_reaction"]["note"]
+       and "enemy_hurt_anim" in DOMAINS["enemy_hurt_reaction"]["note"])
+    ck("敌人姿态槽的 reactions 都能在敌人受击手册里查到",
+       all(str(r) in DOMAINS["enemy_hurt_reaction"]["values"]
+           for v in DOMAINS["enemy_hurt_anim"]["values"].values()
+           for r in v["reactions"]))
+    ck("敌人姿态槽域写清「槽位语义 vs 按兵种图集」与两侧编号不通用",
+       all(w in DOMAINS["enemy_hurt_anim"]["note"]
+           for w in ("e.w84", "not_registered", "player_hurt_anim", "别互套"))
+       and DOMAINS["enemy_hurt_anim"]["context_dependent"])
     ck("没登记的反应编号不硬答",
        "两本册子都没登记" in capture(main, ["attack", "0A", "01", "05", "09",
                                             "03", "14", "00", "00"]))
@@ -2404,6 +2445,7 @@ SMOKE_CASES = [
     ("attack_id", ["attack_id", "0x5A"]),
     ("anim_id", ["anim_id", "1", "4"]),
     ("hurt_anim", ["player_hurt_anim", "2"]),
+    ("enemy_hurt_anim", ["enemy_hurt_anim", "3"]),
     ("coverage", ["coverage"]),
     ("unknown", ["unknown"]),
     ("unknown_dom", ["unknown", "player_ground_state"]),

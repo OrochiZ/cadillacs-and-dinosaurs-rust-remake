@@ -406,7 +406,7 @@
       "scope": "dino / 玩家侧通用",
       "source": "re/specs/player/SPEC.md:979-1115（§5.3–§5.6 各反应里的 anim2(p,N) 调用与倒地时间结构）",
       "context_dependent": true,
-      "note": "查之前先分清两层：这里登记的是「受击代码会去播第几段」，[O] 级、四个角色通用；`jack_anim_set2` 登记的是「那一段长什么样」，[I] 美术推断、只适用于 Jack。同一个段编号可被多个反应共用（正面轻击与正面击退都播 #0），所以按段编号查得到的是一组触发情形，不是一一对应；reactions 里存十进制反应编号，与 player_hurt_reaction 的键同一套。§3.6 的 Jack set2 只逐段列到 #7，#8 / #9 只在受击代码里出现（重击倒 / tech roll 死路径），#5 在 §5 里根本没有调用点——都不把 Jack 的美术标签套过去；Mustapha / Hannah / Mess 的逐段造型按 coverage.not_registered 不转。 敌人侧不适用：敌人的 anim 编号还要按兵种 e.w84 翻一张表，见 enemy_hurt_reaction 的 note 与 re/specs/enemy/SPEC.md:1135-1145；别把这张按段编号的表当成两本册子共用的下游。",
+      "note": "查之前先分清两层：这里登记的是「受击代码会去播第几段」，[O] 级、四个角色通用；`jack_anim_set2` 登记的是「那一段长什么样」，[I] 美术推断、只适用于 Jack。同一个段编号可被多个反应共用（正面轻击与正面击退都播 #0），所以按段编号查得到的是一组触发情形，不是一一对应；reactions 里存十进制反应编号，与 player_hurt_reaction 的键同一套。§3.6 的 Jack set2 只逐段列到 #7，#8 / #9 只在受击代码里出现（重击倒 / tech roll 死路径），#5 在 §5 里根本没有调用点——都不把 Jack 的美术标签套过去；Mustapha / Hannah / Mess 的逐段造型按 coverage.not_registered 不转。 敌人侧不适用：敌人的 anim 编号还要按兵种 e.w84 翻一张表，见 enemy_hurt_reaction 的 note 与 re/specs/enemy/SPEC.md:1135-1145；敌人侧另有一张槽位表 enemy_hurt_anim，编号体系不同，别互套。",
       "values": {
         "0": { "meaning": "正面轻击（反应 0）与正面击退（0xE / 0x10 / 0x12 / 0x14 / 0x16 / 0x18）都播这一段；击退还要先定格 $59 帧，再滑 15 / 18 / 20 帧，背后命中改播 #6 并翻转朝向", "tag": "O", "reactions": [0, 14, 16, 18, 20, 22, 24] },
         "1": { "meaning": "轻击变体（反应 2）；与 #0 同一套 light() 流程，定格数完就 recover 回 idle", "tag": "O", "reactions": [2] },
@@ -419,12 +419,26 @@
         "9": { "meaning": "受身翻滚（tech roll）；SPEC 明写这是死路径——$CC 恒为 0，实际不会触发", "tag": "O", "reactions": [] }
       }
     },
+    "enemy_hurt_anim": {
+      "label": "敌人挨打时 set_hit_anim(e, anim) 的受击姿态槽编号",
+      "scope": "dino / 敌人侧",
+      "source": "re/specs/enemy/SPEC.md:1135-1145（§10.2 分派表与 anim 标注）；re/specs/enemy/SPEC.md:1147-1179（flinch / knockdown / getup_or_die 里的 set_hit_anim 调用）",
+      "context_dependent": true,
+      "note": "这个编号是「该兵种受击动画表里的第几个槽」：槽位的抽象意义跨兵种一致（轻畏缩 / 击倒 / 起身），但每一槽最终长什么样要按 e.w84 查 L[0x2E68C + e.w84] 才得到，逐兵种图集内容按 coverage.not_registered 不转。它和 player_hurt_anim 不是同一套编号：那边是玩家 set2 段号、四个角色通用，这边是敌人按兵种表内的槽位号，两侧反应编号集合也不同，别互套。reactions 存十进制反应编号，与 enemy_hurt_reaction 的键同一套；只列直接分派到该槽的反应——轻击在 HP=0 / 韧性=0 / 腾空时改判击倒会改用 #2 / #3，那种改判不挂进 reactions，免得读成同时播。",
+      "values": {
+        "0": { "meaning": "轻畏缩 A（flinch anim 0）；轻击反应 0 与后滑反应 0xE / 0x10 / 0x12 都分派到这一槽", "tag": "O", "reactions": [0, 14, 16, 18] },
+        "1": { "meaning": "轻畏缩 B（flinch anim 1）；轻击变体反应 2 与后滑反应 0x14 / 0x16 / 0x18 都分派到这一槽", "tag": "O", "reactions": [2, 20, 22, 24] },
+        "2": { "meaning": "击倒 A 的姿态（knockdown type 4）；后面还有落地弹起、躺地计时、起身或死亡分支", "tag": "O", "reactions": [4] },
+        "3": { "meaning": "击倒 B 的姿态（knockdown type 6）；抛飞向量比 A 更重，同样走弹起 / 躺地 / 起身那一串", "tag": "O", "reactions": [6] },
+        "4": { "meaning": "起身姿态（getup_or_die 里的 set_hit_anim(e, 4)）；起身动画结束后可能转眩晕，也可能直接恢复", "tag": "O", "reactions": [] }
+      }
+    },
     "enemy_hurt_reaction": {
       "label": "敌人受击反应编号（+$06，派发表 0x2A620）",
       "scope": "dino",
       "source": "re/specs/enemy/SPEC.md §10.2",
       "context_dependent": true,
-      "note": "与玩家侧共用一套编号，但分派表不同：0x1A 在玩家侧是『背后轻击』，这里是『起身 / 眩晕』；0x1C 在玩家侧是『背后击倒』，这里是『贴墙滑落』。不先确认对象是谁，编号就会读反。再往下一层也不是玩家侧那套：这里的 anim 0..4 由 set_hit_anim(e, anim) 再按兵种 e.w84 查 L[0x2E68C + e.w84] 才得到该兵种自己的受击动画（re/specs/enemy/SPEC.md:1147-1179），不是全角色通用的段号；所以 player_hurt_anim 那张按段编号的表只适用于玩家侧，别套过来。按兵种的逐类动画表按 coverage.not_registered 不转。",
+      "note": "与玩家侧共用一套编号，但分派表不同：0x1A 在玩家侧是『背后轻击』，这里是『起身 / 眩晕』；0x1C 在玩家侧是『背后击倒』，这里是『贴墙滑落』。不先确认对象是谁，编号就会读反。再往下一层也不是玩家侧那套：这里的 anim 0..4 由 set_hit_anim(e, anim) 再按兵种 e.w84 查 L[0x2E68C + e.w84] 才得到该兵种自己的受击动画（re/specs/enemy/SPEC.md:1147-1179），不是全角色通用的段号；所以 player_hurt_anim 那张按段编号的表只适用于玩家侧，别套过来。逐兵种图集内容按 coverage.not_registered 不转；跨兵种一致的槽位语义另见 enemy_hurt_anim。",
       "values": {
         "0": { "meaning": "轻畏缩（anim 0）；HP=0 / 韧性=0 / 腾空时改判击倒 4", "tag": "O" },
         "2": { "meaning": "轻畏缩（anim 1）；同样可改判击倒 6", "tag": "O" },
@@ -1151,7 +1165,7 @@
       { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "comp_extra", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id", "jack_anim_set0", "jack_anim_set1", "jack_anim_set2", "combo_counter", "jack_attack_record", "jack_box_example"] },
       { "source": "notes/06-method.md §94.12–§94.18", "domains": ["wof_reaction", "wof_atk_field", "wof_player_reaction", "wof_hurt_book"] },
       { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "player_hurt_anim", "attack_id", "weapon_kind", "weapon_attack_state", "input_buffer"] },
-      { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant", "wave_ctrl_r4", "wave_ctrl_r5"] },
+      { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_hurt_anim", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant", "wave_ctrl_r4", "wave_ctrl_r5"] },
       { "source": "re/specs/stage/SPEC.md", "domains": ["camera_mode", "camera_lock", "camera_event"] },
       { "source": "re/specs/flow/SPEC.md", "domains": ["game_mode", "game_phase"] },
       { "source": "re/specs/sound/SPEC.md", "domains": ["sound_command", "sound_code", "sound_header_type", "seq_command", "pan_mode"] },
@@ -1173,7 +1187,8 @@
       { "what": "re/specs/*/HANDOFF.md 六份工程交接（Ported / Stubbed / Next steps、函数地址、pool C 效果类 handler 表、验证记录）", "why": "本 rep 是回顾分析而不是移植开发阶段，这些是工程台账，不是『取值 → 抽象意义』的玩法表；pool C 类编号多数只给 handler 地址与调用点、意义未明，少数点名的也是特效对象（火花 / 水花 / 火焰 / 水波）。已核过一遍，别再当漏查重复翻" },
       { "what": "wof 关卡脚本约 25 种 type / 事件队列 9 种 type、1C 池两张按 ObjId 的跳表（15 / 27 项）、A5-0x60 的其余阶段值", "why": "notes/06-method.md §94.10 只给了数量与职责概括，没有逐项『编号 → 意义』；C# 侧还有未覆盖命令空桩（notes/08-wof-cs-gaps.md），不能当原机证据；02 卷 §30.7 把 A5-0x60 其他取值明列保留、按 §11.0 不扩张。已核过，别把概括或宿主空桩固化成语义" },
       { "what": "notes/01-early.md §19.1 五套脚本里 #3 dino Boss 攻击脚本（dino-rs/crates/dino-game/src/game/enemy/class25_ai.rs c25_script 0x4C40A、表 0x4C4AE / 动作表 0x4C4D2）的逐条『编号 → 意义』", "why": "这是单个 Boss（class25）的专属编排，按用户裁定『特殊关卡、专属演出、单个 Boss 那一段的编排不构成通则』不转；§18.2.2 / §19.1 只给了『与英雄过场并行同构、6 字节记录、0xFF 结束』的概括，没有逐项成表，更不能把英雄过场那 41 个 action 套过去（笔记明写不是共享引擎）。五套脚本里 #1 英雄过场 / #2 生成波次已转成域，#4 wof 关卡脚本 / #5 事件队列已按 wof 边界列在上面，成表已核过一圈，别再逐条钻" },
-      { "what": "wof 连打累计的四层（StunVal 阈值门 0x7E86、StunLeft 时间窗、+0x72 & 6 特效等级查 0x17DE、RNG 查 0x17E4 得 delta）与 dino b.stun / POISE_T 韧性条逐行数值", "why": "这是有 [O] 级回源的结构观察，但形态是条件分支 + 会过期的累计量 + 随机漂移 + 按特效等级查表，不是离散编号表；+0x72 & 6 的 0/2/4/6 四档与两张查表的逐行内容都没给『取值 → 意义』，按『不从概括固化』不硬编。玩家可见的连打手感没做逐帧 trace，按 §94.11 标未验。回源 notes/02-mid.md §37.3；设计判断已在该节与 GAMEPLAY_LEGACY.md 消费，缓存这边只登记边界，别见 wof 半边薄就补一层假编号" }
+      { "what": "wof 连打累计的四层（StunVal 阈值门 0x7E86、StunLeft 时间窗、+0x72 & 6 特效等级查 0x17DE、RNG 查 0x17E4 得 delta）与 dino b.stun / POISE_T 韧性条逐行数值", "why": "这是有 [O] 级回源的结构观察，但形态是条件分支 + 会过期的累计量 + 随机漂移 + 按特效等级查表，不是离散编号表；+0x72 & 6 的 0/2/4/6 四档与两张查表的逐行内容都没给『取值 → 意义』，按『不从概括固化』不硬编。玩家可见的连打手感没做逐帧 trace，按 §94.11 标未验。回源 notes/02-mid.md §37.3；设计判断已在该节与 GAMEPLAY_LEGACY.md 消费，缓存这边只登记边界，别见 wof 半边薄就补一层假编号" },
+      { "what": "敌人按兵种 e.w84 的受击动画图集表 L[0x2E68C + e.w84] 的逐行内容", "why": "SPEC §10.2 只给了查表入口与按兵种索引，没给逐兵种逐行『编号 → 意义』；硬编会把按类型索引的量固化成假语义，与『不从单个对象推全表』同性质。跨兵种一致的槽位语义（轻畏缩 / 击倒 / 起身）已单独登记在 enemy_hurt_anim，这里不转的是每个兵种那一槽具体用哪套图。回源 re/specs/enemy/SPEC.md:1147-1179", "source": "re/specs/enemy/SPEC.md:1147-1179" }
     ]
   },
   "themes": {
@@ -1183,7 +1198,7 @@
         "key": "state_machine",
         "label": "状态机",
         "question": "这一拍谁拿着控制权、演完往哪翻页；同一个编号在不同对象身上是不是同一个回答",
-        "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "player_hurt_anim", "enemy_hurt_reaction", "enemy_ai_state", "weapon_attack_state", "combo_counter", "input_buffer", "wof_hurt_book", "wof_player_reaction", "dino_cmd_state", "wof_rkey1"]
+        "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "player_hurt_anim", "enemy_hurt_reaction", "enemy_hurt_anim", "enemy_ai_state", "weapon_attack_state", "combo_counter", "input_buffer", "wof_hurt_book", "wof_player_reaction", "dino_cmd_state", "wof_rkey1"]
       },
       {
         "key": "hit_logic",
