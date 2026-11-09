@@ -1209,6 +1209,8 @@ def cmd_unknown(tokens: list[str]):
         print(f"{key} 里还没弄明白的取值（{len(groups.get(key, (None, []))[1])} 条）")
         print("=" * 78)
         print(f"出处：{DOMAINS[key]['source']}")
+        if DOMAINS[key].get("context_dependent"):
+            print(f"注意（上下文相关）：{DOMAINS[key].get('note', '')}")
         for k, v in groups.get(key, (None, []))[1]:
             print(f"  {k:14s} {fmt(v['tag'])} {v['meaning']}")
             if v.get("note"):
@@ -1413,6 +1415,22 @@ def cmd_selftest():
     bad = [n for n, d in DOMAINS.items()
            if d.get("context_dependent") and not d.get("note")]
     ck("上下文相关域都带 note，讲清查之前要确认什么", not bad, ", ".join(bad))
+    state_layers = ("player_mode", "player_ground_state",
+                    "player_run_state", "player_air_state")
+    ck("状态机四层都标了上下文相关，note 讲清先确认哪三层",
+       all(DOMAINS[n].get("context_dependent") for n in state_layers)
+       and all("查之前" in DOMAINS[n]["note"]
+               for n in ("player_mode", "player_ground_state"))
+       and "$06=0" in DOMAINS["player_ground_state"]["note"])
+    out_pg = capture(cmd_lookup, "player_ground_state", "4", False)
+    ck("查地面状态表会先提示确认档位，不让人把编号读成全局值",
+       "注意（上下文相关）" in out_pg and "$06=0" in out_pg)
+    out_c4 = capture(cmd_collide, "4")
+    ck("反查同一个 4 时，地面状态表那行也标了上下文相关",
+       any("player_ground_state" in l and "上下文相关" in l
+           for l in out_c4.splitlines()))
+    ck("unknown <上下文域> 也带上那条「先确认什么」",
+       "注意（上下文相关）" in capture(cmd_unknown, ["player_ground_state"]))
     refs = []
     for src, group in (("legacy", DB["legacy"]["list"]),
                        ("themes", DB["themes"]["list"]),
