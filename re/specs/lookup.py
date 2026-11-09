@@ -43,7 +43,7 @@
     python re/specs/lookup.py coverage                哪些表已转、哪些按纪律不转、为什么
     python re/specs/lookup.py unknown                  一次列出「还没弄明白」的取值与整类不转的表
     python re/specs/lookup.py unknown player_ground_state   只看某一册里哪些编号还没登记
-    python re/specs/lookup.py themes                  按玩法主题列出可查的域
+    python re/specs/lookup.py themes                  按玩法主题列出可查的域与证据成色
     python re/specs/lookup.py themes state_machine    只看状态机这一块
     python re/specs/lookup.py legacy                  外推文九条判断各自能查到什么、查不到什么
     python re/specs/lookup.py legacy difficulty      只看其中一条
@@ -1242,6 +1242,23 @@ def cmd_unknown(tokens: list[str]):
     return 0
 
 
+def tag_counts(dom: dict) -> dict:
+    """一个域里观察 / 推断 / 未登记各几条，供主题索引按设计问题报成色。"""
+    c = {"O": 0, "I": 0, "U": 0}
+    for v in dom["values"].values():
+        c[v["tag"]] = c.get(v["tag"], 0) + 1
+    return c
+
+
+def theme_agg(names: list[str]) -> dict:
+    agg = {"O": 0, "I": 0, "U": 0}
+    for n in names:
+        c = tag_counts(DOMAINS[n])
+        for k in agg:
+            agg[k] += c[k]
+    return agg
+
+
 def cmd_themes(tokens: list[str]):
     """按玩法主题列出可查的域；与 coverage 的「按回源文件分组」正交。"""
     items = DB.get("themes", {}).get("list", [])
@@ -1253,10 +1270,13 @@ def cmd_themes(tokens: list[str]):
         print("=" * 78)
         print(DB["themes"].get("note", ""))
         for t in items:
-            print(f"  {t['key']:20s} {t['label']}  ({len(t['domains'])} 个域)")
+            agg = theme_agg(t["domains"])
+            print(f"  {t['key']:20s} {t['label']}  ({len(t['domains'])} 个域；"
+                  f"观察 {agg['O']} / 推断 {agg['I']} / 未登记 {agg['U']})")
             print(f"  {'':20s} {t['question']}")
-        print("\n用 `lookup.py themes <主题>` 看这一块有哪些域；"
+        print("\n用 `lookup.py themes <主题>` 看这一块有哪些域、哪些还没弄明白；"
               "`lookup.py <域> [取值]` 查具体意义。")
+        print("括号里的成色别跳过：标 [I 推断] 的不是观察事实，[U 未登记] 也不是「游戏里没有」。")
         return 0
     key = tokens[0]
     t = next((x for x in items if x["key"] == key), None)
@@ -1267,8 +1287,17 @@ def cmd_themes(tokens: list[str]):
     print("-" * 78)
     for name in t["domains"]:
         d = DOMAINS.get(name)
+        c = tag_counts(d) if d else {"O": 0, "I": 0, "U": 0}
         print(f"  {name:24s} {d['label'] if d else '（域不存在）'}")
-    print(f"\n（{len(t['domains'])} 个域；具体取值用 `lookup.py <域> [取值]` 查）")
+        print(f"  {'':24s} 观察 {c['O']} / 推断 {c['I']} / 未登记 {c['U']}")
+    agg = theme_agg(t["domains"])
+    print(f"\n（{len(t['domains'])} 个域；合计 观察 {agg['O']} / 推断 {agg['I']} / 未登记 {agg['U']}）")
+    unknowns = [n for n in t["domains"] if tag_counts(DOMAINS[n])["U"]]
+    if unknowns:
+        print("这一块还有没弄明白的编号（未登记 ≠ 不存在，别当成关掉 / 空值）：")
+        for n in unknowns:
+            print(f"  lookup.py unknown {n}")
+    print("具体取值用 `lookup.py <域> [取值]` 查；标 [I 推断] 的不是观察事实。")
     return 0
 
 
@@ -2042,6 +2071,23 @@ def cmd_selftest():
        "没有 [U] 取值" in out_clean and "不代表整类都清楚" in out_clean)
     ck("unknown 给不存在的域会明确报错，不静默当空",
        "没有这个域" in capture(cmd_unknown, ["no_such_domain"]))
+
+    # 按玩法主题走进缓存时，成色要跟着走：别把推断当观察、把未登记当不存在
+    out_t = capture(cmd_themes, ["state_machine"])
+    ck("themes 单主题视图说清证据成色，并直接指到未登记的那些域",
+       "观察" in out_t and "推断" in out_t and "未登记" in out_t
+       and "unknown player_ground_state" in out_t
+       and "未登记 ≠ 不存在" in out_t)
+    df = next(x for x in DB["themes"]["list"] if x["key"] == "data_format")
+    out_tt = capture(cmd_themes, [])
+    ck("themes 总览也按主题给出观察 / 推断 / 未登记分布",
+       f"推断 {theme_agg(df['domains'])['I']}" in out_tt
+       and "data_format" in out_tt and "[I 推断]" in out_tt
+       and "[U 未登记]" in out_tt)
+    ck("六个主题的未登记条数合计等于全库 [U]，没漏报也没重复归",
+       sum(theme_agg(t["domains"])["U"] for t in DB["themes"]["list"])
+       == sum(1 for dom in DOMAINS.values()
+              for v in dom["values"].values() if v["tag"] == "U"))
 
     # 解码输出也带证据标签：别让 [I] 在「这一帧在干嘛」里被读成观察
     ck("say() 把 meaning 与置信标签一起带出，缺省也不冒充登记",

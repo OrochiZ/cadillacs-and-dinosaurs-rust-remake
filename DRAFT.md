@@ -7,32 +7,34 @@
 
 - 开工核对（本会话起点）：HEAD `fe07f040`，工作区干净，临时提交信息文件不存在；`CODEBUDDY.md` / `CLAUDE.md` / `DRAFT.md` 都读过。上一格（文档层）已按 `GAMEPLAY_LEGACY.md` 第 481 行停止条件收口。
 
-- 本会话已提交四格：
+- 本会话已提交五格：
   - `dc71f468`：`unknown` 入口，一次列出两类「还没弄明白」；`semantics.json` 加 `coverage.unknown_note`。230 → 237。
   - `ec46b2f6`：`say()` 把解码命令里静默丢掉的 `[O]/[I]/[U]` 标签补回来；字段 / 位偏移说明按纪律不挂。237 → 242。
-  - `0d591f8b`：`reaction_brief()` 把「反应编号是门票」接成可跑的下一环，`attack` / `moment` 都并排翻到 dino 两本受击册子，不串 wof。242 → 247。
-  - 第四格（本格）：回源路径从「格式对」推进到「真能点开」。
+  - `0d591f8b`：`reaction_brief()` 把「反应编号是门票」接成下一环，`attack` / `moment` 都并排翻到 dino 两本受击册子，不串 wof。242 → 247。
+  - `54c9fbc6`：回源路径从「格式对」推进到「真能点开」，修 8 处裸文件名、自测查文件存在与行号范围。247 → 249。
+  - 第五格（本格）：把证据成色接进「按玩法问题查数」那个入口。
 
-- 本格先做了两次核查，结论都是**没有缺口、不补**：
+- 本格前先做了三次核查，结论都是**核过、无需改动**，别再重复翻：
   - `wof_hurt_book` 记的是「按入口路径翻哪本 9 项手册」的路径类别，不是那 9 项本身；`wof_attack` 已把反应编号翻到第一层并明说后面未逐项登记。wof 侧没有与 dino 对称的断环，硬接会把没登记的手册编成假语义。
-  - `legacy` 九条判断挂的 18 条可跑样本逐条真跑，`expect` 全命中、0 失败；没有「声明能跑、实际失效」的底座。
-  两次都没发现断环后，不再往缓存自洽上找新活，转去验回源。
+  - `legacy` 九条判断挂的 18 条可跑样本逐条真跑，`expect` 全命中、0 失败。
+  - `notes/08-wof-cs-gaps.md` 事实核查：wt1 的 `wof_cs/src`、`QUARANTINE.md`、`STATUS.md` 都可达；文档里全部 `文件:行号` 锚点 0 处找不到文件、0 处行号越界；抽查十几处注释，当前欠账仍是「暂未 / 仍未 / 未直译 / 显式报警 / 占位协程」，修复记录那几条（Actor26:631、Actor21:190、Zhaoyun:65）也确实是修复记录 / 反向标注；`Cps1PlayerMulti.cs:249-268` 整段对得上（249/250 标未移植、260-267 显式告警与有界退化）。清单没过期。
+  - 可恢复性也核过：总入口「阅读顺序」第 7 条写了「不带参数运行就打印全部用法」，`lookup.py` 的用法说明里 `unknown`、证据标签、反应门票两侧并排都在；第 481 行「不改总入口」约束的是外推文那节补层，不是禁止后续事实维护。不补文档。
 
-- 回源实证：全库 94 段 `source` / 106 处路径，查出 5 处**文件真实存在但写成裸文件名**（上一轮只拦过 `dino-assets/...` 那类裸前缀，纯文件名是漏掉的另一种）：`items_drops.py`、`ENDING.md`、`classmap.txt`、`player.rs:960-1005`、`enemy.rs`（`legacy.crowd`）。用 Grep 核了真实位置——`player_command_fsm` 在 `dino-rs/crates/dino-game/src/game/player.rs` 961 行、四段闭环在同目录 `enemy.rs` 770/828/1661 行，三个 `re/specs` 文件都在 git 跟踪内。解释文字里另有 3 处裸名：`tables.txt` 两处、`class25_ai.rs` 一处，共修 8 处。
-  - 判据收窄后才固化：自测只查 `source` 与边界说明里的路径，白名单排除命令示例 `lookup.py`、通配符 `/HANDOFF.md`；根目录文件 `GAMEPLAY_LEGACY.md` 合法、不误伤。
-  - 自测新增两条：路径在仓库根真实存在（同时覆盖旧的两类裸前缀）、带行号的引用不超出文件实际行数；再加一条边界说明也写全。247 → 249。
+- 第五格的真发现：按玩法主题走进缓存时，`cmd_themes()` 只列域名，看不出这一块的证据成色。实测「数据层与绘制」16 个域里 41 条全是 `[I 推断]`（Jack 逐段动画编号靠美术推断），「状态机」15 个域里还有 12 条 `[U 未登记]`。分析者从设计问题反查数据，最容易在这里把推断当观察、把未登记当不存在——正是这一路守的两条纪律，却没落到按主题进来的那个入口。
+  - `re/specs/lookup.py` 新增 `tag_counts()` / `theme_agg()`：`themes` 总览按主题给出「观察 / 推断 / 未登记」条数，单主题视图每个域也带成色，末尾直接列出该主题下含 `[U]` 的 `lookup.py unknown <域>` 命令；doc 的 `themes` 说明同步。
+  - 自测新增 3 条：单主题视图的成色与 `unknown` 指引、总览分布、六个主题的 `[U]` 合计等于全库 `[U]`（防漏报 / 重复归）。249 → 252。
 
-- 验证：`--selftest` exit 0、`249/249` 通过、`py_compile` exit 0、`json.load` 通过、`git diff --check` exit 0；`lookup.py` / `semantics.json` 均 `CR=0 BOM=False`，新增行 `over2000=[]`。
+- 验证：`--selftest` exit 0、`252/252` 通过、`py_compile` exit 0、`git diff --check` exit 0；`lookup.py` `CR=0 BOM=False`，新增行 `over2000=[]`。
 
-- 本会话始终未动任何设计文档（不改 `DESIGN_DIFF_NOTES.md` / `GAMEPLAY_LEGACY.md` / `notes/08`）、0 次 ROM 取证、没碰产物层、没改 `check_docs.py`、没回查载具 / 特殊关卡换面；`GAMEPLAY_LEGACY.md` 第 481 行停止条件仍有效。
+- 本会话始终未动任何设计文档正文（不改 `DESIGN_DIFF_NOTES.md` / `GAMEPLAY_LEGACY.md` / `notes/08`）、0 次 ROM 取证、没碰产物层、没改 `check_docs.py`、没回查载具 / 特殊关卡换面；`GAMEPLAY_LEGACY.md` 第 481 行停止条件仍有效。wt1 仓库只读、未改。
 
 ## 长期口径（每轮沿用，不是本轮新增任务）
 
 - `长时间自主推进` 是开放目标：局部提交、干净工作区、阶段总结、压缩 / 总结请求都不算完成或缩小；不询问是否继续，不直读 goal 状态，不写「下一格 / 短期不再动笔」当收尾，提到方向就当轮把第一步做掉。
 - 用户要的是「游戏设计本意」，交付一律说人话；不把内部编号、提交号、校验数字当主体；忽略 Rust / C#、typed struct / WRAM、端序、逐帧补偿等实现表相。
-- 用户的真实任务是把各类变量取值转成可查的「抽象意义」并缓存，ANI / SPR 只是举例；要能顺着 ANI → SPR → 判定框 → 后果在看不到 GFX 时推断这一帧在干嘛。**缓存与脚本的落点：`re/specs/semantics.json`（机器可读语义）/`re/specs/lookup.py`（离线查询，不带参数打印全部用法）**；总入口「阅读顺序」第 7 条是压缩恢复后找它们的入口。`unknown` 是「一次列出哪些还没弄明白」的入口，两类未登记分开说，未登记 ≠ 不存在。解码命令翻取值意义时也带 `[O]/[I]/[U]` 标签，字段 / 位偏移说明不挂（那是格子名不是取值）；后果环把反应门票并排翻到 dino 两本受击册子，不串 wof。新增域必须带 source / scope / tag，不从字段名猜；`coverage.registered` 与 `themes` 必须覆盖所有域且每域只归一处；`not_registered` 写清「为什么不转」；`legacy` 每条带 `can_check` / `cannot_check` / `probe`（probe 可单条或多条）；上下文相关域必须带 `note`。
+- 用户的真实任务是把各类变量取值转成可查的「抽象意义」并缓存，ANI / SPR 只是举例；要能顺着 ANI → SPR → 判定框 → 后果在看不到 GFX 时推断这一帧在干嘛。**缓存与脚本的落点：`re/specs/semantics.json`（机器可读语义）/`re/specs/lookup.py`（离线查询，不带参数打印全部用法）**；总入口「阅读顺序」第 7 条是压缩恢复后找它们的入口。`unknown` 一次列出哪些还没弄明白（两类未登记分开说，未登记 ≠ 不存在）；`themes` 按玩法问题查数时带观察 / 推断 / 未登记的成色并指向 `unknown`。解码命令翻取值意义时也带 `[O]/[I]/[U]` 标签，字段 / 位偏移说明不挂（那是格子名不是取值）；后果环把反应门票并排翻到 dino 两本受击册子，不串 wof。新增域必须带 source / scope / tag，不从字段名猜；`coverage.registered` 与 `themes` 必须覆盖所有域且每域只归一处；`not_registered` 写清「为什么不转」；`legacy` 每条带 `can_check` / `cannot_check` / `probe`（probe 可单条或多条）；上下文相关域必须带 `note`。
 - 回源路径一律从仓库根写全（如 `dino-rs/crates/dino-assets/...`），不留 `dino-assets/` 这类裸前缀、也不留纯文件名；`legacy.list[*].title` 与 `GAMEPLAY_LEGACY.md` 九节标题逐字对应、顺序一致，改标题两边同步。自测会查文件真实存在与行号范围，白名单只放命令示例 `lookup.py` 与通配符 `/HANDOFF.md`。
-- **停止条件**：`GAMEPLAY_LEGACY.md` 第 481 行「不改总入口、不加新节号、不回文档自洽循环」；415–481 补层已闭合、`legacy` 九条索引只对应前九节，不补后半部底座。伪代码 / 流程图各卷已很多；总入口 153–157 行三个实际问题落点、`coverage.not_registered` 13 条理由、`themes` 已是按玩法问题那条索引 —— 都核过，别再翻。`notes/08` 是移植侧欠账清单、非原机缺机制，已核过与缓存口径一致。
+- **停止条件**：`GAMEPLAY_LEGACY.md` 第 481 行「不改总入口、不加新节号、不回文档自洽循环」；415–481 补层已闭合、`legacy` 九条索引只对应前九节，不补后半部底座。伪代码 / 流程图各卷已很多；总入口 153–157 行三个实际问题落点、`coverage.not_registered` 13 条理由、`themes` 已是按玩法问题那条索引 —— 都核过，别再翻。`notes/08` 是移植侧欠账清单、非原机缺机制，锚点与注释已核过与当前 wt1 源码一致。
 - 「缓存没转成域」与「没有证据」是两种缺口；不把 [I] 写成 [O]，也不把 [O] 代码观察降成叙事；不从概括硬编假编号域；[O] 回源但形态是量 / 条件分支 / 随机漂移 / 未给逐项意义的查表，写进 `not_registered` + `source`。
 - 「讲两侧」按外推文正文与它自己写下的边界判定，不按 `can_check` 措辞。要求两侧各挂样本的是 `beat / swing / death / feel / values`；`combo / crowd / continuity` 不算，`difficulty` 正文没提 wof。理由都已写进各自 `cannot_check`。
 - ROM 主要服务于 data 调查，只在 `wof_cs` 写得非常可疑时才触发核实；不恢复「以 ROM 审 repo」框架。
