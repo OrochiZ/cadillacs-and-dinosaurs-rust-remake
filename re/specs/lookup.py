@@ -33,6 +33,8 @@
     python re/specs/lookup.py coverage                哪些表已转、哪些按纪律不转、为什么
     python re/specs/lookup.py themes                  按玩法主题列出可查的域
     python re/specs/lookup.py themes state_machine    只看状态机这一块
+    python re/specs/lookup.py legacy                  外推文九条判断各自能查到什么、查不到什么
+    python re/specs/lookup.py legacy difficulty      只看其中一条
     python re/specs/lookup.py --json frame_type 4     机器可读输出
     python re/specs/lookup.py --selftest              固化自测（不依赖 ROM）
 
@@ -872,6 +874,35 @@ def cmd_themes(tokens: list[str]):
     return 0
 
 
+def cmd_legacy(tokens: list[str]):
+    """外推文九条判断 → 缓存里哪些域是它的数据底座，以及查不到什么。"""
+    items = DB.get("legacy", {}).get("list", [])
+    if not items:
+        print("缓存里没有 legacy 索引")
+        return 1
+    if tokens:
+        key = tokens[0]
+        hit = [x for x in items if x["key"] == key]
+        if not hit:
+            print(f"没有这一条：{key}。可用的 key：{', '.join(x['key'] for x in items)}")
+            return 2
+        items = hit
+    print("外推文九条判断 → 可查的数据底座")
+    print("=" * 78)
+    print(DB["legacy"]["note"])
+    print("=" * 78)
+    for x in items:
+        print(f"\n{x['title']}   [{x['key']}]")
+        print(f"  问的是：{x['question']}")
+        print(f"  能查：{x['can_check']}")
+        print(f"  查不到（别当证据）：{x['cannot_check']}")
+        print(f"  可查域（{len(x['domains'])}）：{', '.join(x['domains'])}")
+        print("    直接翻：" + " / ".join(f"lookup.py {d}" for d in x["domains"][:3]))
+    print("\n  这是证据底座盘点，不是又九条设计判断；"
+          "右栏「当代同类常见做法」是外推观察，不占域。")
+    return 0
+
+
 def cmd_collide(token: str):
     """只给一个取值，列出它在各域的所有意义 —— 确认「这个数得先知道谁在读」。"""
     print(f"取值「{token}」在已登记域里的所有意义：")
@@ -1271,6 +1302,24 @@ def cmd_selftest():
     ck("themes state_machine 能列出该块域名",
        "combo_counter" in out and "input_buffer" in out)
 
+    # 外推文九条判断的证据底座：能查什么、查不到什么
+    items = DB.get("legacy", {}).get("list", [])
+    ck("外推文九条判断都有证据底座", len(items) == 9)
+    ck("legacy 每条域名都真实存在",
+       all(x in DOMAINS for it in items for x in it["domains"]))
+    ck("legacy 每条都写清能查与查不到",
+       all(it["can_check"] and it["cannot_check"] for it in items))
+    ck("难度条明写 rank 数值按纪律不转",
+       any("rank / aggression" in it["cannot_check"] for it in items))
+    out = capture(cmd_legacy, [])
+    ck("legacy 无参数列出九条", all(it["title"] in out for it in items))
+    out = capture(cmd_legacy, ["difficulty"])
+    ck("legacy difficulty 只展开一条并列出域名",
+       "六、同一套打法" in out and "wave_ctrl_r4" in out
+       and "rank / aggression" in out and "五、一群敌人" not in out)
+    out = capture(cmd_legacy, ["nope"])
+    ck("legacy 未知 key 直说并给出可用列表", "没有这一条" in out and "beat" in out)
+
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:
         print(f"  {'PASS' if good else 'FAIL'}  {label}" + (f"   [{detail}]" if not good and detail else ""))
@@ -1299,6 +1348,8 @@ def main(argv: list[str]) -> int:
         return cmd_coverage()
     if cmd == "themes":
         return cmd_themes(rest)
+    if cmd == "legacy":
+        return cmd_legacy(rest)
     if cmd == "anim_id":
         return cmd_anim_id(rest)
     if cmd == "flags":
