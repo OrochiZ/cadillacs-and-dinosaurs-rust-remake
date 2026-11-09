@@ -495,7 +495,8 @@ def hurt_anim_for(react: int) -> list[str]:
     """反应门票后面那一环：受击代码会去播 set2 的第几段。
 
     用 player_hurt_anim.reactions 反查，不在别处再抄一份映射。一个反应
-    可以命中多段（正面 / 背后分岔），此时明说不是同时播。
+    可以命中多段（正面 / 背后分岔），此时明说不是同时播。只接玩家侧：
+    敌人侧的 anim 编号还要按兵种翻一张表，见 enemy_hurt_reaction。
     """
     dom = DOMAINS.get("player_hurt_anim")
     if not dom:
@@ -717,8 +718,10 @@ ANI（帧记录 / 动画表）        SPR（composition）              判定�
   第几段」，以及倒地后躺多久、搓招能不能提前起来、什么时候进眩晕；
   `lookup.py player_hurt_anim <段号>` 可以按段号反查哪些反应会播它。
   段编号是代码调用号、四个角色通用；那一段长什么样仍是 Jack 的美术推断，不混。
+  这一环只在玩家侧成立：敌人侧的 anim 编号还要按兵种 e.w84 再翻一张表，
+  不是通用段号（见 `lookup.py enemy_hurt_reaction` 的注意）。
   所以 ANI -> SPR -> 判定框 -> 这一拳的后果 -> 挨打的人怎么演，
-  五个环节都能不靠 GFX 读出来。
+  五个环节都能不靠 GFX 读出来，但最后一环别跨对象套。
 
 【看不到 GFX 就不能说的】
   code 只是图块编号；没有 gfx.npy 就不知道画的是拳头、刀光还是衣服褶皱，
@@ -2287,6 +2290,28 @@ def cmd_selftest():
                                           "00", "09", "03", "14", "00", "00"]))
     ck("没给 anim2 调用的反应不硬答：0x22 停在手册那一层",
        "接着播 set2" not in "\n".join(reaction_brief(34)))
+    ck("敌人侧 anim 编号要按兵种再翻表，玩家侧段表不套过去",
+       all(w in DOMAINS["enemy_hurt_reaction"]["note"]
+           for w in ("set_hit_anim", "e.w84", "别套过来"))
+       and "敌人侧不适用" in DOMAINS["player_hurt_anim"]["note"]
+       and "玩家侧" in DOMAINS["player_hurt_anim"]["scope"])
+    hurt_notes = [(n, DOMAINS[n]["note"])
+                  for n in ("enemy_hurt_reaction", "player_hurt_anim")]
+    bad_note = []
+    for n, s in hurt_notes:
+        for m in re.finditer(
+                r"([A-Za-z0-9_./-]+\.(?:md|rs|py|txt)):(\d+)(?:-(\d+))?", s):
+            f = repo_root / m.group(1)
+            if not f.exists():
+                bad_note.append(f"{n}:{m.group(1)} 不存在")
+                continue
+            nl = len(f.read_text(encoding="utf-8", errors="replace").splitlines())
+            if int(m.group(3) or m.group(2)) > nl:
+                bad_note.append(f"{n}:{m.group(0)}({nl} 行)")
+    ck("两侧边界 note 里新写的回源路径与行号真能点开",
+       not bad_note, ", ".join(bad_note))
+    ck("chain 说明版点明最后一环只在玩家侧成立",
+       "只在玩家侧成立" in capture(cmd_chain))
     ck("没登记的反应编号不硬答",
        "两本册子都没登记" in capture(main, ["attack", "0A", "01", "05", "09",
                                             "03", "14", "00", "00"]))

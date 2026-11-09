@@ -406,7 +406,7 @@
       "scope": "dino / 玩家侧通用",
       "source": "re/specs/player/SPEC.md:979-1115（§5.3–§5.6 各反应里的 anim2(p,N) 调用与倒地时间结构）",
       "context_dependent": true,
-      "note": "查之前先分清两层：这里登记的是「受击代码会去播第几段」，[O] 级、四个角色通用；`jack_anim_set2` 登记的是「那一段长什么样」，[I] 美术推断、只适用于 Jack。同一个段编号可被多个反应共用（正面轻击与正面击退都播 #0），所以按段编号查得到的是一组触发情形，不是一一对应；reactions 里存十进制反应编号，与 player_hurt_reaction 的键同一套。§3.6 的 Jack set2 只逐段列到 #7，#8 / #9 只在受击代码里出现（重击倒 / tech roll 死路径），#5 在 §5 里根本没有调用点——都不把 Jack 的美术标签套过去；Mustapha / Hannah / Mess 的逐段造型按 coverage.not_registered 不转。",
+      "note": "查之前先分清两层：这里登记的是「受击代码会去播第几段」，[O] 级、四个角色通用；`jack_anim_set2` 登记的是「那一段长什么样」，[I] 美术推断、只适用于 Jack。同一个段编号可被多个反应共用（正面轻击与正面击退都播 #0），所以按段编号查得到的是一组触发情形，不是一一对应；reactions 里存十进制反应编号，与 player_hurt_reaction 的键同一套。§3.6 的 Jack set2 只逐段列到 #7，#8 / #9 只在受击代码里出现（重击倒 / tech roll 死路径），#5 在 §5 里根本没有调用点——都不把 Jack 的美术标签套过去；Mustapha / Hannah / Mess 的逐段造型按 coverage.not_registered 不转。 敌人侧不适用：敌人的 anim 编号还要按兵种 e.w84 翻一张表，见 enemy_hurt_reaction 的 note 与 re/specs/enemy/SPEC.md:1135-1145；别把这张按段编号的表当成两本册子共用的下游。",
       "values": {
         "0": { "meaning": "正面轻击（反应 0）与正面击退（0xE / 0x10 / 0x12 / 0x14 / 0x16 / 0x18）都播这一段；击退还要先定格 $59 帧，再滑 15 / 18 / 20 帧，背后命中改播 #6 并翻转朝向", "tag": "O", "reactions": [0, 14, 16, 18, 20, 22, 24] },
         "1": { "meaning": "轻击变体（反应 2）；与 #0 同一套 light() 流程，定格数完就 recover 回 idle", "tag": "O", "reactions": [2] },
@@ -424,7 +424,7 @@
       "scope": "dino",
       "source": "re/specs/enemy/SPEC.md §10.2",
       "context_dependent": true,
-      "note": "与玩家侧共用一套编号，但分派表不同：0x1A 在玩家侧是『背后轻击』，这里是『起身 / 眩晕』；0x1C 在玩家侧是『背后击倒』，这里是『贴墙滑落』。不先确认对象是谁，编号就会读反。",
+      "note": "与玩家侧共用一套编号，但分派表不同：0x1A 在玩家侧是『背后轻击』，这里是『起身 / 眩晕』；0x1C 在玩家侧是『背后击倒』，这里是『贴墙滑落』。不先确认对象是谁，编号就会读反。再往下一层也不是玩家侧那套：这里的 anim 0..4 由 set_hit_anim(e, anim) 再按兵种 e.w84 查 L[0x2E68C + e.w84] 才得到该兵种自己的受击动画（re/specs/enemy/SPEC.md:1147-1179），不是全角色通用的段号；所以 player_hurt_anim 那张按段编号的表只适用于玩家侧，别套过来。按兵种的逐类动画表按 coverage.not_registered 不转。",
       "values": {
         "0": { "meaning": "轻畏缩（anim 0）；HP=0 / 韧性=0 / 腾空时改判击倒 4", "tag": "O" },
         "2": { "meaning": "轻畏缩（anim 1）；同样可改判击倒 6", "tag": "O" },
