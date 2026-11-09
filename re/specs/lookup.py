@@ -958,6 +958,8 @@ def cmd_selftest():
     ck("街机前端硬件位按用户边界不转，理由已进索引",
        any("街机前端" in x["what"] and "硬件" in x["why"] and "游戏性" in x["why"]
            for x in nr))
+    ck("HANDOFF 工程交接按边界不转、理由已进索引",
+       any("HANDOFF.md" in x["what"] and "工程台账" in x["why"] for x in nr))
 
     # 主题索引：与 coverage 正交，每个域恰好归一处
     items = DB.get("themes", {}).get("list", [])
