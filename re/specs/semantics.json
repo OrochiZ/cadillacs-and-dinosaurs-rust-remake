@@ -801,12 +801,97 @@
         "14": { "meaning": "落「击飞」", "tag": "O", "alias": "0x0E" },
         "16": { "meaning": "落「击飞」", "tag": "O", "alias": "0x10" }
       }
+    },
+
+    "jack_anim_set0": {
+      "label": "Jack 动画第 0 套（移动类，表 0x9E41C）的段编号",
+      "scope": "dino / Jack only",
+      "source": "re/specs/anim/SPEC.md §3.6 Set 0（ids O，labels I from art）",
+      "context_dependent": true,
+      "note": "编号存在是 [O]，『这一编号是哪一招』由美术 + 代码推断为 [I]。SPEC 只逐段列了 Jack，其它三个角色同套同 id 未必同义；不要把这张表当成四角色通用。未列出的 id 未登记，不硬答。",
+      "values": {
+        "0": { "meaning": "待机：三段各 120 tick 的静止，之后进呼吸循环（link → 0x9E482）", "tag": "I" },
+        "1": { "meaning": "走：12 帧 × 4 tick，帧类型 2，身体盒 0x1B，抓投探测 0x52，循环", "tag": "I" },
+        "2": { "meaning": "起跑：接 id 9 的跑循环", "tag": "I" },
+        "3": { "meaning": "垂直跳", "tag": "I" },
+        "4": { "meaning": "前空翻", "tag": "I" },
+        "5": { "meaning": "后空翻", "tag": "I" },
+        "6": { "meaning": "落地，回待机", "tag": "I" },
+        "8": { "meaning": "短跳", "tag": "I" },
+        "10": { "meaning": "蹲下 / 拾取", "tag": "I" },
+        "11": { "meaning": "只有腿的走（分身绘制时给下半身用）", "tag": "I" },
+        "13": { "meaning": "蹲下转站立", "tag": "I" },
+        "14": { "meaning": "投掷物品的姿势", "tag": "I" },
+        "15": { "meaning": "投掷物品的姿势", "tag": "I" },
+        "16": { "meaning": "只有腿的走（分身绘制时给下半身用）", "tag": "I" },
+        "19": { "meaning": "蹲下 / 拾取", "tag": "I" },
+        "20": { "meaning": "空翻 + 落地", "tag": "I" },
+        "21": { "meaning": "跳跃踢：帧类型 4，攻击盒 0x0B / 0x0C / 0x0D", "tag": "I" },
+        "22": { "meaning": "蹲下 / 拾取", "tag": "I" },
+        "23": { "meaning": "蹲下转站立", "tag": "I" },
+        "24": { "meaning": "蹲下 / 拾取", "tag": "I" },
+        "25": { "meaning": "蹲下 / 拾取", "tag": "I" },
+        "26": { "meaning": "被扔出去的翻滚（帧类型 0xE）", "tag": "I" },
+        "27": { "meaning": "翻滚后起身", "tag": "I" },
+        "28": { "meaning": "被扔出去的翻滚（帧类型 0xE）", "tag": "I" },
+        "30": { "meaning": "蹲下转站立", "tag": "I" },
+        "31": { "meaning": "投掷物品的姿势", "tag": "I" }
+      }
+    },
+    "jack_anim_set1": {
+      "label": "Jack 动画第 1 套（攻击类，表 0x9EDFE）的段编号",
+      "scope": "dino / Jack only",
+      "source": "re/specs/anim/SPEC.md §3.6 Set 1 与 Punch chain [O, code 0x1CF2..0x1F98]",
+      "context_dependent": true,
+      "note": "0..7 的连段对应是代码 [O]，8 之后是美术推断 [I] / 未登记 [U]。与 combo_counter、attack_id、player_ground_state 三张表对齐：同一个连段第几下，在四张表里是四个不同的编号。只适用于 Jack。",
+      "values": {
+        "0": { "meaning": "刺拳：连段起手，状态 0x02000004，$58 = 0", "tag": "O" },
+        "1": { "meaning": "伸臂状态下的刺拳：在 $2C != 0 的窗口里重按时改用这段", "tag": "O" },
+        "2": { "meaning": "命中后的刺拳：命中确认切到这段，状态 0x02000006", "tag": "O" },
+        "3": { "meaning": "勾拳：状态 0x0200000A，$58 = 2", "tag": "O" },
+        "4": { "meaning": "终结拳：3 帧叠加 composition 0xA8，状态 0x0200000C，$58 = 4", "tag": "O" },
+        "5": { "meaning": "命中后的勾拳", "tag": "O" },
+        "6": { "meaning": "命中后的终结拳", "tag": "O" },
+        "7": { "meaning": "命中后的终结拳：角色 1 在 $2C = 0 时改用这段代替 4", "tag": "O" },
+        "8": { "meaning": "必杀：帧类型 6，没有身体盒（这一帧自己不可被命中）", "tag": "I" },
+        "9": { "meaning": "背向攻击", "tag": "I" },
+        "10-13": { "meaning": "跳跃攻击（帧类型 4）；SPEC 把 10..13 写成一族，未逐段拆", "tag": "I" },
+        "15": { "meaning": "用途未登记", "tag": "U" }
+      }
+    },
+    "jack_anim_set2": {
+      "label": "Jack 动画第 2 套（受伤类，表 0x9F094）的段编号",
+      "scope": "dino / Jack only",
+      "source": "re/specs/anim/SPEC.md §3.6 Set 2（all type 8 为 O，标签 I from art）",
+      "context_dependent": true,
+      "note": "整套都是帧类型 8（受击反应），命中循环会跳过它，不会被连锁追打。标签为美术推断 [I]；只适用于 Jack。",
+      "values": {
+        "0": { "meaning": "上段受击", "tag": "I" },
+        "1": { "meaning": "下段受击", "tag": "I" },
+        "2": { "meaning": "击倒", "tag": "I" },
+        "3": { "meaning": "后滚", "tag": "I" },
+        "4": { "meaning": "眩晕循环", "tag": "I" },
+        "5": { "meaning": "起身", "tag": "I" },
+        "6": { "meaning": "受击变体", "tag": "I" },
+        "7": { "meaning": "击倒变体", "tag": "I" }
+      }
+    },
+    "combo_counter": {
+      "label": "连段计数（+$B2，命中确认后才 +1）",
+      "scope": "dino",
+      "source": "re/specs/anim/SPEC.md §3.6 Punch chain [O, code 0x1CF2..0x1F98]",
+      "note": "这一格不是『第几拳』的编号，是『已经打中几下』的计数：只在命中确认（攻方 $59 != 0）时增加，状态 6 里缓存的按键等动画演完才按它翻页。所以连段是打出来的，不是按出来的。",
+      "values": {
+        "1": { "meaning": "再出一次刺拳：set1 anim 0，状态 0x02000008，$58 = 0", "tag": "O" },
+        "2": { "meaning": "勾拳：set1 anim 3，状态 0x0200000A，$58 = 2；命中后转 anim 5", "tag": "O" },
+        "3": { "meaning": "终结拳：set1 anim 4（角色 1 在 $2C = 0 时改用 anim 7），状态 0x0200000C，$58 = 4；命中后转 anim 6，若抓着可投敌人且推方向则改投掷", "tag": "O" }
+      }
     }
   },
   "coverage": {
     "note": "按回源 SPEC 列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么不转。给压缩恢复后用，不当待办清单。",
     "registered": [
-      { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id"] },
+      { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id", "jack_anim_set0", "jack_anim_set1", "jack_anim_set2", "combo_counter"] },
       { "source": "notes/06-method.md §94.12–§94.18", "domains": ["wof_reaction", "wof_atk_field", "wof_player_reaction"] },
       { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "attack_id", "weapon_kind", "weapon_attack_state"] },
       { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant", "wave_ctrl_r4", "wave_ctrl_r5"] },
@@ -822,6 +907,7 @@
       { "what": "enemy SPEC §7.1 的 debug 状态名词表", "why": "SPEC 明写它只是开发者通用词汇，不是 class 2 的真实 +$06 编号表，转进来会批量制造错读" },
       { "what": "wof 民间资料「死 / 附 / 效 / 呆」四列的编号 → 效果名（06 烧死、0C 全碎、02 击倒…）", "why": "§94.14 三方对账只核到数据 ↔ 代码两角，玩家可见现象一角未验；资料把编号直接读成效果名，中间还隔着受击状态机、血量、ObjId 与状态档位。转进来会把未验命名固化成语义，与 debug 词汇表同性质" },
       { "what": "状态字 / 字段里用途未明的项", "why": "已在对应域标 [U]，不从字段名猜；新增条目必须带 source" },
+      { "what": "Mustapha / Hannah / Mess 的逐段动画编号表", "why": "SPEC §3.2 只给了这三角色每套的有效 id 数量，§3.6 只逐段列了 Jack 的 set 0/1/2；不能把 Jack 的编号意义套到别人身上，按『不从单个角色推全表』不转" },
       { "what": "位域与字段偏移域里的数字", "why": "那是位号或 +N 字节，不是游戏里读到的取值，按取值反查时要排除" }
     ]
   }

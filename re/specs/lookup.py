@@ -24,6 +24,7 @@
     python re/specs/lookup.py collide 4               只给一个取值，列出它在各域的所有意义
     python re/specs/lookup.py collide 0x1A            看同一编号在哪几张表里意思不同
     python re/specs/lookup.py attack_id 0x5A          查一个攻击编号是哪一招
+    python re/specs/lookup.py anim_id 1 4             查 Jack 第 1 套第 4 段是哪一招
     python re/specs/lookup.py coverage                哪些表已转、哪些按纪律不转、为什么
     python re/specs/lookup.py --json frame_type 4     机器可读输出
     python re/specs/lookup.py --selftest              固化自测（不依赖 ROM）
@@ -51,6 +52,9 @@ DOMAINS = DB["domains"]
 # 这些域的「数字」是字节偏移或位编号，不是游戏里读到的取值；
 # 只给一个取值反查时必须排除，否则会把 "+4 字段" 当成 "取值 4"。
 OFFSET_KEY_DOMAINS = ("attack_field", "box_field", "wof_atk_field")
+
+# SPEC §3.6 只逐段列了 Jack 的前三套；第 3/4/5 套只有套级用途。
+SET_DOMAINS = {0: "jack_anim_set0", 1: "jack_anim_set1", 2: "jack_anim_set2"}
 
 
 # ---------- 取值解析 ----------
@@ -499,6 +503,38 @@ def cmd_anim(tokens: list[str]):
     return 0
 
 
+def cmd_anim_id(tokens: list[str]):
+    """按「套号 + 段号」查 Jack 的动画编号是哪一招（ANI 表 u16 offset[id] 的 id）。"""
+    if len(tokens) != 2:
+        print("用法：anim_id <set 0..5> <id>   例：anim_id 1 4")
+        return 1
+    set_n, _ = parse_value(tokens[0])
+    if set_n is None or set_n not in range(6):
+        print(f"套号读不出或超出 0..5：{tokens[0]}")
+        return 1
+    set_v = DOMAINS["anim_set"]["values"].get(str(set_n))
+    print(f"Jack 动画 set {set_n} / id {tokens[1]}")
+    if set_v:
+        print(f"  这一套：{set_v['meaning']} {fmt(set_v['tag'])}")
+    dname = SET_DOMAINS.get(set_n)
+    if not dname:
+        print("  这一套 SPEC 只给了套级用途，没有逐段编号表 —— 不猜。")
+        return 0
+    d = DOMAINS[dname]
+    if tokens[1] in d["values"]:
+        k, v = tokens[1], d["values"][tokens[1]]
+    else:
+        k, v = match_value(d, tokens[1])
+    if v is None:
+        print(f"  {dname}.{tokens[1]}：未登记。这套已有的编号：{', '.join(d['values'])}")
+        print("  （不猜：没有出处的意义请标 U 并补 source 后再加进 semantics.json）")
+        return 2
+    emit(dname, k, v, False)
+    if set_n == 1:
+        print("  对齐查：attack_id（$58）/ player_ground_state（状态字）/ combo_counter（+$B2）")
+    return 0
+
+
 def cmd_find(word: str):
     print(f"在意义 / 备注里搜「{word}」：")
     hit = 0
@@ -595,8 +631,8 @@ def cmd_selftest():
             if not v.get("meaning") or not v.get("tag") or v["tag"] not in ("O", "I", "U"):
                 bad.append(f"{name}.{k} 缺 meaning/tag")
     ck("每个域都有 scope/source，每条都有 meaning/tag", not bad, "; ".join(bad))
-    ck("域数量 >= 51（wof 玩家侧受击分类也进了缓存）",
-       len(DOMAINS) >= 51, str(len(DOMAINS)))
+    ck("域数量 >= 55（Jack 三套 ANI 段编号与连段计数也进了缓存）",
+       len(DOMAINS) >= 55, str(len(DOMAINS)))
     for dn in ("player_ground_state", "player_run_state", "player_air_state"):
         ck(f"状态表 {dn} 已登记", dn in DOMAINS)
 
@@ -741,6 +777,25 @@ def cmd_selftest():
     ck("民间资料四列按纪律不转的理由已写进覆盖索引",
        any("民间资料" in x["what"] and "未验" in x["why"] for x in nr))
 
+    # ANI 段编号：看到「套 + 段」就能知道这一招，并和另外三张表对齐
+    out = capture(cmd_anim_id, ["1", "4"])
+    ck("anim_id 1 4 → 终结拳", "jack_anim_set1.4" in out and "终结拳" in out)
+    ck("anim_id 1 4 提示连段四表对齐", "combo_counter" in out and "attack_id" in out)
+    out = capture(cmd_anim_id, ["0", "21"])
+    ck("anim_id 0 21 → 跳跃踢", "跳跃踢" in out)
+    out = capture(cmd_anim_id, ["3", "0"])
+    ck("anim_id 3 0 → 只给套级用途、不猜逐段", "没有逐段编号表" in out)
+    out = capture(cmd_anim_id, ["1", "12"])
+    ck("set1 的 10-13 是连续跳跃攻击族", "跳跃攻击" in out)
+    _, v = match_value(DOMAINS["combo_counter"], "3")
+    ck("连段计数 3 → 终结拳", bool(v) and "终结拳" in v["meaning"])
+    ck("Jack 专属表标了作用域，没写成四角色通用",
+       all("Jack only" in DOMAINS[x]["scope"]
+           for x in ("jack_anim_set0", "jack_anim_set1", "jack_anim_set2")))
+    out = capture(cmd_collide, "3")
+    ck("collide 3 现在也列出连段计数与 Jack 动画表",
+       all(x in out for x in ("combo_counter", "jack_anim_set0", "jack_anim_set1")))
+
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:
         print(f"  {'PASS' if good else 'FAIL'}  {label}" + (f"   [{detail}]" if not good and detail else ""))
@@ -767,6 +822,8 @@ def main(argv: list[str]) -> int:
         return cmd_collide(rest[0]) if rest else (print("用法：collide <取值>") or 1)
     if cmd == "coverage":
         return cmd_coverage()
+    if cmd == "anim_id":
+        return cmd_anim_id(rest)
     if cmd == "flags":
         return cmd_flags(rest[0], rest[1]) if len(rest) >= 2 else (print("用法：flags <位域> <值>") or 1)
     if cmd == "attr":

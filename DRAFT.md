@@ -3,47 +3,50 @@
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 git 跟踪的耐久层。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
 
-## 本轮做了什么：把 wof 侧补进缓存，并把「不能转的那张资料」写进索引（第四格）
+## 本轮做了什么：把「看到一段 ANI 编号就知道是哪一招」补上（第五格）
 
-**背景**：前三格 `f9fa84ba` / `d043bf2c` / `809a9057` 已收口覆盖索引、扩到 50 域、
-写回设计倒推，工作区干净。缓存几乎全在 dino 侧，而原始主题是两款游戏的设计差异；
-这一格补 wof 侧一张能安全转的表，并把一条容易误转的资料按纪律挡在索引外。
+**背景**：前四格到 `6841d80b`，51 域 / 382 条、58/58 自测，工作区干净。
+Stop hook 催办后继续。回 `re/specs/anim/SPEC.md §3.2 / §3.6` 发现用户举例的 ANI
+那一层还有最直接的一块缺口：`anim_set` 只转了「6 套」的套号，套里每段编号
+（ANI 表 `u16 offset[id]` 的 id）是哪一招没转；而 §3.6 的 punch chain 有代码级
+出处，能把「动画 id → 哪一招 → $58 → 状态字 → 连段计数」串起来。
 
 ### 回源与取舍
 
-- Grep `notes/06-method.md` 找用户当初贴的民间资料（`0x6DB44` 我方攻击属性）：
-  §94.12 两张参数表的字段布局已转成 `wof_atk_field`；§94.14 的 `0x11878` 敌人
-  受击全表已转成 `wof_reaction`。
-- **补的域**：§94.14 / §94.18 的玩家侧入口 `0x11720`（五角色 B=2 受击段共用）
-  明确点名 `0x04` 落击倒、`0x06 / 0x08 / 0x0C / 0x0E / 0x10` 落击飞；
-  宿主常量名 `DMGREACT_BURN=0x04` / `DMGREACT_SPECIAL=0x06` 与实际落点不符，
-  按既有 §11.0 不按名字补意义。只登记这 6 格，其余编号不硬答。
-- **更要紧的一刀**：民间资料「死 / 附 / 效 / 呆」四列把 `06` 读成「烧死」、
-  `0C` 读成「全碎」、`02` 读成「击倒」。§94.14 三方对账只核到数据 ↔ 代码两角，
-  **玩家可见现象一角未验**；编号与演出之间还隔着受击状态机、血量、ObjId、状态档位。
-  这类不能进缓存——转进来会把未验命名固化成语义，和 debug 词汇表同性质。
-  已写进 `coverage.not_registered`，并固化成自测断言。
-- 主语边界：这是 wof 侧登记，不推断原机有没有火烧，也不评两款游戏优劣。
+- §3.2：6 套 × 4 角色，`table = u32(set_ptr + 4*b03)`，每套有效 id 数各角色不同，
+  id 只是 `offset[id]` 的下标。
+- §3.6 只逐段列了 **Jack** 的 set 0 / 1 / 2，并明写 `ids O, labels I from art`；
+  set 3/4/5 只有套级用途。所以：
+  - 三个 `jack_anim_setN` 域的 scope 写成 `dino / Jack only`、context_dependent，
+    标签按 SPEC 标 I；set1 的 0..7 用 punch chain 代码标 O，id 15 标 U。
+  - `10-13 jump attacks` 是 SPEC 明写的一族连续编号，才用范围键；其余一律离散键。
+  - 未列出的 id 不登记、不硬答。
+  - 其余三角色逐段表按纪律不转，理由写进 `coverage.not_registered`：
+    不能把 Jack 的编号意义套到别人身上。
+- `combo_counter`（+$B2）：§3.6 punch chain 标 [O]，只在命中确认时 +1，
+  动画演完才按它翻页；把「连段是打出来的」落成一个可查取值。
 
 ### 交付
 
-- `re/specs/semantics.json`：新增 `wof_player_reaction`（6 条，带 context_dependent
-  与「别按宿主常量名读」的 note）；`coverage.registered` 的 06 卷分组改为
-  §94.12–§94.18 并补该域；`coverage.not_registered` 加民间资料四列那一条。
-- `re/specs/lookup.py`：域数量断言 `>= 51`；新增 6 条自测（wof 两侧 `0x0E` 不同、
-  `collide` 同时列出、未点名 `0x0A` 不硬答、民间资料防错条目存在）。
+- `semantics.json` 新增 4 域：`jack_anim_set0`（26 条）/ `jack_anim_set1`（11 键）/
+  `jack_anim_set2`（8 条）/ `combo_counter`（3 条），共 48 条；
+  `coverage.registered` anim 组补 4 域；`not_registered` 加「其余三角色逐段表不转」。
+- `lookup.py` 新增 `SET_DOMAINS` 与 `anim_id <set> <id>` 命令：按套 + 段直接查，
+  先给套级意义，再给该段意义，set 1 额外提示四张表对齐；set 3/4/5 直说「没有
+  逐段编号表，不猜」。域数量断言 `>= 55`，新增 8 条自测。
 
 ### 实跑验证
 
-- `--selftest` → **58/58 通过**。
-- `coverage` → 「合计 51 个域 / 382 条；索引缺 0 个域、多 0 个域」。
-- `collide 0x0E` 实跑：命中 21 个域、16 个专门登记，其中 wof 玩家侧「击飞」
-  与敌人侧「碎尸族」并排出现——正是「编号不是结果，是门票」的可查实证。
+- `--selftest` → **66/66 通过**。
+- `coverage` → 「合计 55 个域 / 431 条；索引缺 0 个域、多 0 个域」。
+- 抽查：`anim_id 1 4` → 终结拳（$58 = 4、状态 0x0200000C、3 帧叠加 comp 0xA8）；
+  `anim_id 0 21` → 跳跃踢（帧类型 4、攻击盒 0x0B / 0x0C / 0x0D）；
+  `anim_id 3 0` → 只给套级用途、不猜逐段。
 - `py_compile` OK；`git status --short` 只有两处 M。
 
 ### 边界
 
-- **0 次 ROM**；只读 rep 内笔记与离线脚本，未碰 `g:/wof/wt1` 源码。
+- **0 次 ROM**；只读 rep 内 SPEC 与离线脚本，未碰 `g:/wof/wt1` 源码。
 - 不碰 `re/out/assets/` 产物层，不修 `check_docs.py` 假红，不改 `CLAUDE.md` / `.gitignore`。
 - 不恢复「以 ROM 审 repo」框架；不把 `[I]` 写成 `[O]`；不从字段名 / 常量名猜意义。
 - 环境硬限制照旧（无 Rust 工具链 / `dino.zip` / `re/rom` / `target`），新脚本 ROM-free。
