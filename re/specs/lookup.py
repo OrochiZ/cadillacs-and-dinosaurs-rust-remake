@@ -322,6 +322,9 @@ def cmd_frame(tokens: list[str]):
         print(f"  · {line}")
     print("\n  看不到 GFX 仍能知道：打哪儿、打多久、这一帧算攻击还是受击、结束后往哪走。")
     print("  看不到 GFX 无法知道：这一帧画的是什么造型、素材好不好看 —— 那归 composition/code。")
+    if atk or body:
+        print("\n  · 下面翻的是盒表项本身的意义（形状 / 前伸 / 高度），"
+              "不是当前这一帧会不会挨打；当前帧的身份判断看上面")
     for label, idx in (("攻击盒", atk), ("身体盒", body)):
         if idx == 0:
             continue
@@ -346,10 +349,14 @@ def infer(kind, body, atk, dur, last, w0) -> list[str]:
         out.append("非攻击帧却带攻击盒 → 抓投探测，目标限定在特定状态")
     if body == 0:
         out.append("没有身体盒 → 这一帧自己不可被命中（必杀 / 无敌 / 演出帧）")
+    elif kind in (8, 10):
+        out.append(f"有身体盒 #{body}，但受击 / 倒地身份被命中循环跳过"
+                   " → 这一拍不会被连锁追打 [O]（不是靠关盒实现的无敌）")
     else:
         out.append(f"有身体盒 #{body} → 自己仍可被反击，攻防同时成立")
-    if kind in (8, 10):
-        out.append("受击 / 倒地身份 → 命中循环会跳过它，不会被连锁追打")
+    if kind in (12, 14):
+        out.append("抓住 / 被抓姿势 [O]：不发起攻击，但 0xC / 0xE 仍在防守方"
+                   "命中分派表里，这一拍自己仍可能挨打，别读成无敌")
     out.append(f"这一拍占 {256 if dur == 0 else dur} tick（0 不是不显示，是 256）")
     out.append("末帧后的 link word 决定是回环还是跳到另一段（连段接哪一招写在这里）" if last
                else "顺序推进到下一帧，段落还没结束")
@@ -905,8 +912,12 @@ def cmd_moment(tokens: list[str]):
         if kind in grab_kinds:
             why = ("这一帧的 +$49 是抓投探测盒，命中后双方进的是『抓住 / 被抓』，"
                    "不走扣血那条链")
-        elif kind in (8, 10, 12, 14):
-            why = "这一帧是受击 / 倒地 / 抓姿势，命中循环本就跳过它，没有发起攻击这一说"
+        elif kind in (8, 10):
+            why = ("这一帧是受击 / 倒地身份：SPEC §4.4 [O] 的命中循环跳过防守方"
+                   " 8 / 0xA，它也不是攻方类型 4，不发起攻击")
+        elif kind in (12, 14):
+            why = ("这一帧是抓住 / 被抓姿势，不是攻方类型 4，不发起攻击；"
+                   "但 0xC / 0xE 仍在防守方命中分派表里，别把它读成无敌")
         elif kind in SPECIAL_KINDS:
             why = ("这一帧登记为特殊 / 必杀帧 [I 推断]；SPEC §4.4 的普通命中循环"
                    "只认攻方 +$2E == 4，是否另有必杀结算路径缓存没登记，"
@@ -1845,6 +1856,21 @@ def cmd_selftest():
        "回环到本段第 0 帧 [I]" in ob and "i16 -50" in ob)
     ck("没给 link word 字节时不硬猜去向",
        "没给够 2 字节" in capture(cmd_anim, _ANIM_BEAT[:-1]))
+    f8 = capture(cmd_frame, ["10", "0A01", "8000", "0100", "0803", "1A00"])
+    ck("受击 / 倒地帧不再同时说『仍可被反击』和『被命中循环跳过』",
+       "自己仍可被反击" not in f8 and "不会被连锁追打" in f8
+       and "不是靠关盒实现的无敌" in f8)
+    f12 = capture(cmd_frame, ["10", "0A01", "8000", "0100", "0C03", "1A00"])
+    ck("抓住 / 被抓帧明说自己仍可能挨打，不读成无敌",
+       "仍在防守方" in f12 and "别读成无敌" in f12)
+    m12 = capture(cmd_moment, ["10", "0A01", "8000", "0100", "0C03", "1A00",
+                               "attack", "0A", "01", "00", "09", "03", "14", "00", "00"])
+    ck("moment 不再把 0xC / 0xE 说成命中循环跳过",
+       "命中循环本就跳过它" not in m12 and "仍在防守方命中分派表" in m12)
+    ck("frame_type 域级 note 写明跳过只针对 8 / 0xA，0xC / 0xE 仍会被打",
+       "只跳过 8 / 0xA" in DOMAINS["frame_type"]["note"])
+    ck("frame 单帧把盒表项意义与当前帧身份分开说",
+       "盒表项本身的意义" in f8)
     out = capture(cmd_box, ["-1", "10", "-68", "59", "29", "42"])
     ck("box 六个数能复算出打击形状",
        "X 区间 [-68, -9]" in out and "Y 区间 [29, 71]" in out and "Z 区间 [-1, 9]" in out)
