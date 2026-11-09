@@ -3,44 +3,52 @@
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 git 跟踪的耐久层。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
 
-## 本轮做了什么：收口「覆盖索引」这一格
+## 本轮做了什么：接着把「各种表」的抽象意义转成缓存（第二格）
 
-**背景**：上一轮 Stop hook 后继续推进，已在 `re/specs/semantics.json` 加了 4 个域
-（`sound_command` / `sound_code` / `sound_header_type` / `game_phase`）和顶层 `coverage`，
-在 `re/specs/lookup.py` 加了 `cmd_coverage()` 与 dispatch；压缩打断在最后一步之前，
-没自测、没编译、没写回 DRAFT、没提交。本轮按开工机制复位后把它做完。
+**背景**：上一格 `f9fa84ba` 收口了覆盖索引（43 域 / 306 条、42/42 自测），工作区干净。
+按 `长时间自主推进` 继续，用户明确说「各种表数值的抽象意义都要转换缓存」，
+所以这一格回源再找仍适合转的**符号 / 档位表**，不碰量。
 
-开工核现场：`git log -8` 头 `3b5dd691`；`git status --short` 只有
-`M re/specs/lookup.py` / `M re/specs/semantics.json`；无 `R:\Temp\dino_commit_msg.txt`。
-回读两份文件，确认 43 个域、`coverage.registered` 已列全、`cmd_coverage()` 与
-`main()` dispatch 都在，缺的只是把新表与索引固化进 `--selftest`。
+### 回源与取舍
 
-### 本轮改动
+- 先 Grep 各 SPEC 的章节与表格行，锁定还没转、且确实是「编号 → 身份」的成表：
+  `re/specs/player/SPEC.md §4.2` 攻击 id 表、§4.9.1 手持物 kind 与持械状态表；
+  `re/specs/enemy/SPEC.md §8.2` 波次控制器 r4 / r5；
+  `re/specs/sound/SPEC.md §7` 音序命令字、§9.2 声像运动模式表。
+- **一处写盘前订正**：初稿想写「r5=2 碰到 terminator 就转 4」，回源 §8.2 代码确认
+  分组 terminator 是重置 7200 帧预算、**回到 r5=0 读下一组阈值**；只有 r5=0 读到
+  final 的负 end 才进 r5=4 收尾。已按代码改准，note 里也写清「分组 terminator 不是收尾」。
+- **另一处收紧**：`weapon_kind` 初稿把「可边走边开枪」写在 0x206 / 0x207 上，但
+  §4.9 摘要与 §4.9.1 状态表口径不完全一致；改成每条只记「是什么」，
+  「按攻击键进哪个状态」另立 `weapon_attack_state` 域，避免把两处口径焊成一句。
+- `0x209` 的「bazooka」名在 §4.9 标 [I]、行为是 [O]，缓存里明确分开写，不把 [I] 说成 [O]。
+- 攻击数据表每行的伤害 / 眩晕 / 反应 / 定格是**量**，按 `coverage.not_registered` 第一条不转；
+  这里只转「$58 = 这个编号是哪一招」。
 
-- `re/specs/lookup.py`：
-  - 域数量断言从 `>= 39` 收紧到 `>= 43`；
-  - 新增 4 条覆盖索引断言（每个域都有回源分组、无已删域、无重复登记、
-    `cmd_coverage()` 输出含合计与「缺 0 / 多 0」）；
-  - 新增 5 条新表抽查（`0xFF06` 淡出、`0x30` 落音效段、声音头 5 即优先级、
-    关内阶段 4 = 等清场、`0xFFxx` 命令字不落进普通编号段）。
-- `re/specs/semantics.json`：本轮未再改；内容就是上一轮落盘的 43 域 + `coverage`。
+### 交付
+
+- `re/specs/semantics.json`：新增 7 个域 —— `attack_id`、`weapon_kind`、
+  `weapon_attack_state`、`wave_ctrl_r4`、`wave_ctrl_r5`、`seq_command`、`pan_mode`；
+  全部带 scope / source / tag，两个上下文相关域带 note。
+  `coverage.registered` 三个回源分组同步补上，仍是 8 组、无遗漏无多余。
+- `re/specs/lookup.py`：域数量断言 `>= 50`；新增 10 条自测（含「同一个 4 在招式表
+  和帧类型表里不是一回事」「collide 4 现在也列出招式 / 波次 / 音序」）；
+  用法加一行 `attack_id 0x5A` 示例。
 
 ### 实跑验证
 
-- `python -X utf8 re/specs/lookup.py --selftest` → **42/42 通过**。
-- `python -X utf8 re/specs/lookup.py coverage` →
-  「合计 43 个域 / 306 条；索引缺 0 个域、多 0 个域」，8 个回源分组逐条列出。
-- `python -m py_compile re/specs/lookup.py` → OK；`__pycache__` 被忽略，未进工作区。
-- `git status --short` 仍只有那两个 M，编译没带出新文件。
+- `--selftest` → **52/52 通过**。
+- `coverage` → 「合计 50 个域 / 376 条；索引缺 0 个域、多 0 个域」。
+- 抽查：`attack_id 0x5A` → 冲刺攻击第 2 拍；`weapon_kind 0x209` → 火箭筒；
+  `seq_command 0x18` → 设声像（都带别名与回源）。
+- `py_compile` OK；`git status --short` 仍只有两处 M。
 
 ### 边界
 
-- **0 次 ROM 取证**；全部来自 rep 内 SPEC / 笔记的只读回源与离线脚本。
-- 不碰 `re/out/assets/` 产物层，不修 `check_docs.py` 因产物前缀报的假红，
-  不改 `CLAUDE.md` / `.gitignore` 的产物状态描述。
+- **0 次 ROM 取证**；全部来自 rep 内 SPEC 只读回源与离线脚本。
+- 不碰 `re/out/assets/` 产物层，不修 `check_docs.py` 假红，不改 `CLAUDE.md` / `.gitignore`。
 - 不恢复「以 ROM 审 repo」框架；不把 `[I]` 写成 `[O]`；不从字段名猜意义。
-- 环境硬限制照旧：无 Rust 工具链、无 `dino.zip` / `re/rom` / `target` ⇒
-  编译、回归、MAME 对拍做不了，不是缺口；新脚本特意 ROM-free。
+- 环境硬限制照旧（无 Rust 工具链 / `dino.zip` / `re/rom` / `target`），新脚本 ROM-free。
 
 ### 长期口径（细则在耐久层，不在本文件展开）
 

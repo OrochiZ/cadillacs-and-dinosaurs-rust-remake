@@ -23,6 +23,7 @@
     python re/specs/lookup.py find 攻击                按意义关键词反查
     python re/specs/lookup.py collide 4               只给一个取值，列出它在各域的所有意义
     python re/specs/lookup.py collide 0x1A            看同一编号在哪几张表里意思不同
+    python re/specs/lookup.py attack_id 0x5A          查一个攻击编号是哪一招
     python re/specs/lookup.py coverage                哪些表已转、哪些按纪律不转、为什么
     python re/specs/lookup.py --json frame_type 4     机器可读输出
     python re/specs/lookup.py --selftest              固化自测（不依赖 ROM）
@@ -594,8 +595,8 @@ def cmd_selftest():
             if not v.get("meaning") or not v.get("tag") or v["tag"] not in ("O", "I", "U"):
                 bad.append(f"{name}.{k} 缺 meaning/tag")
     ck("每个域都有 scope/source，每条都有 meaning/tag", not bad, "; ".join(bad))
-    ck("域数量 >= 43（声音命令 / 编号分段 / 关内阶段四张表也进了缓存）",
-       len(DOMAINS) >= 43, str(len(DOMAINS)))
+    ck("域数量 >= 50（招式 / 武器 / 波次 / 音序 / 声像也进了缓存）",
+       len(DOMAINS) >= 50, str(len(DOMAINS)))
     for dn in ("player_ground_state", "player_run_state", "player_air_state"):
         ck(f"状态表 {dn} 已登记", dn in DOMAINS)
 
@@ -697,6 +698,32 @@ def cmd_selftest():
     ck("关内阶段 4 → 等清场", bool(v) and "清场" in v["meaning"])
     ck("0xFFxx 命令字没有混进普通编号段",
        match_value(DOMAINS["sound_code"], "0xFF06")[1] is None)
+
+    # 再补的七张表：招式 / 武器 / 波次 / 音序 / 声像
+    _, v = match_value(DOMAINS["attack_id"], "0x04")
+    ck("攻击编号 0x04 → 终结拳", bool(v) and "终结拳" in v["meaning"])
+    _, v = match_value(DOMAINS["attack_id"], "0x5A")
+    ck("攻击编号 0x5A → 冲刺攻击第 2 拍（hex 别名命中十进制键）",
+       bool(v) and "第 2 个命中拍" in v["meaning"])
+    _, v = match_value(DOMAINS["weapon_kind"], "0x209")
+    ck("手持物 0x209 → 火箭筒", bool(v) and "火箭筒" in v["meaning"])
+    _, v = match_value(DOMAINS["weapon_attack_state"], "0x22")
+    ck("持械状态 0x22 → 后坐力", bool(v) and "后坐力" in v["meaning"])
+    _, v = match_value(DOMAINS["wave_ctrl_r5"], "4")
+    ck("波次子状态 4 → 收尾", bool(v) and "收尾" in v["meaning"])
+    _, v = match_value(DOMAINS["seq_command"], "0x18")
+    ck("音序命令 0x18 → 设声像", bool(v) and "声像" in v["meaning"])
+    _, v = match_value(DOMAINS["seq_command"], "0x0E")
+    ck("音序循环命令族用连续范围键，不是离散编号",
+       bool(v) and "循环" in v["meaning"])
+    _, v = match_value(DOMAINS["pan_mode"], "7")
+    ck("声像模式 7 → 双胞胎轨", bool(v) and "双胞胎" in v["meaning"])
+    ck("同一个 4 在招式表和帧类型表里不是一回事",
+       DOMAINS["attack_id"]["values"]["4"]["meaning"]
+       != DOMAINS["frame_type"]["values"]["4"]["meaning"])
+    out = capture(cmd_collide, "4")
+    ck("collide 4 现在也列出招式 / 波次 / 音序几张表",
+       all(x in out for x in ("attack_id", "wave_ctrl_r4", "seq_command")))
 
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:

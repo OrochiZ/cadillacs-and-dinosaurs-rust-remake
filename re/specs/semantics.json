@@ -657,6 +657,135 @@
         "4": { "meaning": "等清场：清结算任务、置 G.$4E2、起 1800 帧计时（第 7 关 3600），转 6", "tag": "O" },
         "6": { "meaning": "进下一关 / 区域：stage+1、area 0、回 mode 8；第 7 关改走结局", "tag": "O" }
       }
+    },
+
+    "attack_id": {
+      "label": "玩家攻击编号（$58，每次起手写进这一格）",
+      "scope": "dino",
+      "source": "re/specs/player/SPEC.md §4.1 / §4.2 攻击数据表",
+      "note": "起手时 $58 = id，再按 $58*4 取 8 字节攻击记录；$5E 序列号保证同一次挥击只打每个敌人一次。表里每行的伤害 / 眩晕 / 定格数值是量、不在这里；这里只记『这个编号是哪一招』。0x5A / 0x5C 是冲刺攻击后几拍重新取的编号，不是另一招。",
+      "values": {
+        "0": { "meaning": "刺拳 / 连段第 2 下（jab / punch 2）", "tag": "O", "alias": "0x00" },
+        "2": { "meaning": "连段第 3 拳（punch 3）", "tag": "O", "alias": "0x02" },
+        "4": { "meaning": "终结拳：把人打飞 / 击倒的收尾", "tag": "O", "alias": "0x04" },
+        "6": { "meaning": "抓投膝撞第 1 下", "tag": "O", "alias": "0x06" },
+        "8": { "meaning": "抓投膝撞第 2 下及以后", "tag": "O", "alias": "0x08" },
+        "10": { "meaning": "把抓住的对手扔出去", "tag": "O", "alias": "0x0A" },
+        "12": { "meaning": "跳跃攻击低位", "tag": "O", "alias": "0x0C" },
+        "14": { "meaning": "跳跃攻击高位 / 俯冲", "tag": "O", "alias": "0x0E" },
+        "16": { "meaning": "跑跳攻击", "tag": "O", "alias": "0x10" },
+        "18": { "meaning": "必杀 / desperation", "tag": "O", "alias": "0x12" },
+        "20": { "meaning": "冲刺攻击第 1 段", "tag": "O", "alias": "0x14" },
+        "24": { "meaning": "被抓住时的挣脱攻击", "tag": "O", "alias": "0x18" },
+        "90": { "meaning": "冲刺攻击第 2 个命中拍（同一招换编号重取一次序列号）", "tag": "O", "alias": "0x5A" },
+        "92": { "meaning": "冲刺攻击第 3 个及以后的命中拍", "tag": "O", "alias": "0x5C" }
+      }
+    },
+    "weapon_kind": {
+      "label": "手持物 kind（+$B6 / 物品 +$A0；高字节为 2 才是武器）",
+      "scope": "dino",
+      "source": "re/specs/player/SPEC.md §4.9.1 Held kinds；§4.9 武器名表 0x23C65",
+      "note": "键写十进制，看到 0x201 就输入 0x201（alias 已登记）。这一格决定『手里拿的是哪一类东西』，再决定按攻击键进哪个状态；按 +$26 查的武器名（RIFLE / GUN / ...）是另一张给 HUD 用的名字表，别混。",
+      "values": {
+        "513": { "meaning": "可投掷物：炸弹、打空的手枪 / Uzi / 霰弹枪", "tag": "O", "alias": "0x201" },
+        "514": { "meaning": "棍棒类近战（club / stick）", "tag": "O", "alias": "0x202" },
+        "515": { "meaning": "棒 / 重型近战（可蓄力）；打空的步枪 / M-16 也归这里", "tag": "O", "alias": "0x203" },
+        "516": { "meaning": "手枪", "tag": "O", "alias": "0x204" },
+        "517": { "meaning": "步枪", "tag": "O", "alias": "0x205" },
+        "518": { "meaning": "Uzi", "tag": "O", "alias": "0x206" },
+        "519": { "meaning": "M-16", "tag": "O", "alias": "0x207" },
+        "520": { "meaning": "霰弹枪", "tag": "O", "alias": "0x208" },
+        "521": { "meaning": "火箭筒（bazooka；名称在 §4.9 标 [I]，行为是 [O]）", "tag": "O", "alias": "0x209" },
+        "522": { "meaning": "重物（可举容器）：走慢、Mustapha 不能跳，落地另有一套", "tag": "O", "alias": "0x20A" }
+      }
+    },
+    "weapon_attack_state": {
+      "label": "持械攻击状态（$06 step，weapon_attack_entry 0x198DC 按 kind 分派）",
+      "scope": "dino",
+      "source": "re/specs/player/SPEC.md §4.9.1 状态表",
+      "context_dependent": true,
+      "note": "同一个状态编号只在『手里有对应 kind』时成立；查这一域要说清是哪种武器。0x16 是绝大多数近战 / 投掷 / 单发枪共用的姿势状态。",
+      "values": {
+        "22": { "meaning": "普通挥击 / 投掷姿势：按 kind 摆 pose，帧的 +$2C = 1 / 2 时挥出或脱手；棍棒只在够得着敌人时才挥，否则摆成投掷", "tag": "O", "alias": "0x16" },
+        "28": { "meaning": "站立开枪：自动瞄准最近敌人，动画上升沿开火；没弹药就把枪丢掉", "tag": "O", "alias": "0x1C" },
+        "30": { "meaning": "行走开枪：同站立开枪，但允许移动中射击", "tag": "O", "alias": "0x1E" },
+        "32": { "meaning": "蓄力：按住攻击键累计到 60 帧，松手时按蓄够 8 / 45 帧改动画", "tag": "O", "alias": "0x20" },
+        "34": { "meaning": "后坐力：被打得向后滑，速度按角色取表，隔帧扬尘；腾空就落下", "tag": "O", "alias": "0x22" }
+      }
+    },
+    "wave_ctrl_r4": {
+      "label": "波次控制器主状态（c.r4，pool B class 15）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §8.2 wave_ctrl()",
+      "note": "这是『一波人怎么进』那本手册的外层状态；只有 r4 = 2 时 r5 才逐拍推进。和顶层 game_mode / 关内 game_phase 不是同一层。",
+      "values": {
+        "0": { "meaning": "初始化：按 stage / var 找波次脚本，起 7200 帧预算，清零计数，转 2", "tag": "O" },
+        "2": { "meaning": "运行中：按 r5 逐拍读脚本（等阈值 / 生成 / 收尾）", "tag": "O" },
+        "4": { "meaning": "结束：释放这个控制器对象", "tag": "O" },
+        "6": { "meaning": "结束：释放这个控制器对象（另一条出口）", "tag": "O" }
+      }
+    },
+    "wave_ctrl_r5": {
+      "label": "波次控制器子状态（c.r5，只在 r4 = 2 时跑）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §8.2 wave_ctrl() 的 r5 分支",
+      "context_dependent": true,
+      "note": "三拍就是一整波：先等场上人数降到阈值，再按 delay 一条条放人，最后等所有人回到正常控制态才翻页。查这一域要连着 r4 = 2 一起看；分组 terminator 是回到 0 读下一组，不是收尾。",
+      "values": {
+        "0": { "meaning": "等放行：按玩家人数取阈值，活敌数 > 阈值且 7200 帧预算没耗尽就一直等；放行后读下一条 delay，若读到 final 的负 end 就转 4，否则转 2 开始生成", "tag": "O" },
+        "2": { "meaning": "逐条生成：每条 spawn 记录之间等 delay 帧，放不进池的记录跳过；碰到分组 terminator（负）就重置预算、回到 0 等下一组", "tag": "O" },
+        "4": { "meaning": "收尾：先等 b80 从 0x1E 数到 0x19（期间清 kill_all），再等所有玩家回到正常控制态，按 end & 0xE 决定 GO / 换区 / 通关", "tag": "O" }
+      }
+    },
+    "seq_command": {
+      "label": "音序事件命令字（0x00..0x1F；0x20..0xFF 是音符）",
+      "scope": "dino",
+      "source": "re/specs/sound/SPEC.md §7 Sequence format，命令表 0x0C84",
+      "note": "这是音乐轨自己的『事件脚本』：命令字后面跟 n / hh ll 操作数，改的是这条轨接下来怎么演，不是发一个音。看到 0x18 就知道是设声像，不是音效编号。范围键 14-17 / 18-21 是真正连续的循环 / 中断命令族。",
+      "values": {
+        "0": { "meaning": "切换三连音开关", "tag": "O", "alias": "0x00" },
+        "1": { "meaning": "切换连音（tie）开关", "tag": "O", "alias": "0x01" },
+        "2": { "meaning": "下一个音符附点", "tag": "O", "alias": "0x02" },
+        "3": { "meaning": "切换八度 bank 开关", "tag": "O", "alias": "0x03" },
+        "4": { "meaning": "n：改这条轨的 flags（flags = (flags & 0x97) | n）", "tag": "O", "alias": "0x04" },
+        "5": { "meaning": "hh ll：设速度 tempo（SFX 用自己的，音乐写 F012）", "tag": "O", "alias": "0x05" },
+        "6": { "meaning": "n：设 gate（音符时长比例）", "tag": "O", "alias": "0x06" },
+        "7": { "meaning": "n：设音量（查表 0x23A9）", "tag": "O", "alias": "0x07" },
+        "8": { "meaning": "n：换乐器（8 字节乐器表 0x6E62）", "tag": "O", "alias": "0x08" },
+        "9": { "meaning": "n：设八度", "tag": "O", "alias": "0x09" },
+        "10": { "meaning": "n：设全局移调（只音乐轨，F01A）", "tag": "O", "alias": "0x0A" },
+        "11": { "meaning": "n：设本轨移调", "tag": "O", "alias": "0x0B" },
+        "12": { "meaning": "n：设 detune", "tag": "O", "alias": "0x0C" },
+        "13": { "meaning": "n：设滑音 portamento", "tag": "O", "alias": "0x0D" },
+        "14-17": { "meaning": "n hh ll：循环，循环体一共跑 n+1 次（0x0E..0x11）", "tag": "O" },
+        "18-21": { "meaning": "f hh ll：循环中断，最后一轮改 flags 并跳转（0x12..0x15）", "tag": "O" },
+        "22": { "meaning": "hh ll：跳转（相对操作数之后的有符号偏移）", "tag": "O", "alias": "0x16" },
+        "23": { "meaning": "轨结束", "tag": "O", "alias": "0x17" },
+        "24": { "meaning": "n：设声像（只音乐轨；SFX 忽略它，SFX 声像由 ring entry 给）", "tag": "O", "alias": "0x18" },
+        "25": { "meaning": "n：设 echo send", "tag": "O", "alias": "0x19" },
+        "26": { "meaning": "n：设音乐总音量（F018 = F016 * table24A9[n] >> 16）", "tag": "O", "alias": "0x1A" },
+        "27": { "meaning": "n：设颤音深度（0x27A9）", "tag": "O", "alias": "0x1B" },
+        "28": { "meaning": "n：设震音深度（0x28A9）", "tag": "O", "alias": "0x1C" },
+        "29": { "meaning": "n：设 LFO 速度（0x26A9）", "tag": "O", "alias": "0x1D" },
+        "30": { "meaning": "n：设 LFO flags", "tag": "O", "alias": "0x1E" },
+        "31": { "meaning": "未用：指向数据区，不是有效命令", "tag": "O", "alias": "0x1F" }
+      }
+    },
+    "pan_mode": {
+      "label": "SFX 声像运动模式（ring entry iy+6 低 3 位，track +36 = mode+1）",
+      "scope": "dino",
+      "source": "re/specs/sound/SPEC.md §9.2 模式表；§9.3 逐步规则",
+      "note": "一个 0..7 决定这一声在左右耳之间怎么走：钉住、来回弹、扫到边就停，还是复制出一条延迟 4 拍的双胞胎轨。音乐轨固定 mode 0，靠命令 0x18 设声像。",
+      "values": {
+        "0": { "meaning": "钉住不动：把起始声像截到 0..0x20 后关掉运动", "tag": "O" },
+        "1": { "meaning": "在左右两端之间无限来回弹", "tag": "O" },
+        "2": { "meaning": "以起始声像为中心、按 spread 无限往复摆（先朝中心走）", "tag": "O" },
+        "3": { "meaning": "朝一侧扫到 limit 就停", "tag": "O" },
+        "4": { "meaning": "朝另一侧扫到 limit 就停", "tag": "O" },
+        "5": { "meaning": "两段速度向上扫：先按 v 到 limit，再按 speed2 到 0x20 停", "tag": "O" },
+        "6": { "meaning": "两段速度向下扫：先按 -v 到 limit，再按 -speed2 到 0 停", "tag": "O" },
+        "7": { "meaning": "朝速度方向扫到 limit 就停，并复制一条延迟 4 步、反方向的双胞胎轨", "tag": "O" }
+      }
     }
   },
   "coverage": {
@@ -664,11 +793,11 @@
     "registered": [
       { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id"] },
       { "source": "notes/06-method.md §94.12–§94.16", "domains": ["wof_reaction", "wof_atk_field"] },
-      { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction"] },
-      { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant"] },
+      { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "attack_id", "weapon_kind", "weapon_attack_state"] },
+      { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant", "wave_ctrl_r4", "wave_ctrl_r5"] },
       { "source": "re/specs/stage/SPEC.md", "domains": ["camera_mode"] },
       { "source": "re/specs/flow/SPEC.md", "domains": ["game_mode", "game_phase"] },
-      { "source": "re/specs/sound/SPEC.md", "domains": ["sound_command", "sound_code", "sound_header_type"] },
+      { "source": "re/specs/sound/SPEC.md", "domains": ["sound_command", "sound_code", "sound_header_type", "seq_command", "pan_mode"] },
       { "source": "re/specs/CONTEXT.md", "domains": ["pool_tag"] }
     ],
     "not_registered": [
