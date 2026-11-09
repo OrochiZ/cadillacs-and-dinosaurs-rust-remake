@@ -3,45 +3,39 @@
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 git 跟踪的耐久层。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
 
-## 本轮做了什么：补核 enemy SPEC，订正相机两域回源并闭合检索范围（第十三格）
+## 本轮做了什么：补核 player / flow 两处，抓出并修掉一个范围键误答（第十四格）
 
-**背景**：`66155da6` 补 `camera_lock` / `camera_event` 后，工作区干净。
-上一格说「正面核六份 SPEC」，但 `enemy/SPEC.md` 的章节标题被输出上限
-截断、只看到 §0，留了个尾巴；这一格补齐核完并订正回源口径。
+**背景**：`b243d31a` 在 `coverage.note` 写了「六份 SPEC 成表已正面核过
+一轮」，但 player / flow 两处当时只看过章节标题、没细读。这一格补核，
+不让「已核过」变成虚标。
 
-### 补核 enemy SPEC 的结论
+### 补核结果：登记完整，没有新缺口
 
-- `§6.4 Rank events` 全是量的增减（rank ±3 / speed ±1、查表值），
-  `§8.5 Other flags` 是计数与载具专属标志（`$518`，按用户边界不转），
-  `§3.1` 名字表、`§9` 逐关脚本都不是「取值 → 抽象意义」成表。
-- `§8.2 / §8.3 / §8.5` 已有的口径对得上缓存：`wave_end`（0 GO /
-  2 自动走下一区域 / 4 关卡结束）、`kill_all`（1 记分 / 2 超时不记分）
-  都完整，**没有新缺口**。
-- `§8.3` 给了比 stage SPEC 更直接的一句：**镜头恰好停在波次开始处，
-  一直锁到波次收尾字把 `$7A9` GO 置起来**；segment table 0x21B2A
-  的 16 字节记录字段名与 stage `§5.2` 对齐。
+- `player/SPEC.md §3.2` 三张状态表与缓存键逐一对上：
+  ground `0..36` 步长 2 + `0x26..0x2C`（38/40/42/44）、
+  run `0/2/4`、air `0..54` 那串偶数编号全部覆盖；
+  用途未明的项都标了 [U]。
+- `flow/SPEC.md §4` 的 `G.$4D1` 关内阶段（2/4/6）与顶层模式
+  （0/4/8/0xC/0x10/0x14/0x18/0x1C）分别对上 `game_phase` / `game_mode`。
+- 因此 `coverage.note` 那句「已正面核过、not_registered 不是漏查」站得住。
 
-### 落点
+### 抓到并修掉的真问题
 
-- `camera_mode` 的 source 把含糊的「§8.3 wave lock」订正为
-  `re/specs/enemy/SPEC.md §8.3`（stage 的 §8 是 tilemap streaming，
-  没有 §8.3，原写法会指错文件）。
-- `camera_lock` 的 source 补 `enemy/SPEC.md §8.3`，note 补
-  「镜头恰好停在波次开始处」。
-- `camera_event` 的 source 补 `enemy/SPEC.md §8.3（segment table 0x21B2A）`。
-- `coverage.note` 补一句：六份 `re/specs/*/SPEC.md` 的成表已正面核过
-  一轮，`not_registered` 写的是按纪律不转的理由、不是漏查，别再从头翻。
-  与上一格 HANDOFF 收口合起来，`re/specs` 的检索范围彻底闭合。
-- 自测 88 → **90/90**：新增「镜头锁与波次收尾能串成一条放行链」
-  （`camera_lock` 回源 §8.3 + `wave_end 0` 的 GO / `$7A9`）与
-  「六份 SPEC 已正面核过的口径写进覆盖索引」两条。
+- `player_ground_state` 把 `0x26..0x2C` 四个用途未明的状态写成范围键
+  `38-44`。状态编号全是偶数，范围键会把 39 / 41 / 43 这些根本不存在的
+  编号也答成「misc/scripted」，违反「离散编号不连成范围」。
+- 拆成 `38 / 40 / 42 / 44` 四个精确键，各自标 [U] 并带原十六进制编号。
+  `camera_mode` 的 `14-15`、`jack_anim_set1` 的 `10-13` 是真正相邻的
+  连续族，按既有口径保留，不动。
+- 自测 90 → **92/92**：新增「杂项编号拆成精确键」与
+  「`collide 39` 不再误答地面状态表」两条；实跑 `collide 39` 里已无
+  `player_ground_state`。
 
 ### 实跑验证
 
-- `--selftest` 90/90；`py_compile` OK；60 域 / 459 条、
-  `coverage` 缺 0 个域、`themes` 列出 60 个且去重 60 个。
-- 四份文件 `CR=0 BOM=False`；`DESIGN_DIFF_NOTES.md` 超 2000 字节的
-  仍是既存第 57 / 89 / 154 行，本轮新增行 0 超长；
+- `--selftest` 92/92；`py_compile` OK；60 域 / **462 条**（拆键 +3）。
+- `coverage` 缺 0 个域、`themes` 列出 60 个且去重 60 个（拆键不改域数）。
+- 三份改动文件 `CR=0 BOM=False`、新增行 `over2000=0`；
   `git diff --check` exit=0。
 
 ### 边界
@@ -50,7 +44,7 @@
 - 不碰 `re/out/assets/` 产物层，不修 `check_docs.py` 假红，
   不改 `CLAUDE.md` / `.gitignore`。
 - 不恢复「以 ROM 审 repo」框架；不把 `[I]` 写成 `[O]`；不从字段名猜意义；
-  量 / 表内容 / 硬件实现层 / 载具专属标志按纪律不转。
+  量 / 表内容 / 硬件实现层按纪律不转。
 - 载具 / 特殊关卡 / 单个 Boss 专属演出不构成通则，不往那里钻。
 
 ### 长期口径（细则在耐久层，不在本文件展开）

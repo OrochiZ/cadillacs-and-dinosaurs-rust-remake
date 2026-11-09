@@ -795,6 +795,11 @@ def cmd_selftest():
        and "$7A9" in DOMAINS["wave_end"]["values"]["0"]["meaning"])
     ck("六份 SPEC 已正面核过的口径写进覆盖索引",
        "正面核过" in DB["coverage"]["note"] and "不是漏查" in DB["coverage"]["note"])
+    ck("地面状态表的杂项编号拆成精确键，不再连成范围",
+       "38-44" not in DOMAINS["player_ground_state"]["values"]
+       and all(str(k) in DOMAINS["player_ground_state"]["values"] for k in (38, 40, 42, 44)))
+    out = capture(cmd_collide, "39")
+    ck("不存在的奇数状态编号不再被范围键误答", "player_ground_state ->" not in out)
     _, v = match_value(DOMAINS["spawn_pool"], "3")
     ck("spawn_pool 3 → 池 E", bool(v) and "池 E" in v["meaning"], v["meaning"] if v else "miss")
     _, v = match_value(DOMAINS["box_field"], "10")
