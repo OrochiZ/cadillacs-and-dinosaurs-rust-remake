@@ -41,7 +41,7 @@
     python re/specs/lookup.py attack_id 0x5A          查一个攻击编号是哪一招
     python re/specs/lookup.py anim_id 1 4             查这一招是哪段，并带出这一拳的后果
     python re/specs/lookup.py coverage                哪些表已转、哪些按纪律不转、为什么
-    python re/specs/lookup.py unknown                  一次列出「还没弄明白」的取值与整类不转的表
+    python re/specs/lookup.py unknown                  一次列出「还没弄明白」的取值与整类不转的表（每条带回源止于何处）
     python re/specs/lookup.py unknown player_ground_state   只看某一册里哪些编号还没登记
     python re/specs/lookup.py themes                  按玩法主题列出可查的域与证据成色
     python re/specs/lookup.py themes state_machine    只看状态机这一块
@@ -1216,11 +1216,14 @@ def cmd_unknown(tokens: list[str]):
             print(f"  {k:14s} {fmt(v['tag'])} {v['meaning']}")
             if v.get("note"):
                 print(f"  {'':14s} 备注：{v['note']}")
+            if v.get("blocked_at"):
+                print(f"  {'':14s} 回源止于：{v['blocked_at']}")
         if key not in groups:
             print("  这个域没有 [U] 取值；但不代表整类都清楚了，")
             print("  整类按纪律不转的理由看 `lookup.py coverage`。")
         print("\n未登记 ≠ 不存在：查不到的取值只是没写意义，不代表游戏里没有；")
         print("别顺着字段名猜，也别把它当成关掉 / 空值。")
+        print("『回源止于』写的是取证走到哪一行、为什么停，不是漏查，也不是猜测。")
         return 0
 
     total = sum(len(us) for _, us in groups.values())
@@ -1232,8 +1235,11 @@ def cmd_unknown(tokens: list[str]):
         print(f"  {name}   （{d['source']}）")
         for k, v in us:
             print(f"    {k:14s} {fmt(v['tag'])} {v['meaning']}")
+            if v.get("blocked_at"):
+                print(f"    {'':14s} 回源止于：{v['blocked_at']}")
     print("\n  这些编号确实存在、游戏确实在读，只是我们只知道它大概属于哪一类。")
-    print("  别顺着字段名猜，也别把它当成关掉 / 空值。")
+    print("  别顺着字段名猜，也别把它当成关掉 / 空值；")
+    print("  每条后面的『回源止于』是取证走到哪一行、为什么停，上游 SPEC 自己就标了 [U]。")
     nr = cov.get("not_registered", [])
     print(f"\n二、整类按纪律不转成域（{len(nr)} 类）")
     for item in nr:
@@ -2145,6 +2151,40 @@ def cmd_selftest():
     out_clean = capture(cmd_unknown, [clean])
     ck("没有 [U] 的域会明说不代表整类都清楚",
        "没有 [U] 取值" in out_clean and "不代表整类都清楚" in out_clean)
+
+    # 每条 [U] 都要写清「回源走到哪、为什么停」，且里面的路径与行号真能点开
+    blocked = [(n, k, v["blocked_at"]) for n, (_, us) in u_groups.items()
+               for k, v in us if v.get("blocked_at")]
+    ck("每条 [U] 都带 blocked_at，说明回源止于何处、为什么不硬答",
+       len(blocked) == u_total and all(
+           any(w in s for w in ("回源到此为止", "不硬编", "不从概括固化",
+                                "不把美术推测升级"))
+           for _, _, s in blocked))
+    check_paths = blocked + [("coverage.unknown_note", "-",
+                              DB["coverage"].get("unknown_note", ""))]
+    bad_blocked = []
+    for n, k, s in check_paths:
+        for m in re.finditer(
+                r"([A-Za-z0-9_./-]+\.(?:md|rs|py|txt)):(\d+)(?:-(\d+))?", s):
+            f = repo_root / m.group(1)
+            if not f.exists():
+                bad_blocked.append(f"{n}.{k}:{m.group(1)} 不存在")
+                continue
+            nl = len(f.read_text(encoding="utf-8", errors="replace").splitlines())
+            hi = int(m.group(3) or m.group(2))
+            if int(m.group(2)) > nl or hi > nl:
+                bad_blocked.append(f"{n}.{k}:{m.group(0)}(文件 {nl} 行)")
+    ck("blocked_at 里的回源路径与行号都真能点开、不越界",
+       not bad_blocked, ", ".join(bad_blocked))
+    ck("unknown 全览与单域都把 blocked_at 摆出来",
+       all(s in out for _, _, s in blocked)
+       and "回源止于" in out and "回源止于" in out_one)
+    ck("证据够的一条已从 [U] 升为 [O]：撞到玩家后的等待再攻击",
+       DOMAINS["enemy_ai_state"]["values"]["14"]["tag"] == "O"
+       and "0x34204" in DOMAINS["enemy_ai_state"]["values"]["14"]["meaning"]
+       and "enemy_ai_state" not in u_groups)
+    ck("unknown_note 明写 [U] 是照抄上游、不是漏查",
+       "照抄上游" in DB["coverage"].get("unknown_note", ""))
     ck("unknown 给不存在的域会明确报错，不静默当空",
        "没有这个域" in capture(cmd_unknown, ["no_such_domain"]))
 

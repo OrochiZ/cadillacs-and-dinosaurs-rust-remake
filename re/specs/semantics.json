@@ -110,7 +110,7 @@
         "+$4C": { "meaning": "水位 0 时，从末尾藏掉几个 entry（脚 / 腿）", "tag": "O" },
         "+$4D": { "meaning": "水位 1 时，从末尾藏掉几个 entry", "tag": "O" },
         "+$4E": { "meaning": "bit7=1 不画影子 / 不生成水花；高半字节选影子与水花图集；0x70 另把影子下移 4 px", "tag": "O" },
-        "+$4F": { "meaning": "用途未明，不从字段名猜", "tag": "U" }
+        "+$4F": { "meaning": "用途未明，不从字段名猜", "tag": "U", "blocked_at": "re/specs/anim/SPEC.md:144 原文只有「+$4F: [U].」；re/specs/anim/SPEC.md:505 把 +$4F 集中列为待解。同一组四个附加字节里 +$4C / +$4D / +$4E 都有消费端观察，只有这一格没有，回源到此为止。" }
       }
     },
     "frame_timer": {
@@ -146,7 +146,7 @@
         "+4": { "meaning": "音效 id；0 = 无", "tag": "O" },
         "+5": { "meaning": "得分：作为 score_bcd 的字节偏移", "tag": "I" },
         "+6": { "meaning": "命中火花类型，交给特效对象", "tag": "O" },
-        "+7": { "meaning": "写防守方 +$9A，用途未登记", "tag": "U" }
+        "+7": { "meaning": "写防守方 +$9A，用途未登记", "tag": "U", "blocked_at": "re/specs/anim/SPEC.md:444 原文「+7 u8 -> defender +$9A [U]」。攻击记录 +0..+6 都有去向，这一格只知道写进防守方 +$9A；+9A 之后被谁读、读了做什么没有观察，回源到此为止。" }
       }
     },
     "box_field": {
@@ -231,7 +231,7 @@
       "note": "SPEC 明写 per-state meaning；除拳类动画外逐项意义未登记，脱离处境没有固定答案。",
       "values": {
         "1": { "meaning": "在拳类动画里表示连段取消窗口开放（此帧起允许续拳）", "tag": "I" },
-        "other": { "meaning": "其余取值按状态而定，未登记", "tag": "U" }
+        "other": { "meaning": "其余取值按状态而定，未登记", "tag": "U", "blocked_at": "re/specs/anim/SPEC.md:33 只给了拳类动画里 1 = 连段取消窗口这一例；re/specs/anim/SPEC.md:505 明写 punch states 之外未解。帧字节 +4 是按状态解释的，没有逐状态登记，不硬编成编号表。" }
       }
     },
     "sound_id": {
@@ -291,7 +291,7 @@
         "1": { "meaning": "池 B：控制器 / 道具 / 场景物，24 个 0xC0 槽", "tag": "O" },
         "2": { "meaning": "null，从不使用", "tag": "O" },
         "3": { "meaning": "池 E：武器 / 食物 / 宝物 / 弹药 / 容器 / 弹丸，24 个 0xC0 槽", "tag": "O" },
-        "4-7": { "meaning": "表外值，SPEC 未登记用途", "tag": "U" }
+        "4-7": { "meaning": "表外值，SPEC 未登记用途", "tag": "U", "blocked_at": "re/specs/enemy/SPEC.md:110-116 池表只列 A / B / E / C / D 五个物理池；生成记录 flags&7 的 4..7 落在表 0xFD46 的 0..3 之外。re/specs/enemy/SPEC.md:101 只说生成脚本在每帧最后跑，没给这些池号逐项意义，回源到此为止。" }
       }
     },
     "wave_end": {
@@ -361,17 +361,17 @@
         "18": { "meaning": "跑动攻击收招", "tag": "O" },
         "20": { "meaning": "拾取物品", "tag": "O" },
         "22": { "meaning": "武器攻击（通用）", "tag": "O" },
-        "24": { "meaning": "定时姿势（$10E）[用途未登记]", "tag": "U" },
-        "26": { "meaning": "未登记状态", "tag": "U" },
+        "24": { "meaning": "定时姿势（$10E）[用途未登记]", "tag": "U", "blocked_at": "re/specs/player/SPEC.md:293 写「0x18 timed status pose ($10E)」并标 [U]；re/specs/player/SPEC.md:170 把 $10E / $11C / $11D 一并标 U，只说会进入 state 0x18 / 0x418 / 0x41A。三个字段由谁写、写完演什么没有观察，回源到此为止。" },
+        "26": { "meaning": "未登记状态", "tag": "U", "blocked_at": "re/specs/player/SPEC.md:294 原文「0x1A ?」并标 [U]，只给 handler 0x19A7C。有代码入口但没写这一状态做什么，回源到此为止。" },
         "28": { "meaning": "持枪站立射击", "tag": "O" },
         "30": { "meaning": "持枪行走射击", "tag": "O" },
         "32": { "meaning": "蓄力武器（type 0x203）", "tag": "O" },
         "34": { "meaning": "后坐力武器（type 0x209）", "tag": "O" },
         "36": { "meaning": "指令冲刺（下、上+攻击）", "tag": "O" },
-        "38": { "meaning": "杂项 / 脚本专用状态（0x26），未逐项登记", "tag": "U" },
-        "40": { "meaning": "杂项 / 脚本专用状态（0x28），未逐项登记", "tag": "U" },
-        "42": { "meaning": "杂项 / 脚本专用状态（0x2A），未逐项登记", "tag": "U" },
-        "44": { "meaning": "杂项 / 脚本专用状态（0x2C），未逐项登记", "tag": "U" }
+        "38": { "meaning": "杂项 / 脚本专用状态（0x26），未逐项登记", "tag": "U", "blocked_at": "re/specs/player/SPEC.md:300 把 0x26..0x2C 合并写成 misc/scripted 并标 [U]，只给 handler 范围 0x19E62..0x19F6A（本条是 0x26）。四项共用一类、SPEC 没逐项拆；按不从概括固化，不把这一段拆成四个假意义。" },
+        "40": { "meaning": "杂项 / 脚本专用状态（0x28），未逐项登记", "tag": "U", "blocked_at": "re/specs/player/SPEC.md:300 把 0x26..0x2C 合并写成 misc/scripted 并标 [U]，只给 handler 范围 0x19E62..0x19F6A（本条是 0x28）。四项共用一类、SPEC 没逐项拆；按不从概括固化，不把这一段拆成四个假意义。" },
+        "42": { "meaning": "杂项 / 脚本专用状态（0x2A），未逐项登记", "tag": "U", "blocked_at": "re/specs/player/SPEC.md:300 把 0x26..0x2C 合并写成 misc/scripted 并标 [U]，只给 handler 范围 0x19E62..0x19F6A（本条是 0x2A）。四项共用一类、SPEC 没逐项拆；按不从概括固化，不把这一段拆成四个假意义。" },
+        "44": { "meaning": "杂项 / 脚本专用状态（0x2C），未逐项登记", "tag": "U", "blocked_at": "re/specs/player/SPEC.md:300 把 0x26..0x2C 合并写成 misc/scripted 并标 [U]，只给 handler 范围 0x19E62..0x19F6A（本条是 0x2C）。四项共用一类、SPEC 没逐项拆；按不从概括固化，不把这一段拆成四个假意义。" }
       }
     },
     "player_hurt_reaction": {
@@ -398,7 +398,7 @@
         "28": { "meaning": "来自背后的击倒", "tag": "O", "alias": "0x1C" },
         "30": { "meaning": "起身", "tag": "O", "alias": "0x1E" },
         "32": { "meaning": "撞墙反弹", "tag": "O", "alias": "0x20" },
-        "34": { "meaning": "特殊（与抓投相关），用途未登记", "tag": "U", "alias": "0x22" }
+        "34": { "meaning": "特殊（与抓投相关），用途未登记", "tag": "U", "alias": "0x22", "blocked_at": "re/specs/player/SPEC.md:971 原文「0x20 wall bounce, 0x22 special (grab-related) [U].」；re/specs/player/SPEC.md:439 与 re/specs/player/SPEC.md:942 只说这个反应码在特定 action 下会被强制写入、覆盖攻击记录里的 reaction 字节。已知「会被强制触发」，未知「触发后怎么演」，回源到此为止。" }
       }
     },
     "enemy_hurt_reaction": {
@@ -437,7 +437,7 @@
         "3": { "meaning": "持枪射出的子弹", "tag": "I" },
         "4": { "meaning": "食物（+$26 = 1..18）", "tag": "O" },
         "5": { "meaning": "可破坏 / 可举 / 可投的容器", "tag": "O" },
-        "6": { "meaning": "武器 type 11 的辅助对象，用途未登记", "tag": "U" },
+        "6": { "meaning": "武器 type 11 的辅助对象，用途未登记", "tag": "U", "blocked_at": "re/specs/enemy/SPEC.md:1364 原文「helper object for weapon type 11 [U purpose]」，只给 handler 0x29B06。知道它挂在武器 type 11 上，不知道它替武器做了什么，回源到此为止。" },
         "7": { "meaning": "开枪副作用", "tag": "I" },
         "8": { "meaning": "池 B class 18 发出的弹道投射物", "tag": "I" },
         "9": { "meaning": "宝物（+$26 = 1..16）", "tag": "O" },
@@ -555,7 +555,7 @@
       "values": {
         "0": { "meaning": "跑", "tag": "O" },
         "2": { "meaning": "跑动中持近战武器（type 0x201/0x202）", "tag": "O" },
-        "4": { "meaning": "从玩家代码之外进入的状态，用途未登记", "tag": "U" }
+        "4": { "meaning": "从玩家代码之外进入的状态，用途未登记", "tag": "U", "blocked_at": "re/specs/player/SPEC.md:304 原文「0x04 ? (entered from outside player code)」并标 [U]，只给 handler 0x1A330。入口在玩家代码之外意味着另有写入者，但没有观察是谁写、为什么写，回源到此为止。" }
       }
     },
     "player_air_state": {
@@ -576,9 +576,9 @@
         "16": { "meaning": "Hannah 空中必杀（0x10）", "tag": "O" },
         "18": { "meaning": "空中冲刺攻击（Hannah / Mustapha / Mess）", "tag": "O" },
         "22": { "meaning": "Jack 的跑跳攻击", "tag": "O" },
-        "24": { "meaning": "定时姿势（Hannah / Mustapha），用途未登记", "tag": "U" },
-        "26": { "meaning": "定时姿势（Hannah / Mustapha），用途未登记", "tag": "U" },
-        "28": { "meaning": "未登记状态", "tag": "U" },
+        "24": { "meaning": "定时姿势（Hannah / Mustapha），用途未登记", "tag": "U", "blocked_at": "re/specs/player/SPEC.md:312 把 0x18 / 0x1A 合并写成 timed status (Hannah/Mustapha) 并标 [U]，给 handler 0x1ADA6。两个编号共用一类、SPEC 没逐项拆，且只有两个角色有；按不从概括固化不硬编。" },
+        "26": { "meaning": "定时姿势（Hannah / Mustapha），用途未登记", "tag": "U", "blocked_at": "re/specs/player/SPEC.md:312 把 0x18 / 0x1A 合并写成 timed status (Hannah/Mustapha) 并标 [U]，给 handler 0x1AE62。两个编号共用一类、SPEC 没逐项拆，且只有两个角色有；按不从概括固化不硬编。" },
+        "28": { "meaning": "未登记状态", "tag": "U", "blocked_at": "re/specs/player/SPEC.md:313 原文「0x1C ?」并标 [U]，只给 handler 0x1AF82。有代码入口但没写这一状态做什么，回源到此为止。" },
         "30": { "meaning": "抱着物件跳跃（0x1E）", "tag": "O" },
         "32": { "meaning": "抱着物件跳跃（0x20）", "tag": "O" },
         "40": { "meaning": "跑跳攻击（Hannah）", "tag": "O" },
@@ -602,7 +602,7 @@
         "8": { "meaning": "攻击：按 0x34258 表进子状态", "tag": "O" },
         "10": { "meaning": "冲刺 / 突进，途中可能起冲刺攻击", "tag": "O", "alias": "0xA" },
         "12": { "meaning": "下坠（被打飞或离地）", "tag": "O", "alias": "0xC" },
-        "14": { "meaning": "撞到玩家后的等待再攻击（入口 0x3555A），SPEC 未单列标题", "tag": "U", "alias": "0xE" },
+        "14": { "meaning": "撞到玩家后先短暂停顿再出手：state E（0x34204）按 aggression 档查表 0x34210 取等待帧写入 $80（档位越高等越短），数完转 0x02000800 进攻击态", "tag": "O", "alias": "0xE", "source": "re/specs/enemy/SPEC.md:736-742（bump_player 判据 |dx|<24 / 纵深窗口 5；wait_then_attack 与 state E 退出条件的逐行伪代码）" },
         "16": { "meaning": "跳下台阶（hop down）", "tag": "O", "alias": "0x10" }
       }
     },
@@ -910,7 +910,7 @@
         "8": { "meaning": "必杀：帧类型 6，没有身体盒（这一帧自己不可被命中）", "tag": "I" },
         "9": { "meaning": "背向攻击", "tag": "I" },
         "10-13": { "meaning": "跳跃攻击（帧类型 4）；SPEC 把 10..13 写成一族，未逐段拆", "tag": "I" },
-        "15": { "meaning": "用途未登记", "tag": "U" }
+        "15": { "meaning": "用途未登记", "tag": "U", "blocked_at": "re/specs/anim/SPEC.md:319 原文「15 [U]」；re/specs/anim/SPEC.md:509 明写 set1 的 9 / 14 / 15 标签只来自美术，编号存在是 [O]、意义未定。不把美术推测升级成观察。" }
       }
     },
     "jack_anim_set2": {
@@ -1128,7 +1128,7 @@
   },
   "coverage": {
     "note": "按回源 SPEC 列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么不转。给压缩恢复后用，不当待办清单。六份 re/specs/*/SPEC.md 的成表已正面核过一轮：not_registered 里写的是按纪律不转的理由，不是漏查，别再从头翻一遍。",
-    "unknown_note": "『还没弄明白』分两类，别混：一类是取值确实存在、域里也建了条目，但只写了『大概属于哪一类』、具体意义标 [U] 未登记；另一类是整张表按纪律不转成域，理由逐条写在 not_registered。两类都只是『我们没给它写意义』，不等于游戏里没有这个取值，也不等于没有证据——不少不转的表在 SPEC 里有 [O] 级代码观察，只是形态是量 / 条件分支 / 随机漂移，硬编成编号就会造假。查一个值先 `lookup.py <域> <取值>` 看是不是 [U]，再 `lookup.py collide <取值>` 看它在别的册子里是不是已经有意义；都没命中才回源各自的 source。别把『未登记』写成『不存在』，也别把 not_registered 当漏查再从头翻一遍。",
+    "unknown_note": "『还没弄明白』分两类，别混：一类是取值确实存在、域里也建了条目，但只写了『大概属于哪一类』、具体意义标 [U] 未登记；另一类是整张表按纪律不转成域，理由逐条写在 not_registered。两类都只是『我们没给它写意义』，不等于游戏里没有这个取值，也不等于没有证据——不少不转的表在 SPEC 里有 [O] 级代码观察，只是形态是量 / 条件分支 / 随机漂移，硬编成编号就会造假。查一个值先 `lookup.py <域> <取值>` 看是不是 [U]，再 `lookup.py collide <取值>` 看它在别的册子里是不是已经有意义；都没命中才回源各自的 source。别把『未登记』写成『不存在』，也别把 not_registered 当漏查再从头翻一遍。标 [U] 的每条另带 blocked_at：写清回源走到哪一行、为什么停——上游 SPEC 自己就标了 [U]，re/specs/anim/SPEC.md:503-510 还把其中几条集中列为待解，所以这是照抄上游并补了取证边界，不是我们漏查；blocked_at 里的路径与行号也进自测。",
     "registered": [
       { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "comp_extra", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id", "jack_anim_set0", "jack_anim_set1", "jack_anim_set2", "combo_counter", "jack_attack_record", "jack_box_example"] },
       { "source": "notes/06-method.md §94.12–§94.18", "domains": ["wof_reaction", "wof_atk_field", "wof_player_reaction", "wof_hurt_book"] },
