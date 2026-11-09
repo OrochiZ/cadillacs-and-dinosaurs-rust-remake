@@ -7,33 +7,23 @@
 
 - 开工核对（本会话起点）：HEAD `fe07f040`，工作区干净，临时提交信息文件不存在；`CODEBUDDY.md` / `CLAUDE.md` / `DRAFT.md` 都读过。上一格（文档层）已按 `GAMEPLAY_LEGACY.md` 第 481 行停止条件收口。
 
-- 本会话已提交六格：
-  - `dc71f468`：`unknown` 入口，一次列出两类「还没弄明白」；`semantics.json` 加 `coverage.unknown_note`。230 → 237。
-  - `ec46b2f6`：`say()` 把解码命令里静默丢掉的 `[O]/[I]/[U]` 标签补回来；字段 / 位偏移说明按纪律不挂。237 → 242。
-  - `0d591f8b`：`reaction_brief()` 把「反应编号是门票」接成下一环，`attack` / `moment` 都并排翻到 dino 两本受击册子，不串 wof。242 → 247。
-  - `54c9fbc6`：回源路径从「格式对」推进到「真能点开」，修 8 处裸文件名、自测查文件存在与行号范围。247 → 249。
-  - `b4a99935`：`themes` 按玩法主题给出观察 / 推断 / 未登记的成色，并指向 `unknown <域>`。249 → 252。
-  - 第六格（本格）：把入口补到必读层真正指向的地方。
+- 本会话已提交七格：`dc71f468`（`unknown` 入口）、`ec46b2f6`（解码输出带 `[O]/[I]/[U]` 标签）、`0d591f8b`（反应门票接下一环）、`54c9fbc6`（回源路径真能点开）、`b4a99935`（`themes` 给证据成色）、`d0c70050`（`CLAUDE.md` 必读层指得到缓存）、第七格（本格，全命令冒烟）。自测 230 → 254。
 
-- 本格前先做了几次核查，结论都是**核过、无需改动**，别再重复翻：
-  - `wof_hurt_book` 记的是「按入口路径翻哪本 9 项手册」的路径类别，不是那 9 项本身；wof 侧没有与 dino 对称的断环，硬接会造假语义。
-  - `legacy` 九条判断挂的 18 条可跑样本逐条真跑，`expect` 全命中、0 失败。
-  - `notes/08-wof-cs-gaps.md` 事实核查：wt1 的 `wof_cs/src`、`QUARANTINE.md`、`STATUS.md` 都可达；全部 `文件:行号` 锚点 0 处找不到文件、0 处越界；抽查十几处注释，当前欠账与「不算欠账」的修复记录都还与原标注一致；`Cps1PlayerMulti.cs:249-268` 整段对得上。清单没过期，wt1 只读未改。
-  - 总入口「阅读顺序」第 7 条写了「不带参数运行就打印全部用法」，`lookup.py` 用法说明里 `unknown` / 证据标签 / 反应门票两侧并排都在；第 481 行「不改总入口」约束的是外推文那节补层。不补设计文档。
+- 前几轮核过、无需改动的层，别再重复翻：`wof_hurt_book` 记的是入口路径类别而非 9 项手册本身（wof 侧没有对称断环）；`legacy` 九条挂的 18 条可跑样本逐条真跑全过；`notes/08-wof-cs-gaps.md` 的全部 `文件:行号` 锚点 0 处找不到、0 处越界，抽查注释与当前 wt1 源码一致；总入口「阅读顺序」第 7 条与 `lookup.py` 用法说明的可恢复性链是通的。
 
-- 第六格的真缺口：`CLAUDE.md`（开工必读）让新会话「Start with `re/README.md` and `re/specs/CONTEXT.md`」，而这两处**一个字都没提** `semantics.json` / `lookup.py`；整套「取值 → 抽象意义」的入口只写在 `DESIGN_DIFF_NOTES.md` 第 7 条与 DRAFT 里。按必读层走会整套漏掉。
-  - `re/README.md` 路径表加一行、`re/specs/CONTEXT.md` 路径清单加两行，都是路径导航（英文，保持两个文件原有语言），不是设计判断、不加节号；README 那行顺带指回仓库根 `DESIGN_DIFF_NOTES.md`。
-  - 自测加一条：`re/README.md` 与 `CONTEXT.md` 都必须提到 `semantics.json` / `lookup.py`，防止以后重写 README 时又把入口删掉。252 → 253。
+- 第七格：换一个独立视角验这一程的六格改动有没有让别的命令悄悄退化。外部逐条真跑用法里列的 37 条命令（含 `frame` 10/12 字节、`spawn` 两种长度、`wof_attack` 两侧、`moment` 四种挂法、三条索引、`--json`、无参数、`-h`），0 异常。然后把这张清单固化进离线自测：`capture_rc()` 连返回码一起捕获、`SMOKE_CASES` 常量、一条逐条断言只管「能不能完整跑完、有没有退化成空输出 / 用法 / 未知域」，具体语义仍由原有断言管、不重复。
+  - **固化时抓到一个真问题**：`cmd_list()` 一直没 `return 0`，`main() -> int` 实际拿到 `None`；`sys.exit(None)` 的进程退出码仍是 0，所以外部扫描是盲区，改成捕获返回码才现形。补上 `return 0` 后 37 条全过，没有别的命令漏返回码。
+  - 253 → 254。
 
-- 验证：`--selftest` exit 0、`253/253` 通过、`py_compile` exit 0、`git diff --check` exit 0；`lookup.py` / `README.md` / `CONTEXT.md` 均 `CR=0 BOM=False`，新增行 `over2000=[]`。
+- 验证：`--selftest` exit 0、`254/254` 通过、`py_compile` exit 0、`git diff --check` exit 0；`lookup.py` `CR=0 BOM=False`，新增行 `over2000=[]`。
 
-- 本会话始终未动任何设计文档正文（不改 `DESIGN_DIFF_NOTES.md` / `GAMEPLAY_LEGACY.md` / `notes/08`）、0 次 ROM 取证、没碰产物层、没改 `check_docs.py`、没回查载具 / 特殊关卡换面；`GAMEPLAY_LEGACY.md` 第 481 行停止条件仍有效。
+- 本会话始终未动任何设计文档正文（不改 `DESIGN_DIFF_NOTES.md` / `GAMEPLAY_LEGACY.md` / `notes/08`）、0 次 ROM 取证、没碰产物层、没改 `check_docs.py`、没回查载具 / 特殊关卡换面；`GAMEPLAY_LEGACY.md` 第 481 行停止条件仍有效。wt1 仓库只读、未改。
 
 ## 长期口径（每轮沿用，不是本轮新增任务）
 
 - `长时间自主推进` 是开放目标：局部提交、干净工作区、阶段总结、压缩 / 总结请求都不算完成或缩小；不询问是否继续，不直读 goal 状态，不写「下一格 / 短期不再动笔」当收尾，提到方向就当轮把第一步做掉。
 - 用户要的是「游戏设计本意」，交付一律说人话；不把内部编号、提交号、校验数字当主体；忽略 Rust / C#、typed struct / WRAM、端序、逐帧补偿等实现表相。
-- 用户的真实任务是把各类变量取值转成可查的「抽象意义」并缓存，ANI / SPR 只是举例；要能顺着 ANI → SPR → 判定框 → 后果在看不到 GFX 时推断这一帧在干嘛。**缓存与脚本的落点：`re/specs/semantics.json`（机器可读语义）/`re/specs/lookup.py`（离线查询，不带参数打印全部用法）**；入口有三处：`CLAUDE.md` 指向的 `re/README.md` / `re/specs/CONTEXT.md` 路径清册、`DESIGN_DIFF_NOTES.md`「阅读顺序」第 7 条、以及 `lookup.py` 不带参数的用法说明。`unknown` 一次列出哪些还没弄明白（两类未登记分开说，未登记 ≠ 不存在）；`themes` 按玩法问题查数时带观察 / 推断 / 未登记的成色并指向 `unknown`。解码命令翻取值意义时也带 `[O]/[I]/[U]` 标签，字段 / 位偏移说明不挂（那是格子名不是取值）；后果环把反应门票并排翻到 dino 两本受击册子，不串 wof。新增域必须带 source / scope / tag，不从字段名猜；`coverage.registered` 与 `themes` 必须覆盖所有域且每域只归一处；`not_registered` 写清「为什么不转」；`legacy` 每条带 `can_check` / `cannot_check` / `probe`（probe 可单条或多条）；上下文相关域必须带 `note`。
+- 用户的真实任务是把各类变量取值转成可查的「抽象意义」并缓存，ANI / SPR 只是举例；要能顺着 ANI → SPR → 判定框 → 后果在看不到 GFX 时推断这一帧在干嘛。**缓存与脚本的落点：`re/specs/semantics.json`（机器可读语义）/`re/specs/lookup.py`（离线查询，不带参数打印全部用法）**；入口有三处：`CLAUDE.md` 指向的 `re/README.md` / `re/specs/CONTEXT.md` 路径清册、`DESIGN_DIFF_NOTES.md`「阅读顺序」第 7 条、以及 `lookup.py` 不带参数的用法说明。`unknown` 一次列出哪些还没弄明白（两类未登记分开说，未登记 ≠ 不存在）；`themes` 按玩法问题查数时带观察 / 推断 / 未登记的成色并指向 `unknown`。解码命令翻取值意义时也带 `[O]/[I]/[U]` 标签，字段 / 位偏移说明不挂（那是格子名不是取值）；后果环把反应门票并排翻到 dino 两本受击册子，不串 wof。新增域必须带 source / scope / tag，不从字段名猜；`coverage.registered` 与 `themes` 必须覆盖所有域且每域只归一处；`not_registered` 写清「为什么不转」；`legacy` 每条带 `can_check` / `cannot_check` / `probe`（probe 可单条或多条）；上下文相关域必须带 `note`。**新增或改动解码命令后，`SMOKE_CASES` 要跟着加**；每条命令必须 `return 0`，别让 `main() -> int` 拿到 `None`（`sys.exit(None)` 会伪装成退出码 0）。
 - 回源路径一律从仓库根写全（如 `dino-rs/crates/dino-assets/...`），不留 `dino-assets/` 这类裸前缀、也不留纯文件名；`legacy.list[*].title` 与 `GAMEPLAY_LEGACY.md` 九节标题逐字对应、顺序一致，改标题两边同步。自测会查文件真实存在与行号范围，白名单只放命令示例 `lookup.py` 与通配符 `/HANDOFF.md`。
 - **停止条件**：`GAMEPLAY_LEGACY.md` 第 481 行「不改总入口、不加新节号、不回文档自洽循环」；415–481 补层已闭合、`legacy` 九条索引只对应前九节，不补后半部底座。伪代码 / 流程图各卷已很多；总入口 153–157 行三个实际问题落点、`coverage.not_registered` 13 条理由、`themes` 已是按玩法问题那条索引 —— 都核过，别再翻。`notes/08` 是移植侧欠账清单、非原机缺机制，锚点与注释已核过与当前 wt1 源码一致。
 - 「缓存没转成域」与「没有证据」是两种缺口；不把 [I] 写成 [O]，也不把 [O] 代码观察降成叙事；不从概括硬编假编号域；[O] 回源但形态是量 / 条件分支 / 随机漂移 / 未给逐项意义的查表，写进 `not_registered` + `source`。

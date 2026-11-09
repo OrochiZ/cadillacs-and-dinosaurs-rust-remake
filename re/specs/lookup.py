@@ -163,6 +163,7 @@ def cmd_list():
     print("三个索引：`coverage`（按回源分组）/ `themes`（按玩法问题）/ "
           "`legacy`（外推文九条判断各能查到什么、查不到什么）；"
           "`unknown` 一次列出还没弄明白的取值与整类不转的表（未登记 ≠ 不存在）。")
+    return 0
 
 
 def cmd_domain(name: str):
@@ -1384,6 +1385,14 @@ def capture(fn, *args) -> str:
     return buf.getvalue()
 
 
+def capture_rc(fn, *args):
+    """同 capture，但把命令的返回码也带回来，供全命令冒烟用。"""
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        rc = fn(*args)
+    return buf.getvalue(), rc
+
+
 def cmd_selftest():
     checks = []
 
@@ -2150,12 +2159,77 @@ def cmd_selftest():
        all("没有这个域" not in o for o in nav_out.values())
        and "用法：moment" in nav_out["moment"]
        and "ANI → SPR → 判定框" in nav_out["chain"])
+    smoke_bad = []
+    for name, argv in SMOKE_CASES:
+        try:
+            s_out, rc = capture_rc(main, argv)
+        except Exception as exc:
+            smoke_bad.append(f"{name}:抛异常 {type(exc).__name__}")
+            continue
+        if rc != 0 or not s_out.strip() or "Traceback" in s_out \
+                or "没有这个域" in s_out \
+                or (argv and s_out.lstrip().startswith("用法：")):
+            smoke_bad.append(f"{name}:rc={rc}")
+    ck(f"用法里列的 {len(SMOKE_CASES)} 条命令都还跑得完，没退化成空输出 / 用法 / 未知域",
+       not smoke_bad, ", ".join(smoke_bad))
 
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:
         print(f"  {'PASS' if good else 'FAIL'}  {label}" + (f"   [{detail}]" if not good and detail else ""))
     print(f"\n{ok}/{len(checks)} 通过")
     return 0 if ok == len(checks) else 1
+
+
+# 用法说明里列的每条命令：改动解码逻辑后逐条冒烟一次。
+# 这里只管「能不能完整跑完、有没有退化成空输出 / 用法 / 未知域」，
+# 具体语义由 --selftest 里那些断言管，两者不重复。
+_WOF = ["00", "00", "00", "00", "0A", "00", "03", "00",
+        "56", "00", "00", "00", "06", "0E", "03", "00"]
+_FRAME = ["10", "0A01", "8000", "0100", "0405", "1A02"]
+_ATK = ["attack", "0A", "01", "00", "09", "03", "14", "00", "00"]
+_COMP = ["comp", "0002", "0002", "0005", "0003", "0802", "0803"]
+SMOKE_CASES = [
+    ("list", ["list"]),
+    ("domain-all", ["frame_type"]),
+    ("domain-one", ["frame_type", "4"]),
+    ("range", ["drop_code", "25"]),
+    ("attr", ["attr", "0x3020"]),
+    ("flags", ["flags", "draw_flags", "0x81"]),
+    ("frame10", ["frame"] + _FRAME),
+    ("frame12", ["frame", "12", "0A01", "8000", "0100", "0405", "1A02", "0011"]),
+    ("anim", ["anim", "10", "0A01", "8000", "0100", "0405", "1A02",
+              "0A01", "8000", "0100", "0085", "1A02"]),
+    ("comp", ["comp", "0002", "0002", "0005", "0003", "0802", "0803",
+              "FFF8", "FFE0", "0008", "FFF0"]),
+    ("box", ["box", "-1", "10", "-68", "59", "29", "42"]),
+    ("spawn", ["spawn", "04D0", "0141", "0008", "0120", "0040", "0000", "0000"]),
+    ("spawn16", ["spawn", "16", "04D0", "0141", "0008", "0120", "0040",
+                 "0000", "0000", "0000"]),
+    ("script", ["script", "2C", "00", "05", "01", "000A"]),
+    ("attack", _ATK),
+    ("wof_ours", ["wof_attack", "ours"] + _WOF),
+    ("wof_enemy", ["wof_attack", "enemy"] + _WOF),
+    ("chain", ["chain"]),
+    ("moment", ["moment"] + _FRAME),
+    ("moment_atk", ["moment"] + _FRAME + _ATK),
+    ("moment_comp", ["moment"] + _FRAME + _COMP),
+    ("moment_all", ["moment"] + _FRAME + _ATK + _COMP),
+    ("find", ["find", "攻击"]),
+    ("collide4", ["collide", "4"]),
+    ("collide1A", ["collide", "0x1A"]),
+    ("attack_id", ["attack_id", "0x5A"]),
+    ("anim_id", ["anim_id", "1", "4"]),
+    ("coverage", ["coverage"]),
+    ("unknown", ["unknown"]),
+    ("unknown_dom", ["unknown", "player_ground_state"]),
+    ("themes", ["themes"]),
+    ("themes_one", ["themes", "state_machine"]),
+    ("legacy", ["legacy"]),
+    ("legacy_one", ["legacy", "difficulty"]),
+    ("json", ["--json", "frame_type", "4"]),
+    ("help", ["-h"]),
+    ("noargs", []),
+]
 
 
 def main(argv: list[str]) -> int:
