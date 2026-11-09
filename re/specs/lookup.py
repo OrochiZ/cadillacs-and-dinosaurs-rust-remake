@@ -362,7 +362,7 @@ def infer(kind, body, atk, dur, last, w0) -> list[str]:
     if body == 0 and atk:
         out.append("盒索引合起来读：攻击盒在、身体盒关 → 这一拍带着攻击手段、"
                    "自己却不在被命中名单里 [O 观察]；这种攻防不对等的拍子常留给"
-                   "必杀 / 亮相 [I 推断]，kind 6 是否另走结算路径缓存没登记 [U 未登记]")
+                   "必杀 / 演出 [I 推断]，kind 6 是否另走结算路径缓存没登记 [U 未登记]")
     elif body and not atk and kind not in SKIP_DEFEND_KINDS:
         out.append("盒索引合起来读：身体盒在、攻击盒关 → 这一拍打不着人、"
                    "自己仍可能挨打 [O 观察]（收势 / 过渡）")
@@ -924,7 +924,7 @@ def cmd_moment(tokens: list[str]):
     print("   前提：Jack 示例盒只见于 re/specs/anim/SPEC.md §4.1，不是通用规则")
     if body == 0 and atk:
         print("   两个盒索引合起来：攻击盒在、身体盒关 → 这一拍带着攻击手段、"
-              "自己却不在被命中名单里 [O 观察]；常留给必杀 / 亮相 [I 推断]")
+              "自己却不在被命中名单里 [O 观察]；常留给必杀 / 演出 [I 推断]")
     elif body and not atk:
         print("   两个盒索引合起来：身体盒在、攻击盒关 → 打不着人、"
               "自己仍可能挨打 [O 观察]（收势 / 过渡）")
@@ -1172,7 +1172,8 @@ def cmd_anim(tokens: list[str]):
     if one_sided:
         print(f"  其中 {one_sided} 拍攻防不对等：带着攻击盒、自己却不在被命中名单里"
               "（dino 侧 [O 观察]）；出招和『还能被还手』被拆成两件事，"
-              "这种拍子常是编舞里留出来的亮相 / 必杀句读 [I 推断]")
+              "是逐帧排出来的空拍 [I 推断]，拍子结构写在帧记录里而非一条全局规则；"
+              "专名边界见 body_box_zero.note")
     print("  其余帧是起势、受击、倒地、抓投姿势或被抓，不发起攻击结算")
     if seen_last:
         print(f"  段落在末帧结束，去向：{link_desc or '写在 link word 里'}"
@@ -1886,7 +1887,7 @@ def cmd_selftest():
        and "和『这一帧不打人』是两件事" in mo2)
     ck("moment 也把两个盒索引合起来读，不只是分开说两个 0",
        "两个盒索引合起来：攻击盒在、身体盒关" in mo2
-       and "常留给必杀 / 亮相 [I 推断]" in mo2)
+       and "常留给必杀 / 演出 [I 推断]" in mo2)
     ck("frame 单帧里身体盒取 0 也说『自己不可被命中』，措辞不含混",
        "没有身体盒：这一帧自己不可被命中 [O 观察]" in
        capture(cmd_frame, ["10", "0A01", "8000", "0100", "0403", "0002"]))
@@ -1908,8 +1909,9 @@ def cmd_selftest():
        "攻防同帧" in capture(cmd_frame, ["10", "0A01", "8000", "0100", "0405", "1A02"])
        and "打不着人、自己仍可能挨打" in
            capture(cmd_frame, ["10", "0A01", "8000", "0100", "0402", "1A00"]))
-    ck("ANI 时间线把攻防不对等的拍子数出来，并倒推成编舞里的句读",
-       "其中 1 拍攻防不对等" in ol and "亮相 / 必杀句读 [I 推断]" in ol
+    ck("ANI 时间线把攻防不对等的拍子数出来，并倒推成逐帧排出的空拍",
+       "其中 1 拍攻防不对等" in ol and "空拍 [I 推断]" in ol
+       and "专名边界见 body_box_zero.note" in ol
        and "dino 侧 [O 观察]" in ol)
     ck("ANI 时间线把末帧后的 link word 解成相对偏移，并说清去向是推断",
        "i16 +17" in ol and "addr_of_link + link = 相对段首" in ol
@@ -2297,6 +2299,13 @@ def cmd_selftest():
        and any(pr["argv"] == ["player_hurt_anim", "2"] for pr in legacy_probes(beat))
        and "没有逐帧 trace" in beat["cannot_check"]
        and "不逐档登记" in beat["cannot_check"])
+    ck("拍子那条也挂上逐帧两盒独立的可查落点，并把『亮相』专名边界写死",
+       "body_box_zero" in beat["domains"]
+       and "攻防不对等" in beat["can_check"] and "`anim`" in beat["can_check"]
+       and "专指敌人" in beat["cannot_check"]
+       and any(pr["argv"][0] == "anim" and pr["expect"] == "攻防不对等"
+               for pr in legacy_probes(beat))
+       and "亮相" in DOMAINS["body_box_zero"]["note"])
     ck("玩家段表写明改判不挂进 reactions，免得读成同一拍同时播",
        "改写成反应 0x1A" in DOMAINS["player_hurt_anim"]["note"]
        and "同时播" in DOMAINS["player_hurt_anim"]["note"])
@@ -2565,6 +2574,10 @@ def cmd_selftest():
     ck("解码输出统一用 [O 观察] / [I 推断] / [U 未登记]，不再夹短标签",
        not tag_bad and tag_seen >= 5,
        str(tag_bad[:3]) + f"；标准标签共 {tag_seen} 处")
+    liangxiang_bad = [name for name, fn, args in decode_dumps
+                      if "亮相" in (capture(fn, args) if args is not None else capture(fn))]
+    ck("解码输出不借用外推文里『亮相』这个专名（那是敌人 AI 的嘲讽状态）",
+       not liangxiang_bad, str(liangxiang_bad))
     ck("say() 把 meaning 与置信标签一起带出，缺省也不冒充登记",
        "[I 推断]" in say(DOMAINS["frame_type"]["values"]["6"])
        and "[U 未登记]" in say(DOMAINS["jack_anim_set1"]["values"]["15"])
