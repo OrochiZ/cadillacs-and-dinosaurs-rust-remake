@@ -82,9 +82,12 @@ OFFSET_KEY_DOMAINS = ("attack_field", "box_field", "wof_atk_field", "comp_extra"
 # 拿去和防守方 +$48 相交。6 是 [I] 推断的特殊 / 必杀帧，那张含 6 的表
 # 是防守方类型分派，不是攻方；解码时单列，别把推断数成攻击生效帧。
 # 0 / 2 的 +$49 是抓投探测，8 / 10 / 12 / 14 不发起攻击。
-ATTACK_KINDS = (4,)
-SPECIAL_KINDS = (6,)
-GRAB_KINDS = (0, 2)
+# SPEC §4.4 的八类帧身份分成五组，frame / anim / moment 共用，别各写一份。
+ATTACK_KINDS = (4,)               # 攻方：普通命中循环只认这一类
+SPECIAL_KINDS = (6,)              # 特殊 / 必杀 [I 推断]
+GRAB_KINDS = (0, 2)               # 非攻击帧的 +$49 是抓投探测
+SKIP_DEFEND_KINDS = (8, 10)      # 防守方被跳过：受击 / 倒地
+GRAB_POSE_KINDS = (12, 14)       # 抓住 / 被抓，仍在防守方命中分派表里
 
 # 一次挥击的完整拍子样本：起势 / 普通生效 / 必杀 / 攻击帧关盒 / 收势末帧。
 # 自测与全命令冒烟共用，确保时间线不把 kind=6 读成收招。
@@ -340,21 +343,21 @@ def infer(kind, body, atk, dur, last, w0) -> list[str]:
     fk, fv = match_value(DOMAINS["frame_type"], str(kind))
     if fv:
         out.append(f"身份：{say(fv)}")
-    if kind == 4 and atk:
+    if kind in ATTACK_KINDS and atk:
         out.append(f"攻击生效：+$49 有攻击盒 #{atk}，与防守方 +$48 身体盒相交才命中；"
                    "盒的 6 个 i16 决定前伸距离、打的高度、纵深容差")
-    if kind == 4 and not atk:
+    if kind in ATTACK_KINDS and not atk:
         out.append("标了『攻击生效』却没有攻击盒 → 这一帧实际上打不到人（可能是收招或过渡）")
-    if kind in (0, 2) and atk:
+    if kind in GRAB_KINDS and atk:
         out.append("非攻击帧却带攻击盒 → 抓投探测，目标限定在特定状态")
     if body == 0:
         out.append("没有身体盒 → 这一帧自己不可被命中（必杀 / 无敌 / 演出帧）")
-    elif kind in (8, 10):
+    elif kind in SKIP_DEFEND_KINDS:
         out.append(f"有身体盒 #{body}，但受击 / 倒地身份被命中循环跳过"
                    " → 这一拍不会被连锁追打 [O]（不是靠关盒实现的无敌）")
     else:
         out.append(f"有身体盒 #{body} → 自己仍可被反击，攻防同时成立")
-    if kind in (12, 14):
+    if kind in GRAB_POSE_KINDS:
         out.append("抓住 / 被抓姿势 [O]：不发起攻击，但 0xC / 0xE 仍在防守方"
                    "命中分派表里，这一拍自己仍可能挨打，别读成无敌")
     out.append(f"这一拍占 {256 if dur == 0 else dur} tick（0 不是不显示，是 256）")
@@ -912,10 +915,10 @@ def cmd_moment(tokens: list[str]):
         if kind in grab_kinds:
             why = ("这一帧的 +$49 是抓投探测盒，命中后双方进的是『抓住 / 被抓』，"
                    "不走扣血那条链")
-        elif kind in (8, 10):
+        elif kind in SKIP_DEFEND_KINDS:
             why = ("这一帧是受击 / 倒地身份：SPEC §4.4 [O] 的命中循环跳过防守方"
                    " 8 / 0xA，它也不是攻方类型 4，不发起攻击")
-        elif kind in (12, 14):
+        elif kind in GRAB_POSE_KINDS:
             why = ("这一帧是抓住 / 被抓姿势，不是攻方类型 4，不发起攻击；"
                    "但 0xC / 0xE 仍在防守方命中分派表里，别把它读成无敌")
         elif kind in SPECIAL_KINDS:
@@ -1834,6 +1837,18 @@ def cmd_selftest():
        "普通命中循环只认攻方 +$2E == 4" in mo and "正面轻击" not in mo)
     ck("攻击判据收紧回 SPEC §4.4 的攻方类型 4，6 单列不混",
        ATTACK_KINDS == (4,) and SPECIAL_KINDS == (6,))
+    groups = (ATTACK_KINDS, SPECIAL_KINDS, GRAB_KINDS,
+              SKIP_DEFEND_KINDS, GRAB_POSE_KINDS)
+    flat = [k for g in groups for k in g]
+    ck("SPEC §4.4 八类帧身份恰好分成五组，不重不漏",
+       sorted(flat) == [0, 2, 4, 6, 8, 10, 12, 14]
+       and len(flat) == len(set(flat)))
+    leftover = re.findall(r"kind\s*(?:==|in)\s*\(?\s*\d+",
+                          (HERE / "lookup.py").read_text(encoding="utf-8"))
+    ck("帧类型判据不再散落硬编码，三处命令共用同一份分组",
+       not leftover, str(leftover[:5]))
+    ck("frame_type 域级 note 也写明五组身份，查数时看得到",
+       "五组" in DOMAINS["frame_type"]["note"])
     ck("ANI 时间线把身体盒关着的帧读成『自己挨不了打』并统计出来",
        "自己不可被命中 [O]" in out and "其中 1 帧身体盒关着" in out
        and "这几拍自己挨不了打" in out)

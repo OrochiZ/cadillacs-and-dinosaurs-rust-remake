@@ -5,18 +5,17 @@
 
 ## 本轮收尾（开工重建，收尾写回）
 
-- 开工核对：HEAD `dbc5affd`，工作区干净，临时提交信息文件不存在；`CODEBUDDY.md` / `CLAUDE.md` / `DRAFT.md` 都读过。上一轮自测 306/306。上一轮把末帧 link word 接进时间线，本轮不重复。
-- **本轮一格：把「谁被命中循环跳过」按 SPEC 分开**。
-  - 起因：上一格把「自己挨不了打」拆成两个字节时，注意到单帧推断里还留着自相矛盾——受击帧（kind=8、身体盒非 0）同时打印「有身体盒 → 自己仍可被反击，攻防同时成立」和「受击 / 倒地身份 → 命中循环会跳过它」；合成单帧又把 `kind in (8, 10, 12, 14)` 四类一起说成「命中循环本就跳过它」。三个样本（`frame` kind=8 / kind=12、`moment` kind=12 挂攻击记录）都真跑坐实了。
-  - 回源 `re/specs/anim/SPEC.md:416-422` [O]：`8` damage reaction / hit loops skip defenders of type 8；`0xA` knocked down / also skipped；防守方类型分派表 `hit for 0,2,4,6,0xC,0xE, ignore 8 and 0xA`。所以**被跳过的只有 8 / 0xA**；`0xC / 0xE`（抓住 / 被抓）仍在防守方命中分派表里，这一拍自己仍可能挨打。四类都不是攻方类型 4，都不发起攻击，但「不发起攻击」和「不会被打」是两件事。
-  - 落盘：
-    - `infer()` 不再对 8 / 0xA 说「仍可被反击」，改为「有身体盒但身份被跳过 → 不会被连锁追打（不是靠关盒实现的无敌）」；对 12 / 14 补一条「不发起攻击，但仍在防守方命中分派表里，别读成无敌」。
-    - `moment` 的 `!live` 错配说明把 8 / 0xA 与 12 / 14 拆成两支。
-    - `cmd_frame` 末尾在打印 Jack 示例盒之前先声明「下面翻的是盒表项本身的意义（形状 / 前伸 / 高度），不是当前这一帧会不会挨打」，免得盒表项里那句「出拳同时自己整个可被打，攻防同帧」被读成当前帧身份判断。
-    - `frame_type` 域级 `note` 补「只跳过 8 / 0xA，0xC / 0xE 仍会被打到，别把四类混成一句」。
-    - 自测 +5（306 → 311）：受击帧不再自相矛盾、抓姿势明说仍可能挨打、`moment` 不再把 0xC/0xE 说成跳过、域级 note 有边界、盒表项意义与当前帧身份分开说。
-  - **未新增域**：改动都是既有域的 `note` 与解码措辞，没有新编号表；`frame_type` 各取值 meaning 本来就对（8 / 0xA 明写「跳过」，12 / 14 只说姿势）。
-- 验证：`--selftest` 306 → 311 全过 exit 0；`py_compile` exit 0、`json.load` 通过、`git diff --check` exit 0；两文件 `CR=0 BOM=False`、`over2000=[]`；三类帧修后输出都真跑核过。
+- 开工核对：HEAD `a03d099e`，工作区干净，临时提交信息文件不存在；`CODEBUDDY.md` / `CLAUDE.md` / `DRAFT.md` 都读过。上一轮自测 311/311。上一轮把 8/0xA 与 0xC/0xE 分开，本轮不重复。
+- **本轮一格：把八类帧身份收成一份分组常量**。
+  - 起因：前几轮反复出现同一类分叉——`anim` 只认 4 而 `moment` 认 `(4,6)`；受击帧又同时打印「仍可被反击」和「被命中循环跳过」。根因不是某一处写错，而是帧类型判据散在三个命令里各写一份。这一轮从上游收口，不再在下游打补丁。
+  - 先扫后改：用正则扫源码，得到 **7 处**硬编码帧类型判据（`kind == 4` ×2、`kind in (0, 2)`、`kind in (8, 10)` ×2、`kind in (12, 14)` ×2）。
+  - 落盘：抽成五组常量，`frame` / `anim` / `moment` 共用——
+    `GRAB_KINDS (0,2)` 抓投探测 / `ATTACK_KINDS (4,)` 攻方生效 / `SPECIAL_KINDS (6,)` 特殊必杀 [I] / `SKIP_DEFEND_KINDS (8,10)` 防守方被跳过 / `GRAB_POSE_KINDS (12,14)` 抓住被抓（仍在防守方命中分派表里）。
+    `frame_type` 域级 `note` 也写明五组，查数时看得到。**逻辑等价替换，三条命令输出未变**。
+  - 自测 +3（311 → 314）：八类身份恰好分成五组、不重不漏（并集 == `[0,2,4,6,8,10,12,14]`）；`re.findall` 扫 `lookup.py` 源码，拦住以后再出现硬编码帧类型判据；`frame_type.note` 含「五组」。改完扫源码残留为空。
+  - 过程中两处小坑：第一版补丁脚本用 `str.count` 找 `    elif kind in (8, 10):` 时命中 2 次（8 空格行包含 4 空格行作为子串），断言失败、**未写盘**；改用带前后换行符的完整行锚点后成功。另有一条 `SyntaxWarning: invalid escape sequence '\s'` 来自生成脚本的外层普通字符串，写进文件的正则经 `Grep` 与实测确认是单反斜杠的正确形式，运行 `lookup.py` 时 `stderr` 为空。
+  - **未新增域**：只改常量分组与既有域的 `note`，没有新编号表、没动 `coverage.registered` / `themes`。
+- 验证：`--selftest` 311 → 314 全过 exit 0；`py_compile` exit 0、`json.load` 通过、`git diff --check` exit 0；两文件 `CR=0 BOM=False`、`over2000=[]`；`frame` kind=8 / kind=12、`anim` 拍子样本、`frame_type` 域查询四条命令都真跑，`stderr` 全空；`anim` 仍报「攻击生效帧 1 个 / 特殊必杀帧 / 其中 1 帧身体盒关着 / link word @+0032」。
 - 本轮 0 次 ROM 取证、没碰产物层、没改 `check_docs.py`、没动设计文档正文（`DESIGN_DIFF_NOTES.md` / `GAMEPLAY_LEGACY.md` / `notes/*`）、没回改早期卷、没回查载具 / 特殊关卡换面；`GAMEPLAY_LEGACY.md` 第 481 行停止条件仍有效。wt1 只读、未改。
 
 ## 长期口径（每轮沿用，不是本轮新增任务）
@@ -25,8 +24,7 @@
 - 用户要的是「游戏设计本意」，交付一律说人话；不把内部编号、提交号、校验数字当主体；忽略 Rust / C#、typed struct / WRAM、端序、逐帧补偿等实现表相。
 - 用户的真实任务是把各类变量取值转成可查的「抽象意义」并缓存，ANI / SPR 只是举例；要能顺着 ANI → SPR → 判定框 → 后果 → 受击反应 → 挨打的人怎么演，在看不到 GFX 时推断这一帧在干嘛；**细节之后要倒推回设计架构和意图**（`legacy` 索引就是这条回路）。**缓存与脚本的落点：`re/specs/semantics.json`（机器可读语义）/`re/specs/lookup.py`（离线查询，不带参数打印全部用法）**；入口有三处：`CLAUDE.md` 指向的 `re/README.md` / `re/specs/CONTEXT.md` 路径清册、`DESIGN_DIFF_NOTES.md`「阅读顺序」第 7 条、以及 `lookup.py` 不带参数的用法说明。`unknown` 一次列出哪些还没弄明白（两类未登记分开说，未登记 ≠ 不存在，每条带 blocked_at）；`themes` 按玩法问题查数时带观察 / 推断 / 未登记的成色并指向 `unknown`。解码命令翻取值意义时也带 `[O]/[I]/[U]` 标签，字段 / 位偏移说明不挂（那是格子名不是取值）；后果环把反应门票并排翻到 dino 两本受击册子、**各自的下游紧跟自己那本册子**（玩家 set2 段号 / 敌人姿态槽），不串 wof、也不串两侧。新增域必须带 source / scope / tag，不从字段名猜；`coverage.registered` 与 `themes` 必须覆盖所有域且每域只归一处；`not_registered` 写清「为什么不转」；`legacy` 每条带 `can_check` / `cannot_check` / `probe`（probe 可单条或多条）；上下文相关域必须带 `note`，且要讲清「查之前先确认哪一侧 / 哪个对象 / 哪一层档位」——状态机四层（mode / 地面 / 跑动 / 空中）都在内。**多个键写同一句意义不算错**（武器段被特例切两段、多变体同规则、多段同标签），但要在 note 里讲清为什么，别让人当成抄重去「修正」。**新增或改动解码命令后，`SMOKE_CASES` 要跟着加**（现在 40 条）；每条命令必须 `return 0`，别让 `main() -> int` 拿到 `None`。
 - **`[U]` 不是漏查清单**：每条 `[U]` 必须带 `blocked_at`，写清回源走到哪一行 / 哪一段、为什么停（SPEC 自己标 [U]、上游 Open gaps 明列、只给 handler 没给逐项意义、编号合并成一类）。`blocked_at` 里的路径从仓库根写全、行号不越界，自测会扫。有充分证据的 `[U]` 要真升级成 `[O]` / `[I]` 并补条目级 `source`——升级时别忘 `unknown` 的条数与「该域是否还在 unknown 里」会跟着变；没证据的别硬答，也别反复回源翻同一批。当前 17 条 `[U]` 已逐条回源核过，别再从头翻。
-- **攻击生效帧只认 `+$2E == 4`**：`re/specs/anim/SPEC.md:408-427` 是 [O]，普通命中循环要求攻方类型 4；`6` 是 [I] 推断的特殊 / 必杀帧，含 6 的表是**防守方**类型分派，不是攻方。历史轮次曾把 `moment` 的 `live` 改宽到 `(4,6)`，已收紧回 `(4,)` 并新增 `SPECIAL_KINDS = (6,)`，`anim` / `moment` 共用同一份判据；6 单列、不算攻击生效、不按普通命中结算，也不武断说「不能打人」（是否另走必杀路径缓存没登记）。**别再把 6 修回攻击生效帧**。
-- **「被跳过」只针对防守方 8 / 0xA**：`re/specs/anim/SPEC.md:416-422` [O] 写 `hit for 0,2,4,6,0xC,0xE, ignore 8 and 0xA`。受击 / 倒地帧即使身体盒非 0 也不会被连锁追打（靠身份跳过，**不是**靠关盒实现的无敌）；`0xC / 0xE`（抓住 / 被抓）仍在防守方命中分派表里，这一拍自己仍可能挨打，别读成无敌。四类都不是攻方类型 4、都不发起攻击，但「不发起攻击」和「不会被打」是两件事。`frame_type.note`、`infer()`、`moment` 的错配说明都已按这个边界分开，别再合并成一句「命中循环跳过它」。
+- **八类帧身份只有一份分组**：`re/specs/anim/SPEC.md §4.4` 的 `0/2/4/6/8/0xA/0xC/0xE` 在 `lookup.py` 里收成五组常量，`frame` / `anim` / `moment` 共用——`GRAB_KINDS(0,2)` / `ATTACK_KINDS(4,)` / `SPECIAL_KINDS(6,) [I]` / `SKIP_DEFEND_KINDS(8,10)` / `GRAB_POSE_KINDS(12,14)`。自测扫源码拦硬编码，别再在下游各写一份判据。攻方生效只认 4；6 是 [I] 推断、单列不算生效；被跳过的防守方只有 8/0xA；0xC/0xE 仍在防守方命中分派表里、自己可能挨打。`frame_type.note` 也写了五组。
 - **身体盒取 0 ≠ 攻击盒取 0**：`box_index_zero` 登记的是攻击盒（+$49）取 0 =「这一帧不打人」（dino）/「合法表项」（wof）；`body_box_zero` 登记的是防守方身体盒（+$48）取 0 =「这一帧自己不可被命中」，依据 `re/specs/anim/SPEC.md §4.4` 的 [O] 前置条件 `defender +$48 != 0`，只有 dino 侧证据。查数前先分清哪个字段、哪一侧；能不能打人和会不会挨打是两件事，也别从帧类型推「哪帧无敌」（逐帧看这个字节）。`body_box_zero` 已进 `coverage.registered` 与 `themes.hit_logic`。
 - **Jack 示例盒的 meaning 讲的是盒表项，不是当前帧**：`cmd_frame` 末尾打印盒表项意义前已先声明这一点；别把那句「出拳同时自己整个可被打，攻防同帧」读成当前这一帧的身份判断。
 - **link word 是量，不是编号域**：`re/specs/anim/SPEC.md:185-187` [O] 写明末帧后紧跟 `i16 link`，下一帧 = `addr_of_link + link`，可回环或跳到另一段；tick 例程跟随 link 时 `carry=1` 表示「这一段演完了」。`anim` 已能解出有符号值、目标相对段首偏移、以及回环 / 跳段 / 段内非帧起点三类去向（后两类是 [I] 推断，因为离线没有 ANI 表绝对基址）。**别把它转成「取值 → 意义」的域**：连续相对偏移按纪律不转，`frame_timer.bit7=1` 已登记其存在与用途。
@@ -41,3 +39,4 @@
 - 特殊关卡、专属演出、单个 Boss 那一段的编排不构成通则；载具换面停止。
 - 环境限制（不是缺口）：无 Rust 工具链、无 `dino.zip`、无 `re/rom` / `target`，做不了 `cargo build/test`、`regress.sh`、MAME 对拍；`lookup.py` 是 ROM-free 的离线脚本。
 - 写盘 LF 无 BOM；收尾校验 `CR=0 BOM=False`、新增行 `over2000=0`、`git diff --check`、`git status --short`；提交信息用 `git commit -F R:\Temp\dino_commit_msg.txt` 后清理临时文件。
+- 用补丁脚本改 `lookup.py` 时，短锚点可能是更长行的子串（4 空格 vs 8 空格缩进），断言 `count==1` 会挡住；用带前后换行符的完整行锚点。生成脚本里的正则要用单引号 here-string 原样传，避免外层字符串把 `\s` 当转义。
