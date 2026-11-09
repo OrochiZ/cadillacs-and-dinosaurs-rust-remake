@@ -41,6 +41,8 @@
     python re/specs/lookup.py attack_id 0x5A          查一个攻击编号是哪一招
     python re/specs/lookup.py anim_id 1 4             查这一招是哪段，并带出这一拳的后果
     python re/specs/lookup.py coverage                哪些表已转、哪些按纪律不转、为什么
+    python re/specs/lookup.py unknown                  一次列出「还没弄明白」的取值与整类不转的表
+    python re/specs/lookup.py unknown player_ground_state   只看某一册里哪些编号还没登记
     python re/specs/lookup.py themes                  按玩法主题列出可查的域
     python re/specs/lookup.py themes state_machine    只看状态机这一块
     python re/specs/lookup.py legacy                  外推文九条判断各自能查到什么、查不到什么
@@ -142,7 +144,8 @@ def cmd_list():
           "`box` / `spawn` / `script` / `attack` / `wof_attack`；"
           "串链：`chain`（说明）/ `moment`（喂同一帧的数据合成一句）/ `anim_id`。")
     print("三个索引：`coverage`（按回源分组）/ `themes`（按玩法问题）/ "
-          "`legacy`（外推文九条判断各能查到什么、查不到什么）。")
+          "`legacy`（外推文九条判断各能查到什么、查不到什么）；"
+          "`unknown` 一次列出还没弄明白的取值与整类不转的表（未登记 ≠ 不存在）。")
 
 
 def cmd_domain(name: str):
@@ -1134,6 +1137,67 @@ def cmd_coverage():
     return 0
 
 
+def unknown_rows() -> dict:
+    """把标 [U] 的取值按域收起来，供 unknown 命令与自测共用。"""
+    out = {}
+    for name, d in DOMAINS.items():
+        us = [(k, v) for k, v in d["values"].items() if v["tag"] == "U"]
+        if us:
+            out[name] = (d, us)
+    return out
+
+
+def cmd_unknown(tokens: list[str]):
+    """一次列出「这份缓存还答不了什么」：域内 [U] 取值 + 按纪律整类不转的表。
+
+    两者都只是「没写意义」，不是「不存在」。给一个域名就只看那一册，
+    方便分析某张状态表时先看清哪些编号还没弄明白。
+    """
+    cov = DB.get("coverage", {})
+    groups = unknown_rows()
+    if tokens:
+        key = tokens[0]
+        if key not in DOMAINS:
+            print(f"没有这个域：{key}。用 `lookup.py list` 看全部可查的域，"
+                  "或用 `lookup.py unknown` 看整体缺口视图。")
+            return 1
+        print(f"{key} 里还没弄明白的取值（{len(groups.get(key, (None, []))[1])} 条）")
+        print("=" * 78)
+        print(f"出处：{DOMAINS[key]['source']}")
+        for k, v in groups.get(key, (None, []))[1]:
+            print(f"  {k:14s} {fmt(v['tag'])} {v['meaning']}")
+            if v.get("note"):
+                print(f"  {'':14s} 备注：{v['note']}")
+        if key not in groups:
+            print("  这个域没有 [U] 取值；但不代表整类都清楚了，")
+            print("  整类按纪律不转的理由看 `lookup.py coverage`。")
+        print("\n未登记 ≠ 不存在：查不到的取值只是没写意义，不代表游戏里没有；")
+        print("别顺着字段名猜，也别把它当成关掉 / 空值。")
+        return 0
+
+    total = sum(len(us) for _, us in groups.values())
+    print("这份缓存还答不了什么（未登记 ≠ 不存在）")
+    print("=" * 78)
+    print(cov.get("unknown_note", ""))
+    print(f"\n一、取值在册、但具体意义没弄明白（标 [U]，共 {total} 条 / {len(groups)} 个域）")
+    for name, (d, us) in groups.items():
+        print(f"  {name}   （{d['source']}）")
+        for k, v in us:
+            print(f"    {k:14s} {fmt(v['tag'])} {v['meaning']}")
+    print("\n  这些编号确实存在、游戏确实在读，只是我们只知道它大概属于哪一类。")
+    print("  别顺着字段名猜，也别把它当成关掉 / 空值。")
+    nr = cov.get("not_registered", [])
+    print(f"\n二、整类按纪律不转成域（{len(nr)} 类）")
+    for item in nr:
+        print(f"  · {item['what']}")
+        print(f"    └ {item['why']}")
+    print("\n  这不是漏查清单：理由逐条写在上面，完整回源分组见 `lookup.py coverage`。")
+    print("\n查一个具体取值：先 `lookup.py <域> <取值>` 看是不是 [U]；")
+    print("再 `lookup.py collide <取值>` 看它在别的册子里是不是已经有意义；")
+    print("都没命中才回源 source。`lookup.py unknown <域>` 只看某一册还没弄明白的编号。")
+    return 0
+
+
 def cmd_themes(tokens: list[str]):
     """按玩法主题列出可查的域；与 coverage 的「按回源文件分组」正交。"""
     items = DB.get("themes", {}).get("list", [])
@@ -1873,15 +1937,48 @@ def cmd_selftest():
            for n in OFFSET_KEY_DOMAINS)
        and all(DOMAINS[n].get("bitfield") for n in ("draw_flags", "sprite_attr")))
 
+    # 「还没弄明白」入口：把两类未登记并排说清，别读成「不存在」
+    u_groups = unknown_rows()
+    u_total = sum(len(us) for _, us in u_groups.values())
+    ck("unknown_note 把两类未登记分开、明写不等于不存在",
+       all(x in DB["coverage"].get("unknown_note", "")
+           for x in ("两类", "[U]", "不等于", "不存在")))
+    ck("所有 [U] 条目都只写部分意义、没有硬给具体意义",
+       all(v["tag"] == "U" and any(
+           w in v["meaning"] for w in
+           ("未登记", "未明", "未逐项", "未单列", "用途未", "不从字段名猜"))
+           for _, us in u_groups.values() for _, v in us))
+    out = capture(cmd_unknown, [])
+    ck("unknown 全览逐条打出了 [U] 的意义，且按域分组带出处",
+       all(v["meaning"] in out for _, us in u_groups.values() for _, v in us)
+       and all(n in out and DOMAINS[n]["source"] in out for n in u_groups)
+       and f"共 {u_total} 条" in out)
+    ck("unknown 全览同时给出按纪律不转的类数与边界句",
+       f"{len(DB['coverage']['not_registered'])} 类" in out
+       and "未登记 ≠ 不存在" in out and "不是漏查" in out
+       and "collide" in out)
+    one = "player_ground_state" if "player_ground_state" in u_groups else next(iter(u_groups))
+    out_one = capture(cmd_unknown, [one])
+    ck("unknown <域> 只看那一册、带出处、不退化成全览",
+       f"{one} 里还没弄明白" in out_one
+       and DOMAINS[one]["source"] in out_one
+       and "这份缓存还答不了什么" not in out_one)
+    clean = next(n for n in DOMAINS if n not in u_groups)
+    out_clean = capture(cmd_unknown, [clean])
+    ck("没有 [U] 的域会明说不代表整类都清楚",
+       "没有 [U] 取值" in out_clean and "不代表整类都清楚" in out_clean)
+    ck("unknown 给不存在的域会明确报错，不静默当空",
+       "没有这个域" in capture(cmd_unknown, ["no_such_domain"]))
+
     # 入口一致性：doc 与 list 都得跟上后来加的命令
     ck("doc 不再把无参数误写成列域",
        "打印这份用法说明" in __doc__ and "lookup.py list" in __doc__)
     out = capture(cmd_list)
-    ck("list 末尾给出解码命令与三个索引",
-       all(x in out for x in ("attack", "script", "coverage", "themes", "legacy")))
+    ck("list 末尾给出解码命令与三个索引、以及 unknown 入口",
+       all(x in out for x in ("attack", "script", "coverage", "themes", "legacy", "unknown")))
     nav_cmds = ("frame", "anim", "comp", "box", "spawn", "script", "attack",
                 "wof_attack", "moment", "chain", "collide", "coverage",
-                "themes", "legacy")
+                "unknown", "themes", "legacy")
     nav_out = {n: capture(main, [n]) for n in nav_cmds}
     ck("总入口阅读顺序第 7 条列的查数入口都还在、没退化成未知域",
        all("没有这个域" not in o for o in nav_out.values())
@@ -1916,6 +2013,8 @@ def main(argv: list[str]) -> int:
         return cmd_collide(rest[0]) if rest else (print("用法：collide <取值>") or 1)
     if cmd == "coverage":
         return cmd_coverage()
+    if cmd == "unknown":
+        return cmd_unknown(rest)
     if cmd == "themes":
         return cmd_themes(rest)
     if cmd == "legacy":
