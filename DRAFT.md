@@ -5,26 +5,25 @@
 
 ## 本轮收尾（开工重建，收尾写回）
 
-- 开工核对：HEAD `fe07f040`，工作区干净，临时提交信息文件不存在；`CODEBUDDY.md` / `CLAUDE.md` / `DRAFT.md` 都读过。
+- 开工核对（本会话起点）：HEAD `fe07f040`，工作区干净，临时提交信息文件不存在；`CODEBUDDY.md` / `CLAUDE.md` / `DRAFT.md` 都读过。上一格（文档层）已按 `GAMEPLAY_LEGACY.md` 第 481 行停止条件收口。
 
-- 上一格（文档层）已按 `GAMEPLAY_LEGACY.md` 第 481 行停止条件收口，本轮**没动任何设计文档**：不改 `DESIGN_DIFF_NOTES.md`、不改 `GAMEPLAY_LEGACY.md`、不碰 `notes/08-wof-cs-gaps.md`、不碰产物层。
+- 本轮第一格已提交 `dc71f468`：给缓存加 `unknown` 入口，一次列出两类「还没弄明白」（标 `[U]` 的取值 / 整类按纪律不转的表），`semantics.json` 新增 `coverage.unknown_note`，自测 230 → 237。
 
-- 本格做的是数据层 / 工具层的一个真实缺口：上一轮导出全部 `[U]` 标签（18 条 / 11 个域）后发现，缓存能查「某个值是什么意思」，却没有入口一次列出「哪些值还没写明白」。分析时最容易把「未登记」读成「不存在」，这条得能查。
-  - `re/specs/semantics.json` 的 `coverage` 新增 `unknown_note`：把两类「没弄明白」分开讲清 —— 一类是取值在册但意义标 `[U]`，一类是整类按 `not_registered` 不转成域；两类都只是「没写意义」，不等于游戏里没有、也不等于没有证据（不少不转的表在 SPEC 里有 [O] 级代码观察，只是形态是量 / 条件分支 / 随机漂移）；给出「先查域 → 再 collide → 才回源」的查法。
-  - `re/specs/lookup.py` 新增 `unknown_rows()` / `cmd_unknown()` 与 `unknown` 命令：`unknown` 全览按域分组逐条列出 18 条 `[U]`（带出处）并并排列出 13 类按纪律不转的理由；`unknown <域>` 只看某一册，没有 `[U]` 的域会明说「不代表整类都清楚」；给不存在的域明确报错并指向 `list`。doc、`cmd_list()` 导航、`main()` dispatch 同步。
-  - 自测新增 7 条断言：把「18 条 `[U]` 全部只写部分意义、没有硬给具体意义」这条实证固化下来（以后谁硬编意义会红），并验全览 / 单域 / 空域 / 错域四种视图与边界句。
+- 本格（第二格）做的是解码输出层的真实破口：实证核出「查单值 / 列域 / 反查」都带 `[O]/[I]/[U]` 标签，但几条「喂原始字节翻意义」的命令把标签静默丢了。
+  - 实证：`frame_type 0 / 6` 是 `[I 推断]`，喂 `moment 10 ... 0605 ...`（必杀帧）时第 1 环写「特殊 / 必杀攻击帧」不带标签；`frame` 逐字段行标了 `[I 推断]`，但「这一帧在干嘛」那段又把同一个值说成确定事实。`jack_anim_set1` 有 3 条 `[I]` + 1 条 `[U]`，`emit()` 那路是好的，带出的攻击后果两行没带。
+  - `re/specs/lookup.py` 新增 `say()`：解码命令里凡是直接引用缓存意义的，连标签一起说。改到 `cmd_frame` 帧类型 / 盒示例、`infer()` 身份、`cmd_moment` 第 1 环与盒示例、`cmd_wof_attack` 的 `describe()` / shake、`cmd_anim_id` 带出的攻击后果；doc 边界句同步。
+  - **字段 / 位偏移说明不挂标签**（「+0..3 是伤害随机偏移」讲的是这一格叫什么、不是某个取值的意义），按取值反查排除字段偏移域的同一纪律；这条写进 `say()` 的说明与自测，避免以后被「统一」回去。
+  - 自测新增 5 条：喂必杀帧 / 中立帧 / wof 参数行 / `anim_id` 都验标签在，且字段布局没被冒充成取值。230 → 237 → 242。
 
-- 实跑输出核过：`unknown` 全览「共 18 条 / 11 个域」、`unknown player_ground_state` 六条带出处、`unknown frame_type` 明说没有 `[U]`、`unknown no_such_domain` 指向 `list`；中文通顺，无「这些编号」这类指代落空。
+- 验证：`--selftest` exit 0、`242/242` 通过、`py_compile` exit 0、`git diff --check` exit 0；`lookup.py` `CR=0 BOM=False`，新增行 `over2000=[]`。
 
-- 验证：`--selftest` exit 0、`237/237` 通过（原 230 + 7）、`py_compile` exit 0、`json.load` 通过、`git diff --check` exit 0；`lookup.py` / `semantics.json` / `DRAFT.md` 均 `CR=0 BOM=False`，新增行 `over2000=[]`。
-
-- 本轮未触发 ROM 取证；没碰产物层；没改 `check_docs.py`；没回查载具 / 特殊关卡换面；没往文档自洽循环加层。
+- 本轮仍未动任何设计文档（不改 `DESIGN_DIFF_NOTES.md` / `GAMEPLAY_LEGACY.md` / `notes/08`）、未触发 ROM 取证、没碰产物层、没改 `check_docs.py`、没回查载具 / 特殊关卡换面；`GAMEPLAY_LEGACY.md` 第 481 行停止条件仍有效。
 
 ## 长期口径（每轮沿用，不是本轮新增任务）
 
 - `长时间自主推进` 是开放目标：局部提交、干净工作区、阶段总结、压缩 / 总结请求都不算完成或缩小；不询问是否继续，不直读 goal 状态，不写「下一格 / 短期不再动笔」当收尾，提到方向就当轮把第一步做掉。
 - 用户要的是「游戏设计本意」，交付一律说人话；不把内部编号、提交号、校验数字当主体；忽略 Rust / C#、typed struct / WRAM、端序、逐帧补偿等实现表相。
-- 用户的真实任务是把各类变量取值转成可查的「抽象意义」并缓存，ANI / SPR 只是举例；要能顺着 ANI → SPR → 判定框 → 后果在看不到 GFX 时推断这一帧在干嘛。**缓存与脚本的落点：`re/specs/semantics.json`（机器可读语义）/`re/specs/lookup.py`（离线查询，不带参数打印全部用法）**；总入口「阅读顺序」第 7 条是压缩恢复后找它们的入口。`unknown` 是「一次列出哪些还没弄明白」的入口，两类未登记分开说，未登记 ≠ 不存在。新增域必须带 source / scope / tag，不从字段名猜；`coverage.registered` 与 `themes` 必须覆盖所有域且每域只归一处；`not_registered` 写清「为什么不转」；`legacy` 每条带 `can_check` / `cannot_check` / `probe`（probe 可单条或多条）；上下文相关域必须带 `note`。
+- 用户的真实任务是把各类变量取值转成可查的「抽象意义」并缓存，ANI / SPR 只是举例；要能顺着 ANI → SPR → 判定框 → 后果在看不到 GFX 时推断这一帧在干嘛。**缓存与脚本的落点：`re/specs/semantics.json`（机器可读语义）/`re/specs/lookup.py`（离线查询，不带参数打印全部用法）**；总入口「阅读顺序」第 7 条是压缩恢复后找它们的入口。`unknown` 是「一次列出哪些还没弄明白」的入口，两类未登记分开说，未登记 ≠ 不存在。解码命令翻取值意义时也带 `[O]/[I]/[U]` 标签，字段 / 位偏移说明不挂（那是格子名不是取值）。新增域必须带 source / scope / tag，不从字段名猜；`coverage.registered` 与 `themes` 必须覆盖所有域且每域只归一处；`not_registered` 写清「为什么不转」；`legacy` 每条带 `can_check` / `cannot_check` / `probe`（probe 可单条或多条）；上下文相关域必须带 `note`。
 - 回源路径一律从仓库根写全（如 `dino-rs/crates/dino-assets/...`），不留 `dino-assets/` 这类裸前缀；`legacy.list[*].title` 与 `GAMEPLAY_LEGACY.md` 九节标题逐字对应、顺序一致，改标题两边同步。
 - **停止条件**：`GAMEPLAY_LEGACY.md` 第 481 行「不改总入口、不加新节号、不回文档自洽循环」；415–481 补层已闭合、`legacy` 九条索引只对应前九节，不补后半部底座。伪代码 / 流程图各卷已很多；总入口 153–157 行三个实际问题落点、`coverage.not_registered` 13 条理由、`themes` 已是按玩法问题那条索引 —— 都核过，别再翻。`notes/08` 是移植侧欠账清单、非原机缺机制，已核过与缓存口径一致。
 - 「缓存没转成域」与「没有证据」是两种缺口；不把 [I] 写成 [O]，也不把 [O] 代码观察降成叙事；不从概括硬编假编号域；[O] 回源但形态是量 / 条件分支 / 随机漂移 / 未给逐项意义的查表，写进 `not_registered` + `source`。

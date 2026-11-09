@@ -51,7 +51,8 @@
     python re/specs/lookup.py --selftest              固化自测（不依赖 ROM）
 
 边界：本工具只回答「这个取值在这份 rep 已登记的意义里是什么」，不推断未登记取值、
-不把 [I] 说成 [O]、不做跨游戏等价。未命中就直说未登记。
+不把 [I] 说成 [O]、不做跨游戏等价；喂字节翻意义的解码输出也带上 [O] / [I] / [U] 标签，
+别只挑其中一句读。未命中就直说未登记。
 同一编号在玩家侧 / 敌人侧、dino / wof 侧含义可以相反，上下文相关的域会提示先确认对象。
 """
 from __future__ import annotations
@@ -128,6 +129,17 @@ def match_value(dom: dict, token: str):
 
 def fmt(tag: str) -> str:
     return {"O": "[O 观察]", "I": "[I 推断]", "U": "[U 未登记]"}.get(tag, f"[{tag}]")
+
+
+def say(v: dict | None, fallback: str = "未登记") -> str:
+    """解码命令里凡是直接引用缓存意义的，都连置信标签一起说。
+
+    查单值 / 列域 / 反查都带 fmt；喂字节翻意义的那几条不该例外，
+    否则「身份：特殊 / 必杀攻击帧」这种 [I] 会被读成观察事实。
+    字段 / 位偏移说明（「+0..3 是伤害随机偏移」）讲的是这一格叫什么、
+    不是某个取值的意义，按取值反查排除字段偏移域的同一纪律，不走这里。
+    """
+    return f"{v['meaning']} {fmt(v['tag'])}" if v else fallback
 
 
 # ---------- 命令 ----------
@@ -268,7 +280,7 @@ def cmd_frame(tokens: list[str]):
           "分身绘制时按它查 +$38 偏移表重同步 [O]")
     kv, vv = match_value(DOMAINS["frame_type"], str(kind))
     print(f"  +6    kind    = 0x{kind:02X}  → obj+$2E 帧类型：", end="")
-    print(f"{vv['meaning']} {fmt(vv['tag'])}" if vv else "未登记")
+    print(say(vv))
     if vv and vv.get("note"):
         print(f"         └ {vv['note']}")
     print(f"  +7    timer   = 0x{timer:02X}  → 时长 {256 if dur == 0 else dur} tick；"
@@ -290,7 +302,7 @@ def cmd_frame(tokens: list[str]):
             continue
         _, bv = match_value(DOMAINS["jack_box_example"], str(idx))
         if bv:
-            print(f"  · {label} #{idx} 若属 Jack（盒表 0x100000）：{bv['meaning']}")
+            print(f"  · {label} #{idx} 若属 Jack（盒表 0x100000）：{say(bv)}")
             print("    别的角色 / 敌人按自己的盒表取同一个索引，形状不同，别套。")
     return 0
 
@@ -299,7 +311,7 @@ def infer(kind, body, atk, dur, last, w0) -> list[str]:
     out = []
     fk, fv = match_value(DOMAINS["frame_type"], str(kind))
     if fv:
-        out.append(f"身份：{fv['meaning']}")
+        out.append(f"身份：{say(fv)}")
     if kind == 4 and atk:
         out.append(f"攻击生效：+$49 有攻击盒 #{atk}，与防守方 +$48 身体盒相交才命中；"
                    "盒的 6 个 i16 决定前伸距离、打的高度、纵深容差")
@@ -580,7 +592,7 @@ def cmd_wof_attack(tokens: list[str]):
 
     def describe(dom_name: str, val: int) -> str:
         _, v = match_value(DOMAINS[dom_name], str(val))
-        return v["meaning"] if v else "这个编号缓存里没登记，不硬答（回源 §94.14）"
+        return say(v, "这个编号缓存里没登记，不硬答（回源 §94.14）")
 
     print("这一行合起来在说什么（不看 GFX）：")
     print("  · dino 的一招是一张填好格子的 8 字节行、每格有固定名字；"
@@ -601,7 +613,7 @@ def cmd_wof_attack(tokens: list[str]):
           "按 §94.14 三方对账只核到两角，未验命名不固化")
     _, sv = match_value(DOMAINS["wof_shake_left"], str(shake))
     print(f"  · shake 0x{shake:02X} → "
-          f"{sv['meaning'] if sv else '取值未登记，按非零态每帧 -1 跳过本帧'}")
+          f"{say(sv, '取值未登记，按非零态每帧 -1 跳过本帧')}")
     print("-" * 78)
     print("边界：同一行在 0x7FF2（我方→敌）/ 0x8228·0x8726（敌→玩家）/ 0x8D00（敌→场地对象）")
     print("      三条命中链里取第几格、算什么各不相同；这里只按所选布局读，")
@@ -756,7 +768,7 @@ def cmd_moment(tokens: list[str]):
     print("=" * 78)
     print(f"帧记录 {stride} 字节：{' '.join(f'{x:02X}' for x in b)}")
     print("-" * 78)
-    print(f"1) 身份 / 这一拍：{fv['meaning'] if fv else '帧类型未登记，不猜'}；"
+    print(f"1) 身份 / 这一拍：{say(fv, '帧类型未登记，不猜')}；"
           f"时长 {256 if dur == 0 else dur} tick，"
           + ("末帧，后面接一记 link word 决定回环还是接下一招" if last else "顺序走到下一帧"))
     print("2) SPR 环：composition 只管画成什么样，不参与打不打得中")
@@ -780,7 +792,7 @@ def cmd_moment(tokens: list[str]):
             continue
         _, bv = match_value(DOMAINS["jack_box_example"], str(idx))
         if bv:
-            print(f"   {label} #0x{idx:02X} 若属 Jack：{bv['meaning']}")
+            print(f"   {label} #0x{idx:02X} 若属 Jack：{say(bv)}")
         else:
             print(f"   {label} #0x{idx:02X}：索引有效，但本机只登记 Jack 示例盒；"
                   "别的角色 / 敌人按自己的盒表取同一索引，形状不同，不套")
@@ -1082,11 +1094,11 @@ def cmd_anim_id(tokens: list[str]):
             _, rv = match_value(DOMAINS["jack_attack_record"], a)
             print(f"  ── 这一拳的后果（$58 = {a}，不用再拼命令）──")
             if av:
-                print(f"  攻击编号表里 $58 = {a} 是：{av['meaning']}")
+                print(f"  攻击编号表里 $58 = {a} 是：{say(av)}")
             if rv:
                 hx = " ".join(rv["bytes"][i:i + 2] for i in range(0, 16, 2))
                 print(f"  攻击属性记录 8 字节：{hx}")
-                print(f"  {rv['meaning']}")
+                print(f"  {say(rv)}")
                 print(f"  逐字段看后果：lookup.py attack {rv['bytes']}")
             else:
                 print(f"  $58 = {a} 的逐字节攻击属性记录在 ROM 表里，本机不登记，"
@@ -1969,6 +1981,27 @@ def cmd_selftest():
        "没有 [U] 取值" in out_clean and "不代表整类都清楚" in out_clean)
     ck("unknown 给不存在的域会明确报错，不静默当空",
        "没有这个域" in capture(cmd_unknown, ["no_such_domain"]))
+
+    # 解码输出也带证据标签：别让 [I] 在「这一帧在干嘛」里被读成观察
+    ck("say() 把 meaning 与置信标签一起带出，缺省也不冒充登记",
+       "[I 推断]" in say(DOMAINS["frame_type"]["values"]["6"])
+       and "[U 未登记]" in say(DOMAINS["jack_anim_set1"]["values"]["15"])
+       and say(None) == "未登记")
+    out_i6 = capture(main, ["moment", "10", "0A01", "8000", "0100", "0605", "1A02"])
+    ck("moment 喂必杀帧时，身份那行明说 [I 推断]",
+       "1) 身份 / 这一拍：特殊 / 必杀攻击帧 [I 推断]" in out_i6)
+    out_i0 = capture(main, ["frame", "10", "0A01", "8000", "0100", "0005", "1A00"])
+    ck("frame 的「这一帧在干嘛」也带标签，不与逐字段行口径打架",
+       "身份：中立帧" in out_i0 and out_i0.count("[I 推断]") >= 2)
+    out_w = capture(main, ["wof_attack", "ours", "00", "00", "00", "00", "0A", "00",
+                           "03", "00", "56", "00", "00", "00", "06", "0E", "03", "00"])
+    ck("wof 参数行翻反应 / shake 取值时带标签，字段布局不冒充取值",
+       "平时反应" in out_w and "· shake" in out_w
+       and "[O 观察]" in out_w and "→ 伤害随机偏移 long" in out_w
+       and "伤害随机偏移 long [O 观察]" not in out_w)
+    out_a = capture(main, ["anim_id", "1", "4"])
+    ck("anim_id 带出的攻击后果不丢标签",
+       "攻击编号表里 $58" in out_a and "[O 观察]" in out_a)
 
     # 入口一致性：doc 与 list 都得跟上后来加的命令
     ck("doc 不再把无参数误写成列域",
