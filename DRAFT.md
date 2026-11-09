@@ -3,53 +3,35 @@
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 git 跟踪的耐久层。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
 
-## 本轮做了什么：把「看到一段 ANI 编号就知道是哪一招」补上（第五格）
+## 本轮做了什么：把「一次连段的四本册子」倒推回外推文（第六格）
 
-**背景**：前四格到 `6841d80b`，51 域 / 382 条、58/58 自测，工作区干净。
-Stop hook 催办后继续。回 `re/specs/anim/SPEC.md §3.2 / §3.6` 发现用户举例的 ANI
-那一层还有最直接的一块缺口：`anim_set` 只转了「6 套」的套号，套里每段编号
-（ANI 表 `u16 offset[id]` 的 id）是哪一招没转；而 §3.6 的 punch chain 有代码级
-出处，能把「动画 id → 哪一招 → $58 → 状态字 → 连段计数」串起来。
+**背景**：第五格 `9d29c20e` 把 ANI 段编号与连段计数转进缓存（55 域 / 431 条、
+66/66 自测），工作区干净。Stop hook 催办后继续。缓存刚补上的四个域正好
+把用户最初关心的「状态机 / 打击逻辑」再倒推一层，按「得到细节后还得倒推
+设计架构和意图」写回耐久层。
 
-### 回源与取舍
+### 回源与落点
 
-- §3.2：6 套 × 4 角色，`table = u32(set_ptr + 4*b03)`，每套有效 id 数各角色不同，
-  id 只是 `offset[id]` 的下标。
-- §3.6 只逐段列了 **Jack** 的 set 0 / 1 / 2，并明写 `ids O, labels I from art`；
-  set 3/4/5 只有套级用途。所以：
-  - 三个 `jack_anim_setN` 域的 scope 写成 `dino / Jack only`、context_dependent，
-    标签按 SPEC 标 I；set1 的 0..7 用 punch chain 代码标 O，id 15 标 U。
-  - `10-13 jump attacks` 是 SPEC 明写的一族连续编号，才用范围键；其余一律离散键。
-  - 未列出的 id 不登记、不硬答。
-  - 其余三角色逐段表按纪律不转，理由写进 `coverage.not_registered`：
-    不能把 Jack 的编号意义套到别人身上。
-- `combo_counter`（+$B2）：§3.6 punch chain 标 [O]，只在命中确认时 +1，
-  动画演完才按它翻页；把「连段是打出来的」落成一个可查取值。
+- 读 `GAMEPLAY_LEGACY.md` 第二节（157-163 行）：已有「命中确认才续拳」、
+  「打空有真实代价」、「当代做法把互动换成表演」，但没写这次「等回答」
+  具体等在哪。新段不重复这三层，补的是**机制落点**。
+- 四本册子：`jack_anim_set1` 的动画段号、`attack_id` 的 `$58`、
+  `player_ground_state` 的状态字、`combo_counter` 的 `+$B2`。
+  回源 `re/specs/anim/SPEC.md §3.6 Punch chain [O]`：命中确认（攻方 `$59 != 0`）
+  才 `+$B2 += 1`，状态 6 里缓存的按键等动画演完才按计数翻页。
+- 写成一句人话：四个编号各管一件事、没有「连段第 3 下」这种全局编号，
+  靠同一拍的命中结果交接；连段不是四拳做进一段动画，是四个小状态机
+  用「碰到人没有」对齐。接回「世界会不会回嘴」主线。
+- 主语收在 dino 侧 Jack 连段，边界行明写不放大成两款游戏共同架构、
+  不与 wof「动画播完加窗口内新按键沿」并成同一套因果。
 
-### 交付
+### 交付与验证
 
-- `semantics.json` 新增 4 域：`jack_anim_set0`（26 条）/ `jack_anim_set1`（11 键）/
-  `jack_anim_set2`（8 条）/ `combo_counter`（3 条），共 48 条；
-  `coverage.registered` anim 组补 4 域；`not_registered` 加「其余三角色逐段表不转」。
-- `lookup.py` 新增 `SET_DOMAINS` 与 `anim_id <set> <id>` 命令：按套 + 段直接查，
-  先给套级意义，再给该段意义，set 1 额外提示四张表对齐；set 3/4/5 直说「没有
-  逐段编号表，不猜」。域数量断言 `>= 55`，新增 8 条自测。
-
-### 实跑验证
-
-- `--selftest` → **66/66 通过**。
-- `coverage` → 「合计 55 个域 / 431 条；索引缺 0 个域、多 0 个域」。
-- 抽查：`anim_id 1 4` → 终结拳（$58 = 4、状态 0x0200000C、3 帧叠加 comp 0xA8）；
-  `anim_id 0 21` → 跳跃踢（帧类型 4、攻击盒 0x0B / 0x0C / 0x0D）；
-  `anim_id 3 0` → 只给套级用途、不猜逐段。
-- `py_compile` OK；`git status --short` 只有两处 M。
-
-### 边界
-
-- **0 次 ROM**；只读 rep 内 SPEC 与离线脚本，未碰 `g:/wof/wt1` 源码。
-- 不碰 `re/out/assets/` 产物层，不修 `check_docs.py` 假红，不改 `CLAUDE.md` / `.gitignore`。
-- 不恢复「以 ROM 审 repo」框架；不把 `[I]` 写成 `[O]`；不从字段名 / 常量名猜意义。
-- 环境硬限制照旧（无 Rust 工具链 / `dino.zip` / `re/rom` / `target`），新脚本 ROM-free。
+- 只改 `GAMEPLAY_LEGACY.md` 一处（第二节内插一段 + 一行边界）。
+- `CR=0 BOM=False`、全文件超 2000 字节行数 0、新增两行 868 / 243 字节、
+  `git diff --check` 干净、`git status --short` 只有一处 M。
+- **0 次 ROM**；只读 rep 内 SPEC 与外推文；不碰产物层，不修 `check_docs.py` 假红。
+- 环境硬限制照旧（无 Rust 工具链 / `dino.zip` / `re/rom` / `target`）。
 
 ### 长期口径（细则在耐久层，不在本文件展开）
 
@@ -65,5 +47,4 @@ Stop hook 催办后继续。回 `re/specs/anim/SPEC.md §3.2 / §3.6` 发现用�
 
 ## 收尾
 
-- 校验两份文件 `CR=0 BOM=False`、新增行 `over2000=0`、`git diff --check`、
-  `git status --short`；`git commit -F` 后 `Remove-Item` 临时信息，再复核干净工作区。
+- `git add` 两份文件 → `git commit -F` → `Remove-Item` → `git status --short` 复核。
