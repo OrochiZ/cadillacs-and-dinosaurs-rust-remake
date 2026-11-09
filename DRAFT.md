@@ -11,61 +11,60 @@
 很多东西都适合转成抽象和缓存；还要能顺着 ANI → SPR → 判定框，在看不见 GFX 时推断这一帧在干嘛。
 
 开工复位：读 `CODEBUDDY.md` / `CLAUDE.md` / 上一轮 DRAFT → `git log -8` + `git status --short`。
-HEAD `d23bbf43`，工作区只有 `?? re/specs/lookup.py`、`?? re/specs/semantics.json`（上一轮被总结打断的未提交件），
-`R:\Temp\dino_commit_msg.txt` 不存在。回读两个文件的**实际磁盘内容**，不靠摘要转述。
+HEAD `d23bbf43`，工作区只有上一轮被总结打断的 `?? re/specs/lookup.py`、
+`?? re/specs/semantics.json`，无临时提交信息。回读两个文件的**实际磁盘内容**，不靠摘要转述。
 
-### 交付（三个文件）
+### 已提交第一段：`60d32087`
 
-- `re/specs/semantics.json`：机器可读语义缓存，**33 个域 / 208 条**。每条带 `meaning` + `tag`（O/I/U），
-  每域带 `scope` + `source`，上下文相关域带 `context_dependent` + `note`，位域带 `bitfield`。
-  明确写「这不是 ROM 数据表，不复制原始字节表，只登记语义」。
-- `re/specs/lookup.py`：ROM-free、零第三方依赖。命令：`list` / 域查询 / 单值查询（支持 `4`/`04`/`0x04`/`0xA`
-  与描述性键）/ 范围取值 / `attr` / `flags` / `frame` 解码 10 或 12 字节帧记录 / `spawn` 解码
-  14 或 16 字节生成记录 / `chain`（ANI→SPR→判定框 能推断与不能推断什么）/ `find` 反查 / `--json` /
-  `--selftest`。`--selftest` 固化 20 条断言，本轮实跑 **20/20 通过**，`py_compile` exit=0。
+- `re/specs/semantics.json`：机器可读语义缓存，**33 个域 / 208 条**。每条带 `meaning` + `tag`
+  （O/I/U），每域带 `scope` + `source`，上下文相关域带 `context_dependent` + `note`，位域带
+  `bitfield`。明写「不是 ROM 数据表，不复制原始字节表，只登记语义」。
+- `re/specs/lookup.py`：ROM-free、零第三方依赖。域查询 / 单值 / 范围 / `attr` / `flags` /
+  `frame` / `spawn` / `chain` / `find` / `--json` / `--selftest`。
 - `DESIGN_DIFF_NOTES.md`：数值索引节末尾补一段分界——这一节讲「一个数在玩法里管什么、
-  意义怎么随读方和拍子变化」，而「拿到具体取值立刻知道它是什么」在 data 层缓存里；
-  点明 `0x0E` 是门票不是死法名、盒索引 0 两边相反、`0x1A` 玩家侧=背后轻击 / 敌人侧=起身眩晕，
-  并给出「看到数据先查它，再回这节谈设计」。避免压缩恢复后又把两件事混成一团。
+  意义怎么随读方和拍子变化」，而「拿到具体取值立刻知道它是什么」在 data 层缓存里；点明
+  `0x0E` 是门票不是死法名、盒索引 0 两边相反、`0x1A` 玩家侧=背后轻击 / 敌人侧=起身眩晕，
+  给出「看到数据先查它，再回这节谈设计」。避免压缩恢复后又把两件事混成一团。
 
-### 本轮新扩的域（用户说「ANI SPR 只是举例」，覆盖他最初的四块重点）
+新扩 14 域，覆盖用户最初的四块重点：事件脚本（`spawn_command` / `spawn_flags` / `spawn_pool` /
+`wave_end` / `kill_all`）、怪物策略（`entrance`，进场那一拍）、状态机（`player_mode` /
+`player_ground_state`，连段是各占一格的独立状态）、打击逻辑（玩家侧与敌人侧受击反应分侧登记）、
+对象与空间（`pool_e_class` / `item_kind` / `drop_code` / `camera_mode`，4 = 战斗锁镜头）。
 
-原有 19 域（帧类型 / 动画套 / 绘制标志 / 盒模式 / 朝向 / 槽位 / SPR attr / composition 格式 /
-帧时长 / 盒索引 0 / 攻击记录八字段 / 判定盒六字段 / wof 反应编号 / wof 攻击行 / 波次收尾 /
-击杀归属 / param_a / 音效 id / 对象池标签）；本轮新增 14 域：
+### 本段在做的第二段：把「一段 ANI」而不是「一条帧」翻成意义
 
-- 事件脚本：`spawn_command`（0/4/8/12/16 五条命令：跳记录、重掷 aggression、强制 aggression、
-  设时限、加时）、`spawn_flags`（一个 word 里塞命令位 / 池 / 人数门 / 难度门）、`spawn_pool`、
-  `wave_end`（GO / 走下区 / 关卡结束）、`kill_all`（Boss/道具 vs 波次超时）。
-- 怪物策略：`entrance`（走进 / 冲进 / 等着靠近 / 淡入 / 跳进 / 落下——「进场那一拍」）。
-- 状态机：`player_mode`（生成/正常/死亡/移除）、`player_ground_state`（地面表 0x00..0x26，
-  连段是几个各占一格的独立状态，靠命中确认才往下翻）。
-- 打击逻辑：`player_hurt_reaction` 与 `enemy_hurt_reaction` 分侧登记，**同一编号两侧含义不同**
-  （0x1A、0x1C），是本轮最能说明「不缓存就会读反」的一处。
-- 对象与空间：`pool_e_class`（12 类）、`item_kind`（+$A0 高字节）、`drop_code`（掉落表分段）、
-  `camera_mode`（0x00..0x13，其中 4 = 战斗锁镜头，等波次收尾字才放行）。
+`60d32087` 提交后工作区干净，但用户原话是「看到某个 **ANI** SPR 数据」——ANI 通常是一串帧记录，
+不是一条；`chain` 里 Jack 判定盒那段当时还只是静态文字，不能拿六个数复算。当轮补掉：
+
+- `anim [10|12] <hex...>`：按 stride 把连续帧记录切成时间线，逐帧给身份 / 时长 / 两个盒索引，
+  读到末帧就标明「其后 i16 是 link word，不是帧记录」并停止切分；汇总总 tick、身份序列、
+  攻击生效帧数、段落去向。`lookup.py anim 10 ...` 可直接跑。
+- `box <6 × i16>`：把六个有符号数翻成 X / Y / Z 三个区间（前伸量、高度段、纵深容差）与
+  「+$49 与 +$48 都非空且矩形相交才成立、攻防同帧」；支持 `-12` / `0xFFF4` / `1A` 写法。
+  字段名与意义从 `box_field` 域读，不硬编码。
+- `chain` 的 Jack 例子末尾加一行 `lookup.py box -1 10 -68 59 29 42`，静态说明接上可复算工具。
+- `--selftest` 从 20 条加到 **22 条**（新增「一串帧记录能翻成时间线」「六个数能复算打击形状」），
+  实跑 **22/22 通过**，`py_compile` exit=0，`CR=0 BOM=False over2000=0`。
 
 ### 求证与自查订正（全部回源，0 次 ROM 取证）
 
 - 回源 `re/specs/anim/SPEC.md` §4.4 / §4.5、`re/specs/player/SPEC.md` §3.2 / §5.2 / §5.3-§5.5、
   `re/specs/enemy/SPEC.md` §1 / §8.1 / §8.2 / §8.5 / §9 / §10.2 / §13.1 / §13.3、
-  `re/specs/stage/SPEC.md` §6.6，所有新条目都有 `[O]`/`[I]` 出处，不从字段名猜。
+  `re/specs/stage/SPEC.md` §6.6，所有新条目都有出处，不从字段名猜。
 - `frame_type 0` 的抓投探测在 SPEC §4.4 整行标 `[I]`，缓存原写成 `[O]` → 改 `[I]` + note 标源。
-- `param_b` 的「查 +$38 偏移表」在 SPEC 里限定于**分身绘制**（+$38 是 split-body offset table），
-  脚本原写成无条件 → 补限定。
-- **离散取值别连成范围**：初稿把受击反应写成 `10-12`、`14-18`、`20-24`，会把未登记的
-  `0xB`/`0xF` 也答成「火烧 / 击退」。拆成精确键 `10/12/14/16/18/20/22/24`，并加 selftest 断言
-  「`0xF` 必须未登记」。范围键只留在真正连续的域（掉落 code、camera mode 0x0E/0x0F、池 4-7 等）。
-- `f & 0x80` 是**低字节 bit7**（0x0080），不是 0x8000；自测里第一条命令记录 flags 写错导致 FAIL，
-  改正测试数据为 `0x0084`。
-- 「池满」措辞：SPEC §8.1 里 list-1 / list-2 的指针都已前进，记录是**被丢弃 / 跳过**，
+- `param_b` 的「查 +$38 偏移表」在 SPEC 里限定于**分身绘制**，脚本原写成无条件 → 补限定。
+- **离散取值别连成范围**：初稿把受击反应写成 `10-12` / `14-18` / `20-24`，会把未登记的
+  `0xB` / `0xF` 也答成「火烧 / 击退」。拆成精确键，并加 selftest 断言「`0xF` 必须未登记」。
+  范围键只留在真正连续的域（掉落 code、camera mode 0x0E/0x0F、池 4-7 等）。
+- `f & 0x80` 是**低字节 bit7**（0x0080），不是 0x8000；自测第一条命令记录 flags 写错导致 FAIL，
+  改测试数据为 `0x0084`。
+- 「池满」措辞：SPEC §8.1 里 list-1 / list-2 指针都已前进，记录是**被丢弃 / 跳过**，
   不是「下帧再试同一条」→ 改准。
-- `camera_mode 12` 初稿写「上抬 Y」是猜方向，改成中性描述 `camY -= 1`；`kill_all 1` 去掉「算击杀」加戏。
-- 脚本 bug 清理：`cmd_domain` 位域提示漏 f-string、`cmd_frame` 用法示例只有 8 字节、
-  `+$49` 被 f-string 格式化成 `+$31`、死变量、`⚠` 符号换纯文本、命令分支把同一句复述两遍。
-- 新增能力：范围取值匹配、带 `+` 前缀的字段键（`box_field +10`）用纯数字也能查、
-  `spawn` 整条记录解码（识别脚本命令 / 池 / 人数门 / 难度门 / 入场方式）。
+- `camera_mode 12` 初稿写「上抬 Y」是猜方向，改成中性 `camY -= 1`；`kill_all 1` 去掉「算击杀」加戏。
+- 脚本 bug 清理：位域提示漏 f-string、`frame` 用法示例只有 8 字节、`+$49` 被格式化成 `+$31`、
+  死变量、`⚠` 换纯文本、命令分支复述同一句、带 `+` 前缀字段键用纯数字查不到。
 - `check_docs.py` 的红仍全是 `re/out/assets/` 产物层假红，按既有裁定不动工具、不碰产物层。
+- `DESIGN_DIFF_NOTES.md` 原有第 57 / 89 / 154 行超 2000 字节，本轮新增行 0 超长，属既存格式、不改。
 
 ### 长期口径（仍在生效）
 
@@ -77,7 +76,7 @@ HEAD `d23bbf43`，工作区只有 `?? re/specs/lookup.py`、`?? re/specs/semanti
   不改 `CLAUDE.md` / `.gitignore` 产物状态描述。收尾用 `git status` / `git diff --check` / `CR/BOM`。
 - 用户裁定：`dino载具是特殊关卡,没什么好看的` —— 载具换面已停；特殊关卡 / 专属演出 /
   单个 Boss 那一段编排不构成通则；不再回查 `notes/02-mid.md` §32 / `notes/06-method.md` §85。
-- ROM 边界：ROM 主要为调查 data；仅在 `wof_cs` 写得非常可疑时才核实。本轮新增分析 0 次 ROM 取证。
+- ROM 边界：ROM 主要为调查 data；仅在 `wof_cs` 写得非常可疑时才核实。本轮 0 次 ROM 取证。
   不恢复「以 ROM 审 repo」框架，不把 `[I]` 写成 `[O]`，不评优劣、不推断 wof 原机缺机制。
 - 环境硬限制：无 Rust 工具链、无 `dino.zip`、无 `re/rom` / `target`、`re/out/dino_68k.bin` /
   `gfx.npy` 本机查不到 ⇒ 编译、回归、MAME 对拍、ROM-dependent 脚本跑不了，不是缺口。
@@ -88,6 +87,7 @@ HEAD `d23bbf43`，工作区只有 `?? re/specs/lookup.py`、`?? re/specs/semanti
 
 - 开工：读必读三层 + `git log -8` / `git status --short` → 回读两个未提交新文件 → 全库 Grep 找
   「取值 → 意义」现成表 → 回源核两处 `[O]` 断言 → 修 JSON / 重写脚本 / 补总入口分界段。
-- 收尾校验四个文件 `CR=0 BOM=False`、`git diff --check`、`git status --short`；
-  `DESIGN_DIFF_NOTES.md` 原有第 57 / 89 / 154 行超 2000 字节（本轮新增行 0 超长），属既存格式、不改。
-  提交信息走 `git commit -F` 临时文件，随后 `Remove-Item`，再复核干净工作区。
+- 第一段已提交 `60d32087`，临时信息已清理，工作区复核干净。
+- 第二段收尾：校验 `DRAFT.md` / `re/specs/lookup.py` 的 `CR=0 BOM=False`（新增行 0 超 2000）、
+  `git diff --check`、`--selftest` 22/22、`py_compile`；提交信息走 `git commit -F`，随后
+  `Remove-Item`，再复核干净工作区。

@@ -14,6 +14,9 @@
     python re/specs/lookup.py flags draw_flags 0x81    拆位域（域, 值）
     python re/specs/lookup.py frame 10 0A01 8000 0100 0405 1A02        解码 10 字节帧记录
     python re/specs/lookup.py frame 12 0A01 8000 0100 0405 1A02 0011    解码 12 字节帧记录
+    python re/specs/lookup.py anim 10 0A01 8000 0100 0405 1A02 0A01 8000 0100 0085 1A02
+                                                         把一串帧记录翻成一段动画时间线
+    python re/specs/lookup.py box -1 10 -68 59 29 42     六个 i16 判定盒 -> 打哪儿 / 够多远
     python re/specs/lookup.py spawn 04D0 0141 0008 0120 0040 0000 0000   解码 14 字节生成记录
     python re/specs/lookup.py spawn 16 04D0 0141 0008 0120 0040 0000 0000 0000
     python re/specs/lookup.py chain                   ANI -> SPR -> 判定框 能推断什么
@@ -373,6 +376,7 @@ ANI（帧记录 / 动画表）        SPR（composition）              判定�
   → Z 从 -1 到 9：纵深容差很小（SPEC 明写 Z 差在 -8..+8 才连得上）
   → 身体盒 Y 0..75 覆盖全身：出拳的同时自己整个可被打，攻防同帧成立
   这四条全是数字能说出来的，GFX 一个像素都不用看。
+  现在也不必手算：`lookup.py box -1 10 -68 59 29 42` 会直接吐出三个区间与判定条件。
 
 【看不到 GFX 就不能说的】
   code 只是图块编号；没有 gfx.npy 就不知道画的是拳头、刀光还是衣服褶皱，
@@ -386,6 +390,99 @@ ANI（帧记录 / 动画表）        SPR（composition）              判定�
   同理，受击编号 0x1A 在玩家侧是『背后轻击』、在敌人侧是『起身 / 眩晕』，
   编号本身不说话，先得知道是谁在读。
 """)
+    return 0
+
+
+def parse_i16(t: str) -> int:
+    """判定盒字段是有符号 16 位：支持 -12 / 0xFFF4 / 1A 这类写法。"""
+    t = t.strip()
+    neg = t.startswith("-")
+    if neg:
+        t = t[1:]
+    if t.lower().startswith("0x") or any(c in "abcdefABCDEF" for c in t):
+        n = int(t, 16)
+    else:
+        n = int(t, 10)
+    return -n if neg else n
+
+
+def cmd_box(tokens: list[str]):
+    """把判定盒的 6 个 i16 翻成『这一下打哪儿、够多远、纵深容差多大』。"""
+    if len(tokens) != 6:
+        print("用法：box <zoff> <zsize> <xoff> <xsize> <yoff> <ysize>   "
+              "例：box -1 10 -68 59 29 42")
+        return 1
+    try:
+        zoff, zsize, xoff, xsize, yoff, ysize = (parse_i16(t) for t in tokens)
+    except ValueError as e:
+        print(f"读不出数值：{e}")
+        return 1
+    bf = DOMAINS["box_field"]["values"]
+    pairs = [("+0", zoff), ("+2", zsize), ("+4", xoff),
+             ("+6", xsize), ("+8", yoff), ("+10", ysize)]
+    print(f"判定盒 6 × i16：({', '.join(str(v) for _, v in pairs)})")
+    print(f"  src={DOMAINS['box_field']['source']}")
+    print("-" * 78)
+    for k, v in pairs:
+        print(f"  {k:4s} = {v:7d}  {bf[k]['meaning']} {fmt(bf[k]['tag'])}")
+    print("-" * 78)
+    print("这一下的形状（只靠六个数，不看 GFX）：")
+    print(f"  X 区间 [{xoff}, {xoff + xsize}]：宽度 {xsize}；"
+          f"xoff={xoff} 表示盒子相对身体原点探出多远（朝右时整体镜像）")
+    print(f"  Y 区间 [{yoff}, {yoff + ysize}]：高度段 {ysize}；"
+          "对照防守方身体盒的 Y 区间，才知道够不够得着倒地 / 腾空目标")
+    print(f"  Z 区间 [{zoff}, {zoff + zsize}]：纵深容差 {zsize}；"
+          "攻守双方 Z 差落不进这个区间就打不着")
+    print("  成立条件：+$49 攻击盒与 +$48 身体盒都非空，且两个矩形相交；"
+          "有身体盒的一帧自己仍可被反击，攻防同帧成立")
+    return 0
+
+
+def cmd_anim(tokens: list[str]):
+    """把一串连续帧记录翻成一段动画时间线（ANI 通常不止一帧）。"""
+    stride = 10
+    if tokens and tokens[0] in ("10", "12"):
+        stride = int(tokens[0])
+        tokens = tokens[1:]
+    if not tokens:
+        print("用法：anim [10|12] <hex bytes...>   例：anim 10 0A01 8000 0100 0405 1A02 ...")
+        return 1
+    raw = "".join(t.replace("0x", "").replace(" ", "") for t in tokens)
+    try:
+        b = bytes.fromhex(raw)
+    except ValueError as e:
+        print(f"十六进制读不出：{e}")
+        return 1
+    if len(b) < stride:
+        print(f"字节不够：拿到 {len(b)}，一帧需要 {stride}")
+        return 1
+    print(f"ANI 段：{len(b)} 字节，按 {stride} 字节/帧切分")
+    print("=" * 78)
+    total, actives, seen_last, identities = 0, 0, False, []
+    for i, off in enumerate(range(0, len(b) - stride + 1, stride)):
+        rec = b[off:off + stride]
+        kind, timer = rec[6], rec[7]
+        dur, last = (timer & 0x7F) or 256, bool(timer & 0x80)
+        body, atk = rec[8], rec[9]
+        _, fv = match_value(DOMAINS["frame_type"], str(kind))
+        label = fv["meaning"] if fv else "未登记"
+        identities.append(label.split("：")[0].split("；")[0])
+        total += dur
+        if kind == 4 and atk:
+            actives += 1
+        print(f"  帧 {i:02d} @+{off:04X}  kind=0x{kind:02X}  {label} {fmt(fv['tag']) if fv else ''}")
+        print(f"       {dur:3d} tick   body_box={body:#04x}  attack_box={atk:#04x}"
+              + ("   [末帧]" if last else ""))
+        if last:
+            seen_last = True
+            print("       末帧后紧跟的 i16 是 link word（不是帧记录），切分到此为止")
+            break
+    print("=" * 78)
+    print(f"  这一段共 {total} tick；身份序列：{' → '.join(identities)}")
+    print(f"  攻击生效帧 {actives} 个 —— 这些帧才有 +$49 与对方 +$48 相交；"
+          "其余帧是起势、过渡或收招")
+    print("  段落" + ("在末帧结束，去向写在 link word 里（回环 / 接下一招）" if seen_last
+                   else "还没读到末帧，后面还有帧记录"))
     return 0
 
 
@@ -464,6 +561,14 @@ def cmd_selftest():
     out12 = capture(cmd_frame, ["12", "0A01", "8000", "0100", "0405", "1A02", "0011"])
     ck("frame 12 字节能解码并读 attach", "attach" in out12)
 
+    # 一串帧记录（ANI 不止一帧）与六个 i16 判定盒
+    out = capture(cmd_anim, ["10", "0A01", "8000", "0100", "0405", "1A02",
+                             "0A01", "8000", "0100", "0085", "1A02"])
+    ck("anim 一串帧记录能翻成时间线", "帧 00" in out and "link word" in out and "身份序列" in out)
+    out = capture(cmd_box, ["-1", "10", "-68", "59", "29", "42"])
+    ck("box 六个数能复算出打击形状",
+       "X 区间 [-68, -9]" in out and "Y 区间 [29, 71]" in out and "Z 区间 [-1, 9]" in out)
+
     # 生成记录解码：命令字（flags 低字节 bit7 = 0x0080）/ 池 / 人数条件
     out = capture(cmd_spawn, ["04D0", "0084", "0004", "0000", "0000", "0000", "0000"])
     ck("spawn 命令记录识别成脚本命令", "脚本命令" in out and "重掷" in out)
@@ -498,6 +603,10 @@ def main(argv: list[str]) -> int:
         return cmd_flags("sprite_attr", rest[0]) if rest else (print("用法：attr <hex>") or 1)
     if cmd == "frame":
         return cmd_frame(rest)
+    if cmd == "anim":
+        return cmd_anim(rest)
+    if cmd == "box":
+        return cmd_box(rest)
     if cmd == "spawn":
         return cmd_spawn(rest)
     if len(rest) == 0:
