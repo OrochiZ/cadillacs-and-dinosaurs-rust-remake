@@ -24,7 +24,7 @@
     python re/specs/lookup.py spawn 16 04D0 0141 0008 0120 0040 0000 0000 0000
     python re/specs/lookup.py script 2C 00 05 01 000A   解码 6 字节过场脚本记录
     python re/specs/lookup.py attack 0A 01 00 09 03 14 00 00
-                                                      8 字节攻击属性记录 -> 这一拳打完会怎样
+                                                      8 字节攻击属性记录 -> 这一拳打完会怎样（反应门票两侧并排）
     python re/specs/lookup.py wof_attack ours 00 00 00 00 0A 00 03 00 56 00 00 00 06 0E 03 00
                                                       16 字节 wof 参数行 -> 这一招一行在说什么
     python re/specs/lookup.py wof_attack enemy ...   敌→玩家那张表布局不同，字段含义看命中链
@@ -77,6 +77,11 @@ OFFSET_KEY_DOMAINS = ("attack_field", "box_field", "wof_atk_field", "comp_extra"
 
 # SPEC §3.6 只逐段列了 Jack 的前三套；第 3/4/5 套只有套级用途。
 SET_DOMAINS = {0: "jack_anim_set0", 1: "jack_anim_set1", 2: "jack_anim_set2"}
+
+# dino 8 字节攻击记录里的反应编号是「门票」：挨打的是玩家还是敌人，
+# 由两本不同的受击册子读。wof 那 16 字节行是另一套，不在这里串等价。
+REACTION_DOMAINS = ("player_hurt_reaction", "enemy_hurt_reaction")
+REACTION_LABELS = {"player_hurt_reaction": "玩家挨打", "enemy_hurt_reaction": "敌人挨打"}
 
 
 # ---------- 取值解析 ----------
@@ -483,6 +488,24 @@ def cmd_script(tokens: list[str]):
     return 0
 
 
+def reaction_brief(react: int) -> list[str]:
+    """把攻击记录里的反应门票在 dino 两本受击册子里的读法并排列出来。
+
+    只列 dino 两侧、不自动串 wof：这条记录本来就是 dino 的 8 字节结构，
+    把 wof 反应表并排进来会被读成「同一个编号两边等价」。
+    """
+    out = []
+    for name in REACTION_DOMAINS:
+        k, v = match_value(DOMAINS[name], str(react))
+        if v:
+            generic = "（兜底键，不是这个编号的专门登记）" \
+                if k in ("nonzero", "other", "negative", "low7=n") else ""
+            out.append(f"  {name:24s} → {say(v)}{generic}   [{REACTION_LABELS[name]}]")
+    if not out:
+        out.append("  这个编号两本册子都没登记：不硬答，回源各自的 source")
+    return out
+
+
 def cmd_attack(tokens: list[str]):
     """解码一条 8 字节攻击属性记录：把 +0..+7 合成「这一拳打完会怎样」。"""
     if not tokens:
@@ -513,8 +536,11 @@ def cmd_attack(tokens: list[str]):
     print(f"  · 扣 {dmg} 血、削 {stun} 点韧性；攻守双方一起顿 {stop} 帧，"
           f"攻击方记 {score} 分（作为 score_bcd 的字节偏移）")
     print(f"  · 受击反应 {react} 只是第一张门票：写进挨打者 +$7B / +$06，"
-          "后面还隔着受击手册、状态档位、按 ObjId 的动画链，"
-          "查 player_hurt_reaction / enemy_hurt_reaction 才知道他怎么演")
+          "后面还隔着受击状态机、状态档位、按 ObjId 的动画链")
+    print("    同一个编号两本册子各讲各的，先确定挨打的是谁：")
+    for line in reaction_brief(react):
+        print("    " + line)
+    print("    两本都是 dino 侧；wof 那 16 字节行是另一套，别把编号直接对上（见 `wof_attack`）。")
     print(f"  · 音效 {snd}（0 = 无）、火花类型 {spark}（交给特效对象）；"
           "帧记录本身不带伤害，是状态代码把 +$58 设成偶数才指到这条记录")
     hit = None
@@ -524,7 +550,7 @@ def cmd_attack(tokens: list[str]):
             break
     if hit:
         k, v = hit
-        print(f"\n  对照 Jack 连段：这条记录的 $58 = {k}。{v['meaning']}")
+        print(f"\n  对照 Jack 连段：这条记录的 $58 = {k}。{say(v)}")
         print("  三拳并排（10/15/29 伤害、9/9/13 顿帧、反应 0/2/6）：")
         print("  伤害与削韧逐拳跳档；顿帧前两拳都是 9，只在收束那拳拉到 13；")
         print("  反应 0 → 2 → 6（SPEC 把 6 标成击倒 [I]），火花也只在最后一拳给。")
@@ -662,6 +688,8 @@ ANI（帧记录 / 动画表）        SPR（composition）              判定�
   `lookup.py attack 0A 01 00 09 03 14 00 00` 把八个字段合成一句人话，
   并认出这是 Jack 连段的第几拳。三拳 10/15/29 伤害、9/9/13 顿帧、反应 0/2/6 ——
   「连段是打出来的」不是手感形容词，是三行逐招数据写好的代价递进。
+  `lookup.py attack` 还会把反应门票在玩家侧 / 敌人侧两本册子里并排翻出来，
+  不用另跑命令，也不会把两边读混。
   所以 ANI -> SPR -> 判定框 -> 这一拳的后果，四个环节都能不靠 GFX 读出来。
 
 【看不到 GFX 就不能说的】
@@ -816,11 +844,15 @@ def cmd_moment(tokens: list[str]):
         dmg, stun, react, stop = rec[0], rec[1], rec[2], rec[3]
         print(f"   这一帧能打人，攻击记录也挂上了：扣 {dmg} 血、削 {stun} 点韧性、"
               f"双方顿 {stop} 帧、反应 {react} 只是挨打者的第一张门票")
+        print("   同一个反应编号，玩家挨打 / 敌人挨打各读一本册子：")
+        for line in reaction_brief(react):
+            print("   " + line)
+        print("   两本都是 dino 侧，别把 wof 的反应编号直接对上。")
         print("   「够得着谁」写在盒表里，「打中之后多疼」写在另一条 8 字节里；"
               "两本册子要同一拍才对上，没有哪个数自己说出整拳")
         for k, v in DOMAINS["jack_attack_record"]["values"].items():
             if v.get("bytes", "").lower() == rec.hex():
-                print(f"   对照 Jack 连段：这条是 $58 = {k}，{v['meaning']}")
+                print(f"   对照 Jack 连段：这条是 $58 = {k}，{say(v)}")
                 break
     elif rec is None and live:
         print("   这一帧能打人，但打中之后扣多少血不在这 10/12 字节里；"
@@ -2002,6 +2034,27 @@ def cmd_selftest():
     out_a = capture(main, ["anim_id", "1", "4"])
     ck("anim_id 带出的攻击后果不丢标签",
        "攻击编号表里 $58" in out_a and "[O 观察]" in out_a)
+
+    # 后果环别停在「第一张门票」：反应编号要能直接翻到两本受击册子
+    out_atk = capture(main, ["attack", "1D", "0B", "06", "0D", "09", "20", "18", "00"])
+    ck("attack 把反应门票在玩家侧 / 敌人侧并排翻出来，且不串 wof",
+       "player_hurt_reaction" in out_atk and "enemy_hurt_reaction" in out_atk
+       and "重击倒 B" in out_atk and "击倒 B（anim 3）" in out_atk
+       and "[O 观察]" in out_atk and "别把编号直接对上" in out_atk
+       and "wof_reaction" not in out_atk)
+    ck("attack 对照 Jack 连段那行也带证据标签",
+       any("对照 Jack 连段" in l and "[O 观察]" in l for l in out_atk.splitlines()))
+    ck("没登记的反应编号不硬答",
+       "两本册子都没登记" in capture(main, ["attack", "0A", "01", "05", "09",
+                                            "03", "14", "00", "00"]))
+    ck("chain 说明版与可跑版对齐：点明反应门票两侧并排",
+       "反应门票在玩家侧 / 敌人侧两本册子里并排翻出来" in capture(cmd_chain))
+    out_mom = capture(main, ["moment", "10", "0A01", "8000", "0100", "0405", "1A02",
+                             "attack", "1D", "0B", "06", "0D", "09", "20", "18", "00"])
+    ck("moment 挂上攻击记录时，后果环也把反应门票翻到两本册子",
+       "player_hurt_reaction" in out_mom and "enemy_hurt_reaction" in out_mom
+       and "重击倒 B" in out_mom and "对照 Jack 连段" in out_mom
+       and "[O 观察]" in out_mom)
 
     # 入口一致性：doc 与 list 都得跟上后来加的命令
     ck("doc 不再把无参数误写成列域",
