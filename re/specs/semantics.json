@@ -401,6 +401,24 @@
         "34": { "meaning": "特殊（与抓投相关），用途未登记", "tag": "U", "alias": "0x22", "blocked_at": "re/specs/player/SPEC.md:971 原文「0x20 wall bounce, 0x22 special (grab-related) [U].」；re/specs/player/SPEC.md:439 与 re/specs/player/SPEC.md:942 只说这个反应码在特定 action 下会被强制写入、覆盖攻击记录里的 reaction 字节。已知「会被强制触发」，未知「触发后怎么演」，回源到此为止。" }
       }
     },
+    "player_hurt_anim": {
+      "label": "玩家挨打后，受击代码去播的动画段编号（anim2 / set2）",
+      "scope": "dino / 玩家侧通用",
+      "source": "re/specs/player/SPEC.md:979-1115（§5.3–§5.6 各反应里的 anim2(p,N) 调用与倒地时间结构）",
+      "context_dependent": true,
+      "note": "查之前先分清两层：这里登记的是「受击代码会去播第几段」，[O] 级、四个角色通用；`jack_anim_set2` 登记的是「那一段长什么样」，[I] 美术推断、只适用于 Jack。同一个段编号可被多个反应共用（正面轻击与正面击退都播 #0），所以按段编号查得到的是一组触发情形，不是一一对应；reactions 里存十进制反应编号，与 player_hurt_reaction 的键同一套。§3.6 的 Jack set2 只逐段列到 #7，#8 / #9 只在受击代码里出现（重击倒 / tech roll 死路径），#5 在 §5 里根本没有调用点——都不把 Jack 的美术标签套过去；Mustapha / Hannah / Mess 的逐段造型按 coverage.not_registered 不转。",
+      "values": {
+        "0": { "meaning": "正面轻击（反应 0）与正面击退（0xE / 0x10 / 0x12 / 0x14 / 0x16 / 0x18）都播这一段；击退还要先定格 $59 帧，再滑 15 / 18 / 20 帧，背后命中改播 #6 并翻转朝向", "tag": "O", "reactions": [0, 14, 16, 18, 20, 22, 24] },
+        "1": { "meaning": "轻击变体（反应 2）；与 #0 同一套 light() 流程，定格数完就 recover 回 idle", "tag": "O", "reactions": [2] },
+        "2": { "meaning": "轻击倒（反应 4）与火烧击倒（0xA / 0xC）都播这一段；后面还有落地弹起、躺地 5 / 15 / 30 帧（按 rank）或搓招提前起身、满足条件才进眩晕", "tag": "O", "reactions": [4, 10, 12] },
+        "3": { "meaning": "起身（反应 0x1E）播这一段；anim 走完若 $CD 非零就进眩晕，否则 recover", "tag": "O", "reactions": [30] },
+        "4": { "meaning": "眩晕循环播这一段；不由某个反应编号直接触发，是起身之后按累计挨打次数掷出来的分支，靠搓招减星星或等 40..300 帧结束", "tag": "O", "reactions": [] },
+        "6": { "meaning": "来自背后的轻击（0x1A）与背后击退都播这一段；light_behind 结束时翻转朝向，击退则推向身前并置 $117 = 1", "tag": "O", "reactions": [26, 14, 16, 18, 20, 22, 24] },
+        "7": { "meaning": "来自背后的击倒（0x1C）；vx = 0x340 往前推，与正面击倒的向量不同", "tag": "O", "reactions": [28] },
+        "8": { "meaning": "重击倒（反应 6）；与 #2 同一套 kd() 流程，但弹起高度与首次落地重新取表不同", "tag": "O", "reactions": [6] },
+        "9": { "meaning": "受身翻滚（tech roll）；SPEC 明写这是死路径——$CC 恒为 0，实际不会触发", "tag": "O", "reactions": [] }
+      }
+    },
     "enemy_hurt_reaction": {
       "label": "敌人受击反应编号（+$06，派发表 0x2A620）",
       "scope": "dino",
@@ -1132,7 +1150,7 @@
     "registered": [
       { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "comp_extra", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id", "jack_anim_set0", "jack_anim_set1", "jack_anim_set2", "combo_counter", "jack_attack_record", "jack_box_example"] },
       { "source": "notes/06-method.md §94.12–§94.18", "domains": ["wof_reaction", "wof_atk_field", "wof_player_reaction", "wof_hurt_book"] },
-      { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "attack_id", "weapon_kind", "weapon_attack_state", "input_buffer"] },
+      { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "player_hurt_anim", "attack_id", "weapon_kind", "weapon_attack_state", "input_buffer"] },
       { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant", "wave_ctrl_r4", "wave_ctrl_r5"] },
       { "source": "re/specs/stage/SPEC.md", "domains": ["camera_mode", "camera_lock", "camera_event"] },
       { "source": "re/specs/flow/SPEC.md", "domains": ["game_mode", "game_phase"] },
@@ -1165,7 +1183,7 @@
         "key": "state_machine",
         "label": "状态机",
         "question": "这一拍谁拿着控制权、演完往哪翻页；同一个编号在不同对象身上是不是同一个回答",
-        "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "enemy_hurt_reaction", "enemy_ai_state", "weapon_attack_state", "combo_counter", "input_buffer", "wof_hurt_book", "wof_player_reaction", "dino_cmd_state", "wof_rkey1"]
+        "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "player_hurt_anim", "enemy_hurt_reaction", "enemy_ai_state", "weapon_attack_state", "combo_counter", "input_buffer", "wof_hurt_book", "wof_player_reaction", "dino_cmd_state", "wof_rkey1"]
       },
       {
         "key": "hit_logic",

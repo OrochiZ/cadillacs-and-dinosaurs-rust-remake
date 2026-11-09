@@ -40,6 +40,7 @@
     python re/specs/lookup.py collide 0x1A            看同一编号在哪几张表里意思不同
     python re/specs/lookup.py attack_id 0x5A          查一个攻击编号是哪一招
     python re/specs/lookup.py anim_id 1 4             查这一招是哪段，并带出这一拳的后果
+    python re/specs/lookup.py player_hurt_anim 2      挨打后会播受击动画的第几段、后面还有几拍
     python re/specs/lookup.py coverage                哪些表已转、哪些按纪律不转、为什么
     python re/specs/lookup.py unknown                  一次列出「还没弄明白」的取值与整类不转的表（每条带回源止于何处）
     python re/specs/lookup.py unknown player_ground_state   只看某一册里哪些编号还没登记
@@ -490,6 +491,25 @@ def cmd_script(tokens: list[str]):
     return 0
 
 
+def hurt_anim_for(react: int) -> list[str]:
+    """反应门票后面那一环：受击代码会去播 set2 的第几段。
+
+    用 player_hurt_anim.reactions 反查，不在别处再抄一份映射。一个反应
+    可以命中多段（正面 / 背后分岔），此时明说不是同时播。
+    """
+    dom = DOMAINS.get("player_hurt_anim")
+    if not dom:
+        return []
+    hits = [(k, v) for k, v in dom["values"].items()
+            if react in v.get("reactions", [])]
+    if not hits:
+        return []
+    out = [f"  → 接着播 set2 #{k}：{say(v)}" for k, v in hits]
+    if len(hits) > 1:
+        out.append("  （上面几段按正面 / 背后等条件分岔，不是同时播）")
+    return out
+
+
 def reaction_brief(react: int) -> list[str]:
     """把攻击记录里的反应门票在 dino 两本受击册子里的读法并排列出来。
 
@@ -505,6 +525,7 @@ def reaction_brief(react: int) -> list[str]:
             out.append(f"  {name:24s} → {say(v)}{generic}   [{REACTION_LABELS[name]}]")
     if not out:
         out.append("  这个编号两本册子都没登记：不硬答，回源各自的 source")
+    out.extend(hurt_anim_for(react))
     return out
 
 
@@ -692,7 +713,12 @@ ANI（帧记录 / 动画表）        SPR（composition）              判定�
   「连段是打出来的」不是手感形容词，是三行逐招数据写好的代价递进。
   `lookup.py attack` 还会把反应门票在玩家侧 / 敌人侧两本册子里并排翻出来，
   不用另跑命令，也不会把两边读混。
-  所以 ANI -> SPR -> 判定框 -> 这一拳的后果，四个环节都能不靠 GFX 读出来。
+  再往下一环也接上了：门票翻完之后，`attack` 自己就会说出「接着播受击动画的
+  第几段」，以及倒地后躺多久、搓招能不能提前起来、什么时候进眩晕；
+  `lookup.py player_hurt_anim <段号>` 可以按段号反查哪些反应会播它。
+  段编号是代码调用号、四个角色通用；那一段长什么样仍是 Jack 的美术推断，不混。
+  所以 ANI -> SPR -> 判定框 -> 这一拳的后果 -> 挨打的人怎么演，
+  五个环节都能不靠 GFX 读出来。
 
 【看不到 GFX 就不能说的】
   code 只是图块编号；没有 gfx.npy 就不知道画的是拳头、刀光还是衣服褶皱，
@@ -2240,6 +2266,27 @@ def cmd_selftest():
        and "wof_reaction" not in out_atk)
     ck("attack 对照 Jack 连段那行也带证据标签",
        any("对照 Jack 连段" in l and "[O 观察]" in l for l in out_atk.splitlines()))
+    ck("反应门票后面还接了一环：代码会去播 set2 的第几段",
+       "接着播 set2 #8" in out_atk and "[O 观察]" in out_atk
+       and "重击倒" in out_atk)
+    ck("一个反应按正面 / 背后分岔时，明说不是同时播",
+       "set2 #0" in "\n".join(hurt_anim_for(14))
+       and "set2 #6" in "\n".join(hurt_anim_for(14))
+       and "分岔" in "\n".join(reaction_brief(14)))
+    ck("受击动画段域写清两层边界：代码调用号 vs Jack 美术标签",
+       all(w in DOMAINS["player_hurt_anim"]["note"]
+           for w in ("四个角色通用", "Jack", "美术推断", "not_registered"))
+       and DOMAINS["player_hurt_anim"]["context_dependent"])
+    ck("每个 reactions 编号都能在玩家受击手册里查到",
+       all(str(r) in DOMAINS["player_hurt_reaction"]["values"]
+           for v in DOMAINS["player_hurt_anim"]["values"].values()
+           for r in v["reactions"]))
+    ck("moment 挂上攻击记录时也能带出接着播哪一段",
+       "接着播 set2 #0" in capture(main, ["moment", "10", "0A01", "8000", "0100",
+                                          "0405", "1A02", "attack", "0A", "01",
+                                          "00", "09", "03", "14", "00", "00"]))
+    ck("没给 anim2 调用的反应不硬答：0x22 停在手册那一层",
+       "接着播 set2" not in "\n".join(reaction_brief(34)))
     ck("没登记的反应编号不硬答",
        "两本册子都没登记" in capture(main, ["attack", "0A", "01", "05", "09",
                                             "03", "14", "00", "00"]))
@@ -2331,6 +2378,7 @@ SMOKE_CASES = [
     ("collide1A", ["collide", "0x1A"]),
     ("attack_id", ["attack_id", "0x5A"]),
     ("anim_id", ["anim_id", "1", "4"]),
+    ("hurt_anim", ["player_hurt_anim", "2"]),
     ("coverage", ["coverage"]),
     ("unknown", ["unknown"]),
     ("unknown_dom", ["unknown", "player_ground_state"]),
