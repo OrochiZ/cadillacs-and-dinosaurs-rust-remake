@@ -25,6 +25,9 @@
     python re/specs/lookup.py script 2C 00 05 01 000A   解码 6 字节过场脚本记录
     python re/specs/lookup.py attack 0A 01 00 09 03 14 00 00
                                                       8 字节攻击属性记录 -> 这一拳打完会怎样
+    python re/specs/lookup.py wof_attack ours 00 00 00 00 0A 00 03 00 56 00 00 00 06 0E 03 00
+                                                      16 字节 wof 参数行 -> 这一招一行在说什么
+    python re/specs/lookup.py wof_attack enemy ...   敌→玩家那张表布局不同，字段含义看命中链
     python re/specs/lookup.py chain                   ANI -> SPR -> 判定框 能推断什么
     python re/specs/lookup.py find 攻击                按意义关键词反查
     python re/specs/lookup.py collide 4               只给一个取值，列出它在各域的所有意义
@@ -130,7 +133,7 @@ def cmd_list():
         print(f"  {name:22s} {d['label']}{flag}{ctx}{rng}")
         print(f"  {'':22s} scope={d['scope']}  条目 {len(d['values'])}  src={d['source']}")
     print("\n用 `lookup.py <域> [取值]` 查单值；喂字节解码：`frame` / `anim` / `comp` / "
-          "`box` / `spawn` / `script` / `attack`；串链：`chain` / `anim_id`。")
+          "`box` / `spawn` / `script` / `attack` / `wof_attack`；串链：`chain` / `anim_id`。")
     print("三个索引：`coverage`（按回源分组）/ `themes`（按玩法问题）/ "
           "`legacy`（外推文九条判断各能查到什么、查不到什么）。")
 
@@ -509,6 +512,91 @@ def cmd_attack(tokens: list[str]):
     else:
         print("\n  这条不在 Jack 三条示例里：逐招数值表里还有别的招，本机不登记，"
               "不替它猜名字（回源 re/specs/anim/SPEC.md §4.5）。")
+    print("\n  wof 半边不是这 8 字节结构：那边一招一行 16 字节、按攻防方向分两张表，"
+          "用 `lookup.py wof_attack <ours|enemy> <16 bytes>` 翻。")
+    return 0
+
+
+def cmd_wof_attack(tokens: list[str]):
+    """解码 wof 一招一行 16 字节参数行：按我方 / 敌方布局翻出这一行在说什么。"""
+    usage = (
+        "用法：wof_attack <ours|enemy> <16 bytes...>\n"
+        "      例：wof_attack ours 00 00 00 00 0A 00 03 00 56 00 00 00 06 0E 03 00\n"
+        "      ours = 我方表 0x6DB44（玩家→敌），enemy = 敌方表 0x6E754（敌→玩家）"
+    )
+    if not tokens or tokens[0] not in ("ours", "enemy"):
+        print(usage)
+        return 1
+    side = tokens[0]
+    raw = "".join(t.replace("0x", "").replace(" ", "") for t in tokens[1:])
+    try:
+        b = bytes.fromhex(raw)
+    except ValueError as e:
+        print(f"十六进制读不出：{e}")
+        return 1
+    if len(b) < 16:
+        print(f"字节不够：拿到 {len(b)}，一招一行要 16 字节")
+        return 1
+    b = b[:16]
+    fields = DOMAINS["wof_atk_field"]["values"]
+    table = "0x6DB44（我方）" if side == "ours" else "0x6E754（敌方）"
+    print(f"wof 一招一行 16 字节参数行  [{side} / {table}]")
+    print(f"  {' '.join(f'{x:02X}' for x in b)}")
+    print("  两张表都是 16 字节但行内布局不同；同一字节在不同命中链里还会被读成别的东西。")
+    print("-" * 78)
+    if side == "ours":
+        layout = [(0, 4, "ours:+0..3"), (4, 2, "ours:+4..5"),
+                  (6, 2, "ours:+6..7"), (8, 2, "ours:+8..9"),
+                  (11, 1, "ours:+0xB"), (12, 1, "ours:+0xC"),
+                  (13, 1, "ours:+0xD"), (14, 1, "ours:+0xE")]
+        reaction_at, lethal_at, shake_at = 12, 13, 14
+        reaction_dom, reaction_label = "wof_reaction", "敌人侧受击入口 0x11878"
+        gaps = ["+0xA 这一格回源没给消费端，不硬答",
+                "+0xF 民间资料标『呆』，按 §11.0 未串等价，不登记意义"]
+    else:
+        layout = [(0, 4, "enemy:+0..3"), (4, 2, "enemy:+4..5"),
+                  (6, 2, "enemy:+6..7"), (8, 2, "enemy:+8..9"),
+                  (10, 1, "enemy:+0xA"), (11, 1, "enemy:+0xB"),
+                  (12, 1, "enemy:+0xC")]
+        reaction_at, lethal_at, shake_at = 10, 11, 12
+        reaction_dom, reaction_label = "wof_player_reaction", "玩家侧受击入口 0x11720"
+        gaps = ["+0xD..0xF 这三格回源没给消费端，不硬答"]
+    for start, size, key in layout:
+        chunk = " ".join(f"{x:02X}" for x in b[start:start + size])
+        print(f"  {key.split(':', 1)[1]:>8}  {chunk:<12} → {fields[key]['meaning']}")
+    for g in gaps:
+        print(f"  {'':>8}  {g}")
+    print("-" * 78)
+
+    def describe(dom_name: str, val: int) -> str:
+        _, v = match_value(DOMAINS[dom_name], str(val))
+        return v["meaning"] if v else "这个编号缓存里没登记，不硬答（回源 §94.14）"
+
+    print("这一行合起来在说什么（不看 GFX）：")
+    print("  · dino 的一招是一张填好格子的 8 字节行、每格有固定名字；"
+          "wof 这一行是一串没有名字的位置，取第几格算什么靠命中链决定")
+    if side == "ours":
+        print("  · 伤害不是一格定值：随机 long + 攻击力基值两段拼出来；"
+              "具体加多少是量，按 §94.3 回源 tables.txt，不在这里评大小")
+    else:
+        print("  · 这一行不写伤害：+4..5 是难度索引增量，伤害另从 0x6EE84+d6 查表；"
+              "所以敌→玩家这一侧的『疼不疼』不在这 16 字节里")
+    print("  · 击退 / 特效写目标 +0x72，事件音效 word 投进事件记录；"
+          "这些是逐招挑的量，不是规则")
+    react, lethal, shake = b[reaction_at], b[lethal_at], b[shake_at]
+    print(f"  · 平时反应 0x{react:02X} → {reaction_label}：{describe(reaction_dom, react)}")
+    print(f"  · 致死时改用 0x{lethal:02X} → {describe(reaction_dom, lethal)}")
+    print("    两个都是第一张门票，后面还隔着按入口选受击手册、状态档位、按 ObjId 的动画 / 碎尸链；")
+    print("    民间资料把这一列直接读成『烧死 / 全碎』这类死法名，"
+          "按 §94.14 三方对账只核到两角，未验命名不固化")
+    _, sv = match_value(DOMAINS["wof_shake_left"], str(shake))
+    print(f"  · shake 0x{shake:02X} → "
+          f"{sv['meaning'] if sv else '取值未登记，按非零态每帧 -1 跳过本帧'}")
+    print("-" * 78)
+    print("边界：同一行在 0x7FF2（我方→敌）/ 0x8228·0x8726（敌→玩家）/ 0x8D00（敌→场地对象）")
+    print("      三条命中链里取第几格、算什么各不相同；这里只按所选布局读，")
+    print("      0x8D00 还会跳过整段反应分派、直接绝对寻址取 +0xB 当双方 +0x62 的生命周期。")
+    print("      按 §11.0 不串等价、不评优劣、不推断原机缺什么；看不到 GFX 就不猜造型。")
     return 0
 
 
@@ -1277,6 +1365,42 @@ def cmd_selftest():
     ck("chain 把四个环节串起来并指向新命令",
        "attack 0A 01 00 09 03 14 00 00" in out and "这一拳的后果" in out)
 
+    # wof 16 字节参数行：与 dino attack 对称的「喂字节」入口
+    ours = ["00", "00", "00", "00", "0A", "00", "03", "00",
+            "56", "00", "00", "00", "06", "0E", "03", "00"]
+    enemy = ["00", "00", "00", "00", "02", "00", "03", "00",
+             "56", "00", "04", "06", "03", "00", "00", "00"]
+    out = capture(cmd_wof_attack, [])
+    ck("wof_attack 不给攻防方向会直说用法", "ours|enemy" in out and "用法" in out)
+    out = capture(cmd_wof_attack, ["ours", "0A", "00"])
+    ck("wof_attack 字节不够会直说", "字节不够" in out)
+    out = capture(cmd_wof_attack, ["ours"] + ours)
+    ck("wof_attack ours 翻出我方表与逐格字段",
+       "0x6DB44" in out and "攻击力基值" in out and "两张表" in out)
+    ck("wof_attack ours 的反应编号接到敌人侧受击入口",
+       "敌人侧受击入口" in out and "击倒飞行" in out and "碎尸族" in out)
+    ck("wof_attack ours 明说死法名未验、不固化",
+       "未验命名" in out and "不固化" in out)
+    ck("wof_attack ours 把 shake 接到 +0x62 的生命周期",
+       "群体命中锁" in out and "解锁" in out)
+    out = capture(cmd_wof_attack, ["enemy"] + enemy)
+    ck("wof_attack enemy 换敌方布局、反应字节在 +0xA",
+       "0x6E754" in out and "难度索引增量" in out and "玩家侧受击入口" in out)
+    ck("wof_attack enemy 明说伤害不写在这一行",
+       "伤害另从" in out and "不在这 16 字节里" in out)
+    ck("wof_attack 边界写清三条命中链按不同偏移读同一行",
+       "0x8D00" in out and "不串等价" in out)
+    ck("wof_attack 对没给消费端的格不硬答", "不硬答" in out)
+    ck("attack 命令指到 wof 半边的对称入口",
+       "wof_attack" in capture(cmd_attack, ["0A", "01", "00", "09", "03", "14", "00", "00"]))
+    ck("doc 与 list 都列出 wof_attack",
+       "lookup.py wof_attack" in __doc__ and "wof_attack" in capture(cmd_list))
+    new_keys = ("ours:+0xB", "ours:+0xE", "enemy:+0..3",
+                "enemy:+6..7", "enemy:+8..9", "enemy:+0xC")
+    fv = DOMAINS["wof_atk_field"]["values"]
+    ck("补进 wof_atk_field 的几格都带 meaning / tag",
+       all(k in fv and fv[k]["meaning"] and fv[k]["tag"] == "O" for k in new_keys))
+
     # wof 受击手册选择 + 玩家输入契约
     _, v = match_value(DOMAINS["wof_hurt_book"], "0x11878")
     ck("入口地址 0x11878 → 绝大多数敌人共用的受击手册",
@@ -1453,6 +1577,8 @@ def main(argv: list[str]) -> int:
         return cmd_script(rest)
     if cmd == "attack":
         return cmd_attack(rest)
+    if cmd == "wof_attack":
+        return cmd_wof_attack(rest)
     if len(rest) == 0:
         return cmd_domain(cmd)
     return cmd_lookup(cmd, rest[0], as_json)

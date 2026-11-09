@@ -181,21 +181,27 @@
       }
     },
     "wof_atk_field": {
-      "label": "wof 一招一行 16 字节参数行的字段语义（两张表布局不同）",
+      "label": "wof 一招一行 16 字节参数行的字段语义（我方 0x6DB44 / 敌方 0x6E754，两张表行内布局不同）",
       "scope": "wof",
-      "source": "notes/06-method.md §94.12 / §94.13",
+      "source": "notes/06-method.md §94.12 两表字段对照表 / §94.13（0x6E75F = 0x6E754 + 0x0B，第三条链重读 +0xB）",
       "context_dependent": true,
-      "note": "同一字节在不同命中链里会被读成不同东西；查这一域必须说明是我方表还是敌方表、哪条链。",
+      "note": "同一字节在不同命中链里会被读成不同东西；查这一域必须说明是我方表还是敌方表、哪条链。反应字节一个在我方 +0xC / 敌方 +0xA，致死备用各在下一格；shake 一个在 +0xE / 一个在 +0xC，取值的含义见 wof_shake_left。字段是量还是符号按 §94.3 分：反应编号是第一张门票，攻击力 / 击退 / 事件音效是量。想喂 16 字节直接翻意义，用 lookup.py wof_attack <ours|enemy> <16 bytes>。",
       "values": {
         "ours:+0..3": { "meaning": "伤害随机偏移 long；HP>0x10 取高 half", "tag": "O" },
         "ours:+4..5": { "meaning": "攻击力基值，直接加进 damage", "tag": "O" },
         "ours:+6..7": { "meaning": "击退距离 + 火花 / 特效等级，写目标 +0x72", "tag": "O" },
         "ours:+8..9": { "meaning": "事件 / 音效 word，投进事件记录", "tag": "O" },
+        "ours:+0xB": { "meaning": "写攻击者 +0xAD（连段相关）；场景命中链会跳过一个 word，不按同一读法", "tag": "O" },
         "ours:+0xC": { "meaning": "平时反应编号", "tag": "O" },
         "ours:+0xD": { "meaning": "致死时改用的另一个反应编号（不是死法名）", "tag": "O" },
+        "ours:+0xE": { "meaning": "shake 字节：写进攻防双方 +0x62 的那一格；取值的含义见 wof_shake_left", "tag": "O" },
+        "enemy:+0..3": { "meaning": "随机 long（与我方 +0..3 同形态；表格只标同形态，逐链消费细节见 §94.12）", "tag": "O" },
         "enemy:+4..5": { "meaning": "难度索引增量，伤害另从 0x6EE84+d6 查表", "tag": "O" },
+        "enemy:+6..7": { "meaning": "sparkWord 写目标 +0x72，符号翻转朝向", "tag": "O" },
+        "enemy:+8..9": { "meaning": "evtWord → 创建事件记录_5AFC", "tag": "O" },
         "enemy:+0xA": { "meaning": "平时反应编号", "tag": "O" },
-        "enemy:+0xB": { "meaning": "致死反应候选（HP<0 && ObjId>4 时改取它）；在 0x8D00 链里又变成硬直时长", "tag": "O" }
+        "enemy:+0xB": { "meaning": "致死反应候选（HP<0 && ObjId>4 时改取它）；在 0x8D00 链里又变成硬直时长", "tag": "O" },
+        "enemy:+0xC": { "meaning": "shake 字节（0x7EC4 由 (A3)+ 取）；0x8D00 链不走反应分派，改为绝对寻址 0x6E75F+AtkType 取 +0xB 当双方 +0x62 的生命周期", "tag": "O" }
       }
     },
     "wave_terminator": {
