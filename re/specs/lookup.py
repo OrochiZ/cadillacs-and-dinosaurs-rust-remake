@@ -55,7 +55,7 @@ DOMAINS = DB["domains"]
 
 # 这些域的「数字」是字节偏移或位编号，不是游戏里读到的取值；
 # 只给一个取值反查时必须排除，否则会把 "+4 字段" 当成 "取值 4"。
-OFFSET_KEY_DOMAINS = ("attack_field", "box_field", "wof_atk_field", "comp_extra")
+OFFSET_KEY_DOMAINS = ("attack_field", "box_field", "wof_atk_field", "comp_extra", "camera_event")
 
 # SPEC §3.6 只逐段列了 Jack 的前三套；第 3/4/5 套只有套级用途。
 SET_DOMAINS = {0: "jack_anim_set0", 1: "jack_anim_set1", 2: "jack_anim_set2"}
@@ -779,6 +779,16 @@ def cmd_selftest():
     ck("范围取值 drop_code 25 → 食物", bool(v) and "食物" in v["meaning"], v["meaning"] if v else "miss")
     _, v = match_value(DOMAINS["camera_mode"], "4")
     ck("camera_mode 4 → 战斗锁镜头", bool(v) and "锁镜头" in v["meaning"], v["meaning"] if v else "miss")
+    _, v = match_value(DOMAINS["camera_lock"], "1")
+    ck("相机锁 1 → 这一波打完前别往前走", bool(v) and "锁住" in v["meaning"])
+    _, v = match_value(DOMAINS["camera_event"], "+B")
+    ck("相机事件 +B → 切到哪种镜头模式", bool(v) and "camera mode" in v["meaning"])
+    ck("相机事件记录标明 X=0xFFFF 是终止符", "0xFFFF" in DOMAINS["camera_event"]["note"])
+    out = capture(cmd_collide, "1")
+    ck("同一个 1 在镜头模式表与镜头锁表里意义不同",
+       "camera_mode" in out and "camera_lock" in out
+       and "区域结束" in out and "锁住" in out)
+    ck("字段偏移域 camera_event 不参与按取值反查", "camera_event ->" not in out)
     _, v = match_value(DOMAINS["spawn_pool"], "3")
     ck("spawn_pool 3 → 池 E", bool(v) and "池 E" in v["meaning"], v["meaning"] if v else "miss")
     _, v = match_value(DOMAINS["box_field"], "10")

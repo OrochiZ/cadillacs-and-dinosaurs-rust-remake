@@ -487,6 +487,36 @@
         "19": { "meaning": "关卡结束（带淡出，HUD 保留）", "tag": "O" }
       }
     },
+    "camera_lock": {
+      "label": "相机锁状态（$7b4，别的模块也会读）",
+      "scope": "dino",
+      "source": "re/specs/stage/SPEC.md §5.1 / §6.6；notes 里「门闩锁相机、阈值达标放行」",
+      "note": "锁着不等于把世界暂停：mode 4 每帧仍把 camX 钉在事件给的 X 上，等 $6D go flag 才换模式、解锁、放行。这是「这一段打完没」的共享事实，不是替所有人定拍子的裁决。",
+      "values": {
+        "0": { "meaning": "自由：镜头跟着玩家走", "tag": "O" },
+        "1": { "meaning": "锁住：这一波 / 这一段区域打完之前别往前走（wave/area end）", "tag": "O" },
+        "2": { "meaning": "锁到关卡结束：等放行才写 stage clear", "tag": "O" }
+      }
+    },
+    "camera_event": {
+      "label": "相机事件记录（16 字节，按 X 触发的一条脚本）",
+      "scope": "dino",
+      "source": "re/specs/stage/SPEC.md §5.2（0x2099A / 0x209C0）；字段键不是取值，按数值反查时要排除",
+      "note": "一条记录就是「走到这个 X 时，镜头换成哪种模式、算哪一段区域、阈值怎么给」。X = 0xFFFF 是表终止符，不是一条事件；加载时还把当时的 camY 记下来、事件序号 +1。",
+      "values": {
+        "+0": { "meaning": "触发 X（同时也是锁镜头钉住的 X）", "tag": "O" },
+        "+2": { "meaning": "触发 Y / 目标 Y（by_y 时改按 Y 触发）", "tag": "O" },
+        "+4": { "meaning": "推行阈值：领先玩家到这个屏幕 X 才推镜头（仅 flag70 时生效）", "tag": "O" },
+        "+6": { "meaning": "纵向上阈值", "tag": "O" },
+        "+8": { "meaning": "纵向下阈值", "tag": "O" },
+        "+A": { "meaning": "这条事件属于哪一段区域；一加载就立刻改 area", "tag": "O" },
+        "+B": { "meaning": "镜头切到哪种 camera mode，并把 mode 子状态清零", "tag": "O" },
+        "+C": { "meaning": "是否启用纵向跟随", "tag": "O" },
+        "+D": { "meaning": "flag70：是否用 +4 覆盖推行阈值", "tag": "O" },
+        "+E": { "meaning": "模式 4 打完锁之后接哪个模式", "tag": "O" },
+        "+F": { "meaning": "by_y：下一条事件改按 Y 触发（并冻结 scroll3 视差）", "tag": "O" }
+      }
+    },
 
     "game_mode": {
       "label": "顶层游戏模式（G.$4D0，game task 0xA870 的跳转表）",
@@ -934,7 +964,7 @@
       { "source": "notes/06-method.md §94.12–§94.18", "domains": ["wof_reaction", "wof_atk_field", "wof_player_reaction", "wof_hurt_book"] },
       { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "attack_id", "weapon_kind", "weapon_attack_state", "input_buffer"] },
       { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant", "wave_ctrl_r4", "wave_ctrl_r5"] },
-      { "source": "re/specs/stage/SPEC.md", "domains": ["camera_mode"] },
+      { "source": "re/specs/stage/SPEC.md", "domains": ["camera_mode", "camera_lock", "camera_event"] },
       { "source": "re/specs/flow/SPEC.md", "domains": ["game_mode", "game_phase"] },
       { "source": "re/specs/sound/SPEC.md", "domains": ["sound_command", "sound_code", "sound_header_type", "seq_command", "pan_mode"] },
       { "source": "re/specs/CONTEXT.md", "domains": ["pool_tag"] }
@@ -971,7 +1001,7 @@
         "key": "event_script",
         "label": "事件脚本",
         "question": "关卡什么时候放行、一波人怎么放完、翻到哪一页；音乐轨自己的命令字也归这里",
-        "domains": ["spawn_command", "spawn_flags", "spawn_pool", "wave_end", "wave_terminator", "kill_all", "wave_ctrl_r4", "wave_ctrl_r5", "credit_player", "seq_command"]
+        "domains": ["spawn_command", "spawn_flags", "spawn_pool", "wave_end", "wave_terminator", "kill_all", "wave_ctrl_r4", "wave_ctrl_r5", "credit_player", "seq_command", "camera_lock", "camera_event"]
       },
       {
         "key": "enemy_strategy",
