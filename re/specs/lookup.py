@@ -16,7 +16,7 @@
     python re/specs/lookup.py frame 10 0A01 8000 0100 0405 1A02        解码 10 字节帧记录
     python re/specs/lookup.py frame 12 0A01 8000 0100 0405 1A02 0011    解码 12 字节帧记录
     python re/specs/lookup.py anim 10 0A01 8000 0100 0405 1A02 0A01 8000 0100 0085 1A02
-                                                         把一串帧记录翻成一段动画时间线
+                                                         把一串帧记录翻成一段动画时间线（kind 4 且开盒才算攻击生效；kind 6 特殊 / 必杀帧单列）
     python re/specs/lookup.py comp 0002 0002 0005 0003 0802 0803 FFF8 FFE0 0008 FFF0
                                                          把一串 SPR composition 翻成「几块图 / 贴在哪」
     python re/specs/lookup.py box -1 10 -68 59 29 42     六个 i16 判定盒 -> 打哪儿 / 够多远
@@ -77,6 +77,22 @@ DOMAINS = DB["domains"]
 # 这些域的「数字」是字节偏移或位编号，不是游戏里读到的取值；
 # 只给一个取值反查时必须排除，否则会把 "+4 字段" 当成 "取值 4"。
 OFFSET_KEY_DOMAINS = ("attack_field", "box_field", "wof_atk_field", "comp_extra", "camera_event", "dino_script_record")
+
+# SPEC §4.4 [O]：普通命中循环要求攻方 +$2E == 4，只有这类帧把 +$49
+# 拿去和防守方 +$48 相交。6 是 [I] 推断的特殊 / 必杀帧，那张含 6 的表
+# 是防守方类型分派，不是攻方；解码时单列，别把推断数成攻击生效帧。
+# 0 / 2 的 +$49 是抓投探测，8 / 10 / 12 / 14 不发起攻击。
+ATTACK_KINDS = (4,)
+SPECIAL_KINDS = (6,)
+GRAB_KINDS = (0, 2)
+
+# 一次挥击的完整拍子样本：起势 / 普通生效 / 必杀 / 攻击帧关盒 / 收势末帧。
+# 自测与全命令冒烟共用，确保时间线不把 kind=6 读成收招。
+_ANIM_BEAT = ["10", "0A01", "8000", "0100", "0006", "1A00",
+              "0A01", "8000", "0100", "0403", "1A02",
+              "0A01", "8000", "0100", "0604", "0005",
+              "0A01", "8000", "0100", "0402", "1A00",
+              "0A01", "8000", "0100", "0085", "1A00", "0011"]
 
 # SPEC §3.6 只逐段列了 Jack 的前三套；第 3/4/5 套只有套级用途。
 SET_DOMAINS = {0: "jack_anim_set0", 1: "jack_anim_set1", 2: "jack_anim_set2"}
@@ -841,7 +857,7 @@ def cmd_moment(tokens: list[str]):
     _, fv = match_value(DOMAINS["frame_type"], str(kind))
     # 按 frame_type 域：4 攻击生效、6 特殊 / 必杀，只有这两类自带伤害攻击盒。
     # 0 / 2 的 +$49 是抓投探测，8 / 10 / 12 / 14 根本不发起攻击。
-    attack_kinds, grab_kinds = (4, 6), (0, 2)
+    attack_kinds, grab_kinds = ATTACK_KINDS, GRAB_KINDS
     live = kind in attack_kinds and atk != 0
 
     print("这一帧合起来在干嘛（帧记录 + SPR 指向 + 判定框 + 后果，一次喂进去）")
@@ -884,12 +900,20 @@ def cmd_moment(tokens: list[str]):
                    "不走扣血那条链")
         elif kind in (8, 10, 12, 14):
             why = "这一帧是受击 / 倒地 / 抓姿势，命中循环本就跳过它，没有发起攻击这一说"
+        elif kind in SPECIAL_KINDS:
+            why = ("这一帧登记为特殊 / 必杀帧 [I 推断]；SPEC §4.4 的普通命中循环"
+                   "只认攻方 +$2E == 4，是否另有必杀结算路径缓存没登记，"
+                   "别当成已证实的第二次普通命中")
         elif kind in attack_kinds and atk == 0:
             why = "帧类型是攻击帧，但攻击盒关着，打不着人"
         else:
             why = "帧类型没登记成攻击生效帧"
-        print(f"   注意：喂了攻击记录，但这一帧不是能结算伤害的攻击帧（kind={kind}）：{why}")
-        print("   AttackRecord 不该在这一拍结算，别把两份数据硬接成同一帧。")
+        if kind in SPECIAL_KINDS:
+            print(f"   注意：这一帧是特殊 / 必杀帧（kind=6，[I 推断]），不按普通命中循环结算：{why}")
+            print("   AttackRecord 别在这一拍按普通命中结算，别把两份数据硬接成同一帧。")
+        else:
+            print(f"   注意：喂了攻击记录，但这一帧不是能结算伤害的攻击帧（kind={kind}）：{why}")
+            print("   AttackRecord 不该在这一拍结算，别把两份数据硬接成同一帧。")
         print("   帧记录不写伤害；+$58 指到哪条 AttackRecord，是状态代码按招式挂上去的，"
               "什么时候挂、挂给谁，不归这 10/12 字节管")
     elif rec is not None and live:
@@ -910,10 +934,13 @@ def cmd_moment(tokens: list[str]):
         print("   这一帧能打人，但打中之后扣多少血不在这 10/12 字节里；"
               "帧记录不带伤害，+$58 指到 AttackRecord 才补上后果")
         print("   要接后果再喂 `attack <8 bytes>`（或 `anim_id 1 4` 按编号带出）")
+    elif kind in SPECIAL_KINDS:
+        print("   这一帧是特殊 / 必杀帧 [I 推断]：普通命中循环只认攻方 4，"
+              "是否另走必杀结算路径缓存没登记，`attack` 别按普通命中往这一帧套")
     else:
         print("   这一帧关盒 / 不是攻击生效帧，谈不上打中；"
               "`box` 与 `attack` 都不该往这一帧上套")
-    if body != 0 and atk != 0:
+    if live and body != 0 and atk != 0:
         print("   还有一条只有并排看才成立：两个盒同时非空，能打人的这一帧自己仍可被反击——"
               "攻防同帧，不另起一个无敌开关")
     if comp_bytes is not None:
@@ -1020,7 +1047,8 @@ def cmd_anim(tokens: list[str]):
         return 1
     print(f"ANI 段：{len(b)} 字节，按 {stride} 字节/帧切分")
     print("=" * 78)
-    total, actives, seen_last, identities = 0, 0, False, []
+    total, seen_last, identities = 0, False, []
+    live_normal = special_frames = closed_attack = 0
     for i, off in enumerate(range(0, len(b) - stride + 1, stride)):
         rec = b[off:off + stride]
         kind, timer = rec[6], rec[7]
@@ -1030,19 +1058,37 @@ def cmd_anim(tokens: list[str]):
         label = fv["meaning"] if fv else "未登记"
         identities.append(label.split("：")[0].split("；")[0])
         total += dur
-        if kind == 4 and atk:
-            actives += 1
+        mark = ""
+        if kind in ATTACK_KINDS:
+            if not atk:
+                closed_attack += 1
+                mark = "   → 攻击帧但攻击盒关着，这一帧打不着人"
+            else:
+                live_normal += 1
+                mark = "   → 攻击生效"
+        elif kind in SPECIAL_KINDS:
+            special_frames += 1
+            mark = ("   → 特殊 / 必杀帧 [I 推断]：普通命中循环只认攻方 4，"
+                    "不并入生效帧")
         print(f"  帧 {i:02d} @+{off:04X}  kind=0x{kind:02X}  {label} {fmt(fv['tag']) if fv else ''}")
         print(f"       {dur:3d} tick   body_box={body:#04x}  attack_box={atk:#04x}"
-              + ("   [末帧]" if last else ""))
+              + ("   [末帧]" if last else "") + mark)
         if last:
             seen_last = True
             print("       末帧后紧跟的 i16 是 link word（不是帧记录），切分到此为止")
             break
     print("=" * 78)
     print(f"  这一段共 {total} tick；身份序列：{' → '.join(identities)}")
-    print(f"  攻击生效帧 {actives} 个 —— 这些帧才有 +$49 与对方 +$48 相交；"
-          "其余帧是起势、过渡或收招")
+    print(f"  攻击生效帧 {live_normal} 个（kind 4 且攻击盒非 0）——"
+          "只有这些帧让 +$49 与对方 +$48 相交结算命中")
+    if special_frames:
+        print(f"  另有 {special_frames} 个特殊 / 必杀帧 [I 推断]："
+              "SPEC §4.4 的命中循环只认攻方 +$2E == 4，这些帧单列、"
+              "不算普通攻击生效；是否另走必杀结算路径缓存没登记")
+    if closed_attack:
+        print(f"  另有 {closed_attack} 个攻击帧把攻击盒关着：打不着人，"
+              "属于收势 / 过渡，不算生效帧")
+    print("  其余帧是起势、受击、倒地、抓投姿势或被抓，不发起攻击结算")
     print("  段落" + ("在末帧结束，去向写在 link word 里（回环 / 接下一招）" if seen_last
                    else "还没读到末帧，后面还有帧记录"))
     return 0
@@ -1707,6 +1753,18 @@ def cmd_selftest():
     out = capture(cmd_anim, ["10", "0A01", "8000", "0100", "0405", "1A02",
                              "0A01", "8000", "0100", "0085", "1A02"])
     ck("anim 一串帧记录能翻成时间线", "帧 00" in out and "link word" in out and "身份序列" in out)
+    out = capture(cmd_anim, _ANIM_BEAT)
+    ck("ANI 时间线只把 kind=4 且开盒数成攻击生效，不把 6 的 [I] 推断当 [O]",
+       "攻击生效帧 1 个" in out and "特殊 / 必杀帧 [I 推断]" in out
+       and "不算普通攻击生效" in out)
+    ck("ANI 时间线把「攻击帧但关盒」单列，不混进起势 / 收招",
+       "另有 1 个攻击帧把攻击盒关着" in out and "打不着人" in out)
+    mo = capture(main, ["moment", "10", "0A01", "8000", "0100", "0604", "0005",
+                        "attack", "0A", "01", "00", "09", "03", "14", "00", "00"])
+    ck("moment 也不把 kind=6 按普通命中结算，并说清 SPEC 边界",
+       "普通命中循环只认攻方 +$2E == 4" in mo and "正面轻击" not in mo)
+    ck("攻击判据收紧回 SPEC §4.4 的攻方类型 4，6 单列不混",
+       ATTACK_KINDS == (4,) and SPECIAL_KINDS == (6,))
     out = capture(cmd_box, ["-1", "10", "-68", "59", "29", "42"])
     ck("box 六个数能复算出打击形状",
        "X 区间 [-68, -9]" in out and "Y 区间 [29, 71]" in out and "Z 区间 [-1, 9]" in out)
@@ -1923,10 +1981,15 @@ def cmd_selftest():
        and "抓投探测盒" in out and "扣 10 血" not in out)
     special = ["10", "0A01", "8000", "0100", "0605", "1A02"]
     out = capture(cmd_moment, special + ["attack"] + rec)
-    ck("特殊 / 必杀帧（kind 6）也算攻击帧，不被误判成错配",
-       "这一帧能打人" in out and "不该在这一拍结算" not in out)
-    ck("攻击帧判据有出处：frame_type 6 登记成特殊 / 必杀攻击",
-       "攻击" in DOMAINS["frame_type"]["values"]["6"]["meaning"])
+    ck("特殊 / 必杀帧（kind 6）不按普通命中结算，并说清是 [I] 推断",
+       "普通命中循环只认攻方 +$2E == 4" in out and "[I 推断]" in out
+       and "这一帧能打人" not in out and "扣 10 血" not in out)
+    ck("frame_type 6 仍登记为特殊 / 必杀，但 note 写明不通过普通命中循环",
+       "攻击" in DOMAINS["frame_type"]["values"]["6"]["meaning"]
+       and "命中循环只认攻方" in DOMAINS["frame_type"]["values"]["6"]["note"]
+       and "防守方类型分派" in DOMAINS["frame_type"]["values"]["6"]["note"])
+    ck("frame_type 域级 note 也写明 6 是推断、别数成攻击生效帧",
+       "别数成攻击生效帧" in DOMAINS["frame_type"]["note"])
     ck("盒索引按 SPEC 写成十六进制，对得上 0x1A",
        "身体盒 #0x1A" in capture(cmd_moment, frame))
     ck("攻击记录字节不够会直说",
@@ -2466,6 +2529,7 @@ SMOKE_CASES = [
     ("frame12", ["frame", "12", "0A01", "8000", "0100", "0405", "1A02", "0011"]),
     ("anim", ["anim", "10", "0A01", "8000", "0100", "0405", "1A02",
               "0A01", "8000", "0100", "0085", "1A02"]),
+    ("anim_beat", ["anim"] + _ANIM_BEAT),
     ("comp", ["comp", "0002", "0002", "0005", "0003", "0802", "0803",
               "FFF8", "FFE0", "0008", "FFF0"]),
     ("box", ["box", "-1", "10", "-68", "59", "29", "42"]),
