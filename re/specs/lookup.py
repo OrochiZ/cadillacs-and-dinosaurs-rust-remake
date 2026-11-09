@@ -33,6 +33,8 @@
                                                       把同一帧的几份数据合起来说「在干嘛」
     python re/specs/lookup.py moment 10 ... attack 0A 01 00 09 03 14 00 00
                                                       再挂上这一拳打完的后果
+    python re/specs/lookup.py moment 10 ... comp 0002 0002 0005 0003 0802 0803
+                                                      SPR 那一环也喂进来，画面与判定并排
     python re/specs/lookup.py find 攻击                按意义关键词反查
     python re/specs/lookup.py collide 4               只给一个取值，列出它在各域的所有意义
     python re/specs/lookup.py collide 0x1A            看同一编号在哪几张表里意思不同
@@ -659,9 +661,11 @@ ANI（帧记录 / 动画表）        SPR（composition）              判定�
   同理，受击编号 0x1A 在玩家侧是『背后轻击』、在敌人侧是『起身 / 眩晕』，
   编号本身不说话，先得知道是谁在读。
 
-上面是说明版。真拿到一段帧记录时不必自己拼四条命令：
+上面是说明版。真拿到一段帧记录时不必自己拼几条命令：
   `lookup.py moment 10 0A01 8000 0100 0405 1A02 attack 0A 01 00 09 03 14 00 00`
-把身份 / 空间 / 后果合起来说，还会拦住「把攻击记录挂到非攻击帧上」这种错配。
+把身份 / 空间 / 后果合起来说，还会拦住「把攻击记录挂到非攻击帧上」这种错配；
+再接一段 `comp <bytes...>`，SPR 那一环的零件数与摆位也并排进来，
+画面和判定是两层数据就看得见了。
 """)
     return 0
 
@@ -673,24 +677,33 @@ def cmd_moment(tokens: list[str]):
     攻击记录不是任何时候都能往这一帧上挂，得先看帧类型与攻击盒。
     """
     usage = (
-        "用法：moment [10|12] <帧记录 hex...> [attack <8 bytes...>]\n"
+        "用法：moment [10|12] <帧记录 hex...> [attack <8 bytes...>] [comp <bytes...>]\n"
         "      例：moment 10 0A01 8000 0100 0405 1A02\n"
         "          moment 10 0A01 8000 0100 0405 1A02 attack 0A 01 00 09 03 14 00 00\n"
-        "      帧记录给身份 / 一拍多长 / 盒索引；attack 给打中之后的后果。"
+        "          moment 10 0A01 8000 0100 0405 1A02 comp 0002 0002 0005 0003 0802 0803\n"
+        "      attack 与 comp 可按任意顺序接在帧记录后面；不带就不解那一环。\n"
+        "      帧记录给身份 / 一拍多长 / 盒索引；comp 给这一帧由几块图拼成、贴在哪；\n"
+        "      attack 给打中之后的后果。"
     )
     if not tokens:
         print(usage)
         return 1
-    atk_tokens: list[str] = []
-    if "attack" in tokens:
-        i = tokens.index("attack")
-        atk_tokens = tokens[i + 1:]
-        tokens = tokens[:i]
+    sections: dict[str, list[str]] = {"frame": []}
+    cur = "frame"
+    for t in tokens:
+        if t in ("attack", "comp"):
+            cur = t
+            sections.setdefault(cur, [])
+        else:
+            sections.setdefault(cur, []).append(t)
+    frame_tokens = sections.get("frame", [])
+    atk_tokens = sections.get("attack", [])
+    comp_tokens = sections.get("comp", [])
     stride = None
-    if tokens and tokens[0] in ("10", "12"):
-        stride = int(tokens[0])
-        tokens = tokens[1:]
-    raw = "".join(t.replace("0x", "").replace(" ", "") for t in tokens)
+    if frame_tokens and frame_tokens[0] in ("10", "12"):
+        stride = int(frame_tokens[0])
+        frame_tokens = frame_tokens[1:]
+    raw = "".join(t.replace("0x", "").replace(" ", "") for t in frame_tokens)
     try:
         b = bytes.fromhex(raw)
     except ValueError as e:
@@ -714,6 +727,18 @@ def cmd_moment(tokens: list[str]):
             print(f"攻击记录字节不够：拿到 {len(ab)}，需要 8")
             return 1
         rec = ab[:8]
+    comp_bytes = None
+    if comp_tokens:
+        craw = "".join(t.replace("0x", "").replace(" ", "") for t in comp_tokens)
+        try:
+            cb = bytes.fromhex(craw)
+        except ValueError as e:
+            print(f"composition 十六进制读不出：{e}")
+            return 1
+        if len(cb) < 8:
+            print(f"composition 字节不够：拿到 {len(cb)}，光头就要 8 字节")
+            return 1
+        comp_bytes = cb
 
     w0, w1 = u16(b, 0), u16(b, 2)
     kind, timer, body, atk = b[6], b[7], b[8], b[9]
@@ -731,8 +756,14 @@ def cmd_moment(tokens: list[str]):
     print(f"1) 身份 / 这一拍：{fv['meaning'] if fv else '帧类型未登记，不猜'}；"
           f"时长 {256 if dur == 0 else dur} tick，"
           + ("末帧，后面接一记 link word 决定回环还是接下一招" if last else "顺序走到下一帧"))
-    print(f"2) SPR 环：w0=0x{w0:04X} 指向 composition（几块图、各自贴哪、翻转与调色板）；"
-          "这一环只管画成什么样，不参与打不打得中")
+    print("2) SPR 环：composition 只管画成什么样，不参与打不打得中")
+    if comp_bytes is not None:
+        for line in comp_brief(comp_bytes):
+            print("   " + line)
+        print(f"   w0=0x{w0:04X} 指向它；下面第 3 环的盒区间跟这些零件 / 摆位不是一层数据")
+    else:
+        print(f"   w0=0x{w0:04X} 指向 composition（几块图、各自贴哪、翻转与调色板）")
+        print("   想把这一环也喂进来：在帧记录后接 `comp <bytes...>`")
     if w0 & 0x8000:
         print("   w0 bit15=1：复合帧，w1 是部件表的自相对偏移，不是叠加层")
     elif w1 & 0x8000:
@@ -786,6 +817,9 @@ def cmd_moment(tokens: list[str]):
     if body != 0 and atk != 0:
         print("   还有一条只有并排看才成立：两个盒同时非空，能打人的这一帧自己仍可被反击——"
               "攻防同帧，不另起一个无敌开关")
+    if comp_bytes is not None:
+        print("   三环并排才看得出的那条：零件怎么摆归 composition，够得着谁归判定框，"
+              "打中多疼归攻击记录 —— 判定不跟着画面走，也没有谁替全场把整拳写死")
     print("-" * 78)
     print("看不到 GFX 仍能知道：身份、这一拍多长、打哪儿够多远、这一拳多疼、"
           "自己会不会被打、打完往哪走")
@@ -793,6 +827,33 @@ def cmd_moment(tokens: list[str]):
     print("chain 是这一串的说明版，moment 是喂数据的可跑版。"
           "wof 半边不是 8 字节 AttackRecord，用 `wof_attack <ours|enemy> <16 bytes>`")
     return 0
+
+
+def comp_brief(b: bytes) -> list[str]:
+    """只挑 composition 里跟「这一帧怎么摆」有关的几个数，供 moment 合成用。
+
+    逐 entry 的完整解码是 cmd_comp 的活；这里不复述图块编号，
+    因为 code 没有 GFX 就说不出画的是什么。
+    """
+    hattr, n, layout_idx = u16(b, 4), u16(b, 2), u16(b, 6)
+    alt = bool(hattr & 0x8000)
+    need = 8 + n * (4 if alt else 2)
+    out = [f"喂进来的 composition：{n} 块零件、"
+           + ("alt 格式（每块自带 attr、允许块精灵）"
+              if alt else f"normal 格式（全帧共用 attr、都是 1×1 图块、调色板 low5={hattr & 0x1F}）")
+           + f"、layout 索引 0x{layout_idx:04X}"]
+    if n == 0 or len(b) < need:
+        out.append("entry 没读全，编号与摆位都别硬猜（完整口径见 `comp <bytes...>`）")
+        return out
+    if len(b) >= need + 4 * n:
+        dx, dy = s16(b, need), s16(b, need + 2)
+        out.append(f"接了 layout：第一块摆在 dx={dx}、dy={dy}，其余按 n×4 顺排；"
+                   "同一批零件换一组摆位就是另一帧，不用重画人")
+    else:
+        out.append("没接 layout：知道有几块、各自什么编号，但不知道每块贴在哪")
+    out.append("entry 按头 → 脚排，涉水时从末尾藏掉脚 / 腿；"
+               "code 只是图块编号，没有 GFX 就不知道画的是拳头还是刀光")
+    return out
 
 
 def parse_i16(t: str) -> int:
@@ -1549,6 +1610,19 @@ def cmd_selftest():
        "身体盒 #0x1A" in capture(cmd_moment, frame))
     ck("攻击记录字节不够会直说",
        "攻击记录字节不够" in capture(cmd_moment, frame + ["attack", "0A", "01"]))
+    comp = ["0002", "0002", "0005", "0003", "0802", "0803",
+            "FFF8", "FFE0", "0008", "FFF0"]
+    out = capture(cmd_moment, frame + ["comp"] + comp)
+    ck("SPR 环能真喂进来：零件数与摆位和盒区间并排",
+       "2 块零件" in out and "接了 layout" in out
+       and "不是一层数据" in out and "判定不跟着画面走" in out)
+    out = capture(cmd_moment, frame + ["comp"] + comp + ["attack"] + rec)
+    ck("attack 与 comp 顺序任意都能合成，三环都在",
+       "2 块零件" in out and "扣 10 血" in out and "三环并排" in out)
+    ck("不喂 comp 时会提示怎么补这一环",
+       "想把这一环也喂进来" in capture(cmd_moment, frame))
+    ck("composition 字节不够会直说",
+       "composition 字节不够" in capture(cmd_moment, frame + ["comp", "00", "02"]))
     ck("doc 与 list 都跟上 moment",
        "lookup.py moment" in __doc__ and "moment" in capture(cmd_list))
 
@@ -1654,6 +1728,10 @@ def cmd_selftest():
     ck("swing 的底座接上「一拍也不是一条数据」的合成样本",
        "合成一句" in sw["can_check"]
        and any(pr["argv"][0] == "moment" for pr in legacy_probes(sw)))
+    ck("swing 另有一条把 composition 也喂进去的三环样本",
+       "画面零件与摆位" in sw["can_check"]
+       and any(pr["argv"][0] == "moment" and "comp" in pr["argv"]
+               for pr in legacy_probes(sw)))
     ck("swing 的合成样本真跑出「两本册子要同一拍才对上」",
        "两本册子" in capture(main, ["moment", "10", "0A01", "8000", "0100",
                                     "0405", "1A02", "attack", "0A", "01",
