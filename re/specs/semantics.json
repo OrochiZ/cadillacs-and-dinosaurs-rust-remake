@@ -971,6 +971,68 @@
         "<0": { "meaning": "凡是负数字节都按「已确认倒计时」读；0xFF 只是笔记里点名的那一个", "tag": "O" }
       }
     },
+    "dino_script_action": {
+      "label": "dino 英雄过场脚本 action 编号（跳表 0x1DBD6 的字节偏移，41 项）",
+      "scope": "dino",
+      "source": "dino-rs/crates/dino-game/src/game/script.rs:249-343（script_action match，各带原地址）；notes/00-overview.md §9.4；notes/01-early.md §19.1 #1",
+      "note": "一条 6 字节记录里的第一个字节，是跳表的字节偏移，不是动作序号。41 项里大多数不是「播一段动画」：要么等一个条件（timer=0xFFFF 每帧重跑），要么覆写输入字节让角色走自己的完整玩家状态机；只有少数直接启动一个玩家状态或改世界。受击 / 死亡 / 复活时状态字 != 0x0200，整条脚本挂起。没列到的字节偏移走 default 空分支。",
+      "values": {
+        "0x00": { "meaning": "清输入：擦掉本条动作写过的 held / pressed / 双击计时，让下一拍从干净输入开始", "tag": "O" },
+        "0x02": { "meaning": "走向区域终点目标（复用 walk body 0x1DF10）", "tag": "O" },
+        "0x04": { "meaning": "亮相：等所有被接管英雄有 HP 且在地面，再置 pose lock 摆姿势", "tag": "O" },
+        "0x06": { "meaning": "收场：等开场演完 / 打完 Boss 走开的标志 G.$4E3", "tag": "O" },
+        "0x08": { "meaning": "领队按下攻击、其余放开输入（不清输入）", "tag": "O" },
+        "0x0A": { "meaning": "END（全体）：一次放开所有英雄、清 scripted，再收尾", "tag": "O" },
+        "0x0C": { "meaning": "放必杀：音效 2 + 玩家状态 0x0E", "tag": "O" },
+        "0x0E": { "meaning": "走向区域起点目标", "tag": "O" },
+        "0x10": { "meaning": "全员走到一个点（按 stage/area 查 0x1E3F4）", "tag": "O" },
+        "0x12": { "meaning": "每帧按住右（held + pressed）", "tag": "O" },
+        "0x14": { "meaning": "走向固定站位槽", "tag": "O" },
+        "0x16": { "meaning": "跳踢：首帧记走位档、清输入、朝右，之后逐帧数", "tag": "O" },
+        "0x18": { "meaning": "按住右 + 跳（pad 0x21）", "tag": "O" },
+        "0x1A": { "meaning": "朝右、从上方落进区域（air 状态 0x1C）", "tag": "O" },
+        "0x1C": { "meaning": "空动作：什么都不做，输入原样通过", "tag": "O" },
+        "0x1E": { "meaning": "走向列队点", "tag": "O" },
+        "0x20": { "meaning": "等 Boss 登场标志 G.$4FC", "tag": "O" },
+        "0x22": { "meaning": "按记录 argument 生成字幕横幅，然后清输入", "tag": "O" },
+        "0x24": { "meaning": "生成 pool B 21：大厅换格", "tag": "O" },
+        "0x26": { "meaning": "END（自己）：只结束这一个英雄，他那一位在取记录时已清掉", "tag": "O" },
+        "0x28": { "meaning": "置 G.$4D8=1 给快进等待任务读，然后清输入", "tag": "O" },
+        "0x2A": { "meaning": "等地面道具被拿走 / 打碎，最多 0x5A 帧", "tag": "O" },
+        "0x2C": { "meaning": "置 GO（G.$7A9=1）：把镜头锁放行、进入下一段，然后清输入", "tag": "O" },
+        "0x2E": { "meaning": "等标志 G.$4E2", "tag": "O" },
+        "0x30": { "meaning": "等所有在场英雄落地", "tag": "O" },
+        "0x32": { "meaning": "脚本化跳跃到目标点（按 stage/area 查 0x1DD88）", "tag": "O" },
+        "0x34": { "meaning": "等所有被接管英雄落地", "tag": "O" },
+        "0x36": { "meaning": "先置 GO，再按住右走下一段", "tag": "O" },
+        "0x38": { "meaning": "等地面道具（另一档，最多 0xA0 帧）", "tag": "O" },
+        "0x3A": { "meaning": "两下小跳（玩家状态 0x2A），只做一次", "tag": "O" },
+        "0x3C": { "meaning": "一直向右走到 X >= 0xB80，然后站定算到达", "tag": "O" },
+        "0x3E": { "meaning": "领队胸口特效的亮相姿势（玩家状态 0x2C），然后清输入", "tag": "O" },
+        "0x40": { "meaning": "破门：生成 pool B 11，然后清输入", "tag": "O" },
+        "0x42": { "meaning": "第八关清场序列（Boss 死后英雄走位）", "tag": "O" },
+        "0x44": { "meaning": "清标志 G.$4E2（不清输入）", "tag": "O" },
+        "0x46": { "meaning": "生成 pool B 20 variant 2：强制 GO 闪烁（不清输入）", "tag": "O" },
+        "0x48": { "meaning": "地图卡正在播时置 G.$4E2=1（仅游戏中），然后清输入", "tag": "O" },
+        "0x4A": { "meaning": "栅栏：等所有被接管英雄都走到这一条、有 HP、不在无敌，才一起放行", "tag": "O" },
+        "0x4C": { "meaning": "等载具标志 G.$518", "tag": "O" },
+        "0x4E": { "meaning": "按记录 argument 放声音，然后清输入", "tag": "O" },
+        "0x50": { "meaning": "音乐淡出，然后清输入", "tag": "O" }
+      }
+    },
+    "dino_script_record": {
+      "label": "dino 过场脚本一条 6 字节记录的字段语义",
+      "scope": "dino",
+      "source": "dino-rs/crates/dino-assets/src/script.rs ScriptRecord；notes/06-method.md §94.10 三方对账表",
+      "note": "同一条记录同时决定「演到哪儿」和「这一帧按什么规则跑」：+1/+3 是全局规则档位字，会保留上一条记录的值（含 END）直到下一个脚本首记录。字段键不是取值，按数值反查时要排除。",
+      "values": {
+        "+0": { "meaning": "action：跳表 0x1DBD6 的字节偏移，查 dino_script_action", "tag": "O" },
+        "+1": { "meaning": "G.$4F0 floor_only：演出走位时墙不再挡人（地形只判地面）", "tag": "O" },
+        "+2": { "meaning": "G.$4FD argument：字幕 / 声音 / 场景对象用的参数，随 action 读法不同", "tag": "O" },
+        "+3": { "meaning": "G.$506 no_clamp：演出里可以走出屏幕钳制范围，也不顺手捡东西", "tag": "O" },
+        "+4": { "meaning": "timer:word：本条动作跑几帧；0xFFFF 是 wait-until，条件没达就每帧重跑", "tag": "O" }
+      }
+    },
     "input_buffer": {
       "label": "玩家输入契约：没有输入队列，只有四处各自绑在处境上的缓冲",
       "scope": "dino",
@@ -996,7 +1058,8 @@
       { "source": "re/specs/flow/SPEC.md", "domains": ["game_mode", "game_phase"] },
       { "source": "re/specs/sound/SPEC.md", "domains": ["sound_command", "sound_code", "sound_header_type", "seq_command", "pan_mode"] },
       { "source": "re/specs/CONTEXT.md", "domains": ["pool_tag"] },
-      { "source": "notes/02-mid.md §27.2 / §27.3（指令技状态编码，两边对照）", "domains": ["dino_cmd_state", "wof_rkey1"] }
+      { "source": "notes/02-mid.md §27.2 / §27.3（指令技状态编码，两边对照）", "domains": ["dino_cmd_state", "wof_rkey1"] },
+      { "source": "dino-rs/crates/dino-game/src/game/script.rs；dino-assets/src/script.rs；notes/00-overview.md §9.4（过场脚本 41 action 与 6 字节记录）", "domains": ["dino_script_action", "dino_script_record"] }
     ],
     "not_registered": [
       { "what": "伤害、帧数、距离、血量、得分、命中定格长度这类量", "why": "换大换小只改手感，不是『取值 → 抽象意义』；按 §94.3 那一刀归数据层，具体值回源 tables.txt" },
@@ -1031,7 +1094,7 @@
         "key": "event_script",
         "label": "事件脚本",
         "question": "关卡什么时候放行、一波人怎么放完、翻到哪一页；音乐轨自己的命令字也归这里",
-        "domains": ["spawn_command", "spawn_flags", "spawn_pool", "wave_end", "wave_terminator", "kill_all", "wave_ctrl_r4", "wave_ctrl_r5", "credit_player", "seq_command", "camera_lock", "camera_event"]
+        "domains": ["spawn_command", "spawn_flags", "spawn_pool", "wave_end", "wave_terminator", "kill_all", "wave_ctrl_r4", "wave_ctrl_r5", "credit_player", "seq_command", "camera_lock", "camera_event", "dino_script_action", "dino_script_record"]
       },
       {
         "key": "enemy_strategy",

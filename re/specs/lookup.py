@@ -55,7 +55,7 @@ DOMAINS = DB["domains"]
 
 # 这些域的「数字」是字节偏移或位编号，不是游戏里读到的取值；
 # 只给一个取值反查时必须排除，否则会把 "+4 字段" 当成 "取值 4"。
-OFFSET_KEY_DOMAINS = ("attack_field", "box_field", "wof_atk_field", "comp_extra", "camera_event")
+OFFSET_KEY_DOMAINS = ("attack_field", "box_field", "wof_atk_field", "comp_extra", "camera_event", "dino_script_record")
 
 # SPEC §3.6 只逐段列了 Jack 的前三套；第 3/4/5 套只有套级用途。
 SET_DOMAINS = {0: "jack_anim_set0", 1: "jack_anim_set1", 2: "jack_anim_set2"}
@@ -813,6 +813,27 @@ def cmd_selftest():
     out = capture(cmd_collide, "2")
     ck("同一个 2 现在也列出两边指令技状态",
        "dino_cmd_state" in out and "wof_rkey1" in out)
+
+    # 过场脚本：事件脚本主题里一直缺的那张成表
+    ck("过场脚本 41 个 action 全部登记",
+       len(DOMAINS["dino_script_action"]["values"]) == 41)
+    _, v = match_value(DOMAINS["dino_script_action"], "0x2C")
+    ck("过场脚本 0x2C → 置 GO 放行镜头", bool(v) and "GO" in v["meaning"])
+    _, v = match_value(DOMAINS["dino_script_action"], "44")
+    ck("十进制 44 也能查到 0x2C（hex 别名命中）", bool(v) and "GO" in v["meaning"])
+    ck("两个 END 的差别写进语义",
+       "全体" in DOMAINS["dino_script_action"]["values"]["0x0A"]["meaning"]
+       and "自己" in DOMAINS["dino_script_action"]["values"]["0x26"]["meaning"])
+    ck("过场脚本记录字段 +3 → no_clamp",
+       "no_clamp" in DOMAINS["dino_script_record"]["values"]["+3"]["meaning"])
+    out = capture(cmd_collide, "4")
+    ck("同一个 4 现在也列出过场脚本的亮相动作",
+       "dino_script_action" in out and "亮相" in out)
+    ck("字段偏移域 dino_script_record 不参与按取值反查",
+       "dino_script_record ->" not in out)
+    ck("过场脚本置 GO 与镜头放行链能对上",
+       "G.$7A9" in DOMAINS["dino_script_action"]["values"]["0x2C"]["meaning"]
+       and "$7A9" in DOMAINS["wave_end"]["values"]["0"]["meaning"])
     _, v = match_value(DOMAINS["spawn_pool"], "3")
     ck("spawn_pool 3 → 池 E", bool(v) and "池 E" in v["meaning"], v["meaning"] if v else "miss")
     _, v = match_value(DOMAINS["box_field"], "10")

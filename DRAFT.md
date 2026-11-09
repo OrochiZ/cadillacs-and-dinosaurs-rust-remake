@@ -3,74 +3,68 @@
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 git 跟踪的耐久层。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
 
-## 本轮做了什么：把缓存铺到 wof 半边（第十五格）
+## 本轮做了什么：把 dino 过场脚本的 action 编号转成可查语义（第十六格）
 
-**背景**：`f60f1f56` 后工作区干净；dino 侧六份 SPEC 与 `re/specs`
-检索范围已闭合，缓存 60 域 / 462 条里 wof 侧只有 4 个域 +
-`box_index_zero`（both）。用户要「各种表数值的抽象意义」都转进来，
-这一格转主线的 wof 半边。
+**背景**：`3a03e6fc` 补 wof 指令技状态编码后，工作区干净。
+dino 回源文件、wof 脚本轨道边界、`notes/01-early.md §19` 五套脚本
+全景都已核过；但用户最早关心的「事件脚本」里，**dino 过场脚本
+26 scripts × 6 字节记录 × 41 个 action 的编号 → 意义** 一直只在源码
+与笔记里散着，没进缓存。
 
-### 回源与边界（先划清哪些不能转）
+### 回源
 
-- `notes/06-method.md §94.10`：wof 有三条脚本轨道（1C 剧情对象池、
-  关卡脚本、事件队列）。但笔记只给「关卡脚本约 25 种 type /
-  事件队列 9 种 type」的**数量与职责概括**，没有逐项编号 → 意义；
-  1C 池两张跳表（15 / 27 项）按 ObjId 索引，不是取值表。
-- `notes/08-wof-cs-gaps.md`：C# 侧还有「未覆盖的关卡脚本命令空桩」，
-  只打日志、不写游戏状态，不能当原机证据。
-- `notes/02-mid.md §30.7`：`A5-0x60` 其余阶段值明列「保留、不扩张」，
-  只 `0x1C`（收尾对白）已登记，不转整表。
-- 民间资料「死 / 附 / 效 / 呆」四列、街机前端硬件位按既有
-  `not_registered` 不转；载具（`§85`）、特殊关卡、单个 Boss 专属编排
-  不回查、不展开。
+- `notes/00-overview.md §9.4`（945-960 行）：跳表 `0x1DBD6` 41 项；
+  记录 `[action, G.$4F0, G.$4FD, G.$506, timer:word]`；
+  `timer=0xFFFF` 是 wait-until；笔记已列出多数 action 名。
+- `notes/01-early.md §19.1 #1`：五套脚本全景里英雄过场脚本那一套。
+- `dino-rs/crates/dino-game/src/game/script.rs:249-343`：`script_action`
+  的 match 就是 41 项逐条分派，每条带原地址；文件头注释明写
+  「41 actions 的代码移植到这里，各带原地址」。
+- `dino-rs/crates/dino-assets/src/script.rs`：`ScriptRecord` 字段语义，
+  `action` 是跳表字节偏移而非枚举序号。
 
 ### 落点
 
-- 找到一处稳的 wof 缺口，正落在用户关心的「状态机设计」：
-  `notes/02-mid.md §27.2 / §27.3` 的**指令技搓招状态编码**，
-  笔记明写「未新增 ROM 取证」，是带 ROM listing 的逐指令直译。
-- `semantics.json` 新增两域：
-  - `dino_cmd_state`（`0/2/4`）：独立 FSM，只判输入序列，命中压
-    `cmd_flag=2` 交给主状态机消费 —— 检测与执行分离。
-  - `wof_rkey1`（`0 / 2 / 0xFF` 与 `>0 / <0` 符号三态）：一个带符号
-    字节的符号编码三态，检测编在每角色主状态机入口，判对直接是
-    状态号 —— 检测与执行合一；`context_dependent` 标明 ActStatA
-    状态号按角色解释，不能把赵云 `0x0E` 套到别人身上。
-- `coverage.registered` 加第 9 组回源、`themes.state_machine` 加两域；
-  `not_registered` 加一条 wof 脚本轨道边界（概括 / 空桩 / 保留不扩张，
-  已核过别再翻）。
-- `lookup.py` 自测 92 → **97/97**（两域可查、检测分离/合一、
-  wof 边界进索引、`collide 2` 同时列出两边指令技状态）。
-- `DESIGN_DIFF_NOTES.md` 补一段设计倒推：同样一串搓招，差别在
-  「检测结论交给谁消费」，一个交接出去、一个就地翻页；并接回
-  「按取值反查必须带域」（`2` 在两台机器里不是一回事）。
-
-### 一次工具失败与修复
-
-- 自测首跑 `UnboundLocalError: nr`：把 wof 边界断言插在局部变量
-  `nr` 赋值之前。数据没错（coverage 缺 0、themes 62/62），改断言
-  直接读 `DB["coverage"]["not_registered"]`，重跑 97/97。
-  没有为迁就断言去改数据。
+- `semantics.json` 新增 `dino_script_action`：`0x00..0x50` 步长 2
+  共 **41 项**，按「等一个条件 / 覆写输入让角色走自己状态机 /
+  直接启动玩家状态 / 改世界（生成对象、字幕、声音、GO、淡出）」
+  写成人话；两个 END（`0x0A` 全体 / `0x26` 只自己）的差别写明。
+  note 说明这不是动作序号、多数不是播动画、状态字 != 0x0200 会挂起、
+  未列偏移走 default 空分支。
+- 新增 `dino_script_record`：6 字节记录的 5 个字段键，写明 +1/+3
+  是全局规则档位字、会跨记录保留（含 END），字段键排除出 `collide`。
+- `coverage.registered` 加第 10 组回源、`themes.event_script` 加两域；
+  `OFFSET_KEY_DOMAINS` 加 `dino_script_record`。
+- 自测 97 → **105/105**（41 项齐全、`0x2C` 置 GO、十进制 44 也能
+  命中 0x2C、两个 END 差别、记录 +3 no_clamp、`collide 4` 现在也列出
+  亮相动作、字段偏移排除、置 GO 与波次收尾的 `$7A9` 对上）。
+- `DESIGN_DIFF_NOTES.md` 补一段倒推：41 个动作大多不是播动画，是
+  「等世界回话」+ 伪造输入；一条记录同时管「演到哪儿」和「这一帧
+  按什么规则跑」；`0x2C` 与波次收尾字写同一个 GO，放行权不收在
+  中央开关里。标 dino 侧登记、不放大成两款共同架构。
+- 顺手修掉一处输入错字（`0x08` 的「不请输入」→「不清输入」）。
 
 ### 实跑验证
 
-- `--selftest` 97/97；`py_compile` OK。
-- 62 域 / **470 条**；`coverage` 9 组、缺 0 个域；
-  `themes` 列出 62 个、去重 62 个；`not_registered` 11 条。
-- `lookup.py wof_rkey1` 与 `dino_cmd_state 4` 实跑可读；
-  `collide 2` 实跑同时列出两边指令技状态。
+- `--selftest` 105/105；`py_compile` OK。
+- **64 域 / 516 条**；`coverage` 10 组、缺 0 个域；
+  `themes` 列出 64 个、去重 64 个。
+- `lookup.py dino_script_action 0x2C` 与 `... 44` 都读到
+  「置 GO（G.$7A9=1）：把镜头锁放行」。
 - 四份改动文件 `CR=0 BOM=False`；`DESIGN_DIFF_NOTES.md` 超 2000 字节的
   仍是既存第 57 / 89 / 154 行，本轮新增行 0 超长；
   `git diff --check` exit=0。
 
 ### 边界
 
-- **0 次 ROM**；只读 rep 内笔记 / 缓存与离线脚本，未碰 `g:/wof/wt1` 源码，
-  未恢复「以 ROM 审 repo」框架。
+- **0 次 ROM**；只读 rep 内 Rust 源码 / 笔记 / 缓存与离线脚本，
+  未碰 `g:/wof/wt1` 源码，未恢复「以 ROM 审 repo」框架。
 - 不碰 `re/out/assets/` 产物层，不修 `check_docs.py` 假红，
   不改 `CLAUDE.md` / `.gitignore`。
-- 不把 `[I]` 写成 `[O]`；不从常量名 / 函数名猜意义；
-  不评两款优劣、不推断 wof 原机缺什么；量 / 表内容 / 宿主空桩不转。
+- 不把 `[I]` 写成 `[O]`；不从函数名猜意义（只登记源码注释 / 笔记
+  明确点名的）；载具标志 `0x4C` 只登记「等标志」，不往载具换面展开；
+  特殊关卡 / 单个 Boss 专属编排不构成通则。
+- 离散编号不连成范围；位域 / 字段偏移域继续被 `collide` 排除。
 
 ### 长期口径（细则在耐久层，不在本文件展开）
 
@@ -81,8 +75,7 @@
 - 产物层无分析意义；ROM 主要服务于 data 调查，仅在 `wof_cs` 非常可疑时才核实。
 - 写盘 LF 无 BOM；提交信息走 `git commit -F` 临时文件随后清理。
 - 新增语义域必须带 source / scope / tag；`coverage.registered` 与
-  `themes.list[*].domains` 都必须覆盖所有域且每域只归一处；
-  离散编号不连成范围；位域 / 字段偏移域继续被 `collide` 排除。
+  `themes.list[*].domains` 都必须覆盖所有域且每域只归一处。
 
 ## 收尾
 
