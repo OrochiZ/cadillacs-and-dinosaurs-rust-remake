@@ -1338,6 +1338,23 @@ def cmd_selftest():
     ck("feel 把 wof 一字节三用降为叙事概括",
        any(it["key"] == "feel" and "叙事概括" in it["cannot_check"] for it in items))
 
+    # 取值反查的排除纪律：位域靠 bitfield 标志、字段偏移靠列表，两者合起来才算齐
+    should_skip = {n for n, d in DOMAINS.items()
+                   if d.get("bitfield") or n in OFFSET_KEY_DOMAINS}
+    out = capture(cmd_collide, "4")
+    hit_lines = [l for l in out.splitlines() if "->" in l]
+    ck("collide 尾部列全被跳过的位域 / 字段偏移域",
+       all(n in out for n in should_skip))
+    ck("被跳过的域没有一个出现在命中行里",
+       all(not any(l.strip().startswith(n + " ") for l in hit_lines)
+           for n in should_skip))
+    ck("所有登记键都能被自己反查命中",
+       all(match_value(d, k)[0] == k for d in DOMAINS.values() for k in d["values"]))
+    ck("字段偏移域里没有纯数字键，两个位域都标了 bitfield",
+       all(not any(re.fullmatch(r"\d+", k) for k in DOMAINS[n]["values"])
+           for n in OFFSET_KEY_DOMAINS)
+       and all(DOMAINS[n].get("bitfield") for n in ("draw_flags", "sprite_attr")))
+
     # 入口一致性：doc 与 list 都得跟上后来加的命令
     ck("doc 不再把无参数误写成列域",
        "打印这份用法说明" in __doc__ and "lookup.py list" in __doc__)
