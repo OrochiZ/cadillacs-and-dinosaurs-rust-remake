@@ -6,7 +6,8 @@
 就能直接知道「这一帧 / 这一条在干嘛」，而不必去翻散在各卷的文字。
 
 用法（在任意目录）：
-    python re/specs/lookup.py                          列出所有可查的域
+    python re/specs/lookup.py                          打印这份用法说明
+    python re/specs/lookup.py list                     列出所有可查的域
     python re/specs/lookup.py frame_type              列出该域全部取值与意义
     python re/specs/lookup.py frame_type 4            查一个取值（支持 4 / 04 / 0x04 / 0xA）
     python re/specs/lookup.py drop_code 25            范围取值也能查（1-19 是武器 ...）
@@ -128,8 +129,10 @@ def cmd_list():
         rng = " 含范围" if any(re.fullmatch(r"\d+-\d+", k) for k in d["values"]) else ""
         print(f"  {name:22s} {d['label']}{flag}{ctx}{rng}")
         print(f"  {'':22s} scope={d['scope']}  条目 {len(d['values'])}  src={d['source']}")
-    print("\n用 `lookup.py <域> [取值]` 查；`lookup.py chain` 看 ANI->SPR->判定框；"
-          "`lookup.py spawn <记录>` 看一条生成脚本说什么。")
+    print("\n用 `lookup.py <域> [取值]` 查单值；喂字节解码：`frame` / `anim` / `comp` / "
+          "`box` / `spawn` / `script` / `attack`；串链：`chain` / `anim_id`。")
+    print("三个索引：`coverage`（按回源分组）/ `themes`（按玩法问题）/ "
+          "`legacy`（外推文九条判断各能查到什么、查不到什么）。")
 
 
 def cmd_domain(name: str):
@@ -1319,6 +1322,13 @@ def cmd_selftest():
        and "rank / aggression" in out and "五、一群敌人" not in out)
     out = capture(cmd_legacy, ["nope"])
     ck("legacy 未知 key 直说并给出可用列表", "没有这一条" in out and "beat" in out)
+
+    # 入口一致性：doc 与 list 都得跟上后来加的命令
+    ck("doc 不再把无参数误写成列域",
+       "打印这份用法说明" in __doc__ and "lookup.py list" in __doc__)
+    out = capture(cmd_list)
+    ck("list 末尾给出解码命令与三个索引",
+       all(x in out for x in ("attack", "script", "coverage", "themes", "legacy")))
 
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:
