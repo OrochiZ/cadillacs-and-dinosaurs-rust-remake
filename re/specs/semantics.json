@@ -603,6 +603,81 @@
         "10": { "meaning": "可打、实心挡路，但举不起来", "tag": "O", "alias": "0xA" },
         "12": { "meaning": "可打、实心挡路、可举起", "tag": "O", "alias": "0xC" }
       }
+    },
+
+    "sound_command": {
+      "label": "音效命令 0xFFxx 的特殊命令字（表 0x0796，sub < 12）",
+      "scope": "dino",
+      "source": "re/specs/sound/SPEC.md §5",
+      "note": "键写完整码（看到 0xFF06 就输入 0xFF06）。这不是音效编号，是让声音系统做一件事的命令。",
+      "values": {
+        "0xFF00": { "meaning": "全停：清音轨状态、复位所有 voice 与 ADPCM", "tag": "O" },
+        "0xFF01": { "meaning": "停所有 SFX 音轨", "tag": "O" },
+        "0xFF02": { "meaning": "停 C004 这一条 SFX 音轨", "tag": "O" },
+        "0xFF03": { "meaning": "清空 ADPCM 槽", "tag": "O" },
+        "0xFF04": { "meaning": "停 C004 这一个 ADPCM 槽", "tag": "O" },
+        "0xFF05": { "meaning": "停音乐", "tag": "O" },
+        "0xFF06": { "meaning": "音乐淡出：速度由参数给，0 取消；若已在淡出则忽略本次请求", "tag": "O" },
+        "0xFF07": { "meaning": "第二路淡出（另一组状态字），规则同 0xFF06", "tag": "O" },
+        "0xFF08": { "meaning": "设速度偏移", "tag": "O" },
+        "0xFF09": { "meaning": "设音高偏移", "tag": "O" },
+        "0xFF0A": { "meaning": "把 F041 置 FF", "tag": "O" },
+        "0xFF0B": { "meaning": "把 F041 清 0", "tag": "O" }
+      }
+    },
+    "sound_code": {
+      "label": "普通音效 / 音乐编号分段（非 0xFFxx；范围键用十进制写）",
+      "scope": "dino",
+      "source": "re/specs/sound/SPEC.md §5 末段、§14",
+      "note": "同一个编号空间里，落在哪一段就决定它是音乐还是音效；具体曲名在 D4e s1，不在这里。",
+      "values": {
+        "0-38": { "meaning": "音乐（0x00-0x26，头字节 h=0）", "tag": "O" },
+        "44-145": { "meaning": "音效（0x2C-0x91），优先级 3..0x0A", "tag": "O" },
+        "160-261": { "meaning": "音效（0xA0-0x105），优先级 3..0x0A", "tag": "O" }
+      }
+    },
+    "sound_header_type": {
+      "label": "声音头字节 h 的取值（决定这条记录怎么被演奏）",
+      "scope": "dino",
+      "source": "re/specs/sound/SPEC.md §5",
+      "note": "h 不是编号，是类型标签；音效那一族里 h 本身还兼任优先级。本 ROM 没有 ADPCM 头。",
+      "values": {
+        "0": { "meaning": "音乐：按 16 个 voice 的轨偏移起播", "tag": "O" },
+        "1-127": { "meaning": "音效，h 即优先级；只有压过当前占用 voice 的 SFX 才起播", "tag": "O" },
+        "128-255": { "meaning": "ADPCM 一次性播放（本 ROM 无此类头）", "tag": "O" }
+      }
+    },
+    "game_phase": {
+      "label": "关内阶段档位（G.$4D1，只在 game mode 0xC 里跑）",
+      "scope": "dino",
+      "source": "re/specs/flow/SPEC.md §4 G.$4D1 switch",
+      "note": "这是「一关怎么翻页」的三拍：等 Boss、等清场、进下一段。和顶层 game_mode 不是同一层。",
+      "values": {
+        "2": { "meaning": "等 Boss：Boss 被击败时置起，等它的状态到 4 后放慢速度、起 1800 帧计时，转 4", "tag": "O" },
+        "4": { "meaning": "等清场：清结算任务、置 G.$4E2、起 1800 帧计时（第 7 关 3600），转 6", "tag": "O" },
+        "6": { "meaning": "进下一关 / 区域：stage+1、area 0、回 mode 8；第 7 关改走结局", "tag": "O" }
+      }
     }
+  },
+  "coverage": {
+    "note": "按回源 SPEC 列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么不转。给压缩恢复后用，不当待办清单。",
+    "registered": [
+      { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id"] },
+      { "source": "notes/06-method.md §94.12–§94.16", "domains": ["wof_reaction", "wof_atk_field"] },
+      { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction"] },
+      { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant"] },
+      { "source": "re/specs/stage/SPEC.md", "domains": ["camera_mode"] },
+      { "source": "re/specs/flow/SPEC.md", "domains": ["game_mode", "game_phase"] },
+      { "source": "re/specs/sound/SPEC.md", "domains": ["sound_command", "sound_code", "sound_header_type"] },
+      { "source": "re/specs/CONTEXT.md", "domains": ["pool_tag"] }
+    ],
+    "not_registered": [
+      { "what": "伤害、帧数、距离、血量、得分、命中定格长度这类量", "why": "换大换小只改手感，不是『取值 → 抽象意义』；按 §94.3 那一刀归数据层，具体值回源 tables.txt" },
+      { "what": "ROM 字节表、图块编号、色板、composition 里的 code", "why": "用户边界：不复制 ROM 字节表；看不到 GFX 就不猜造型，只登记能推出的打击形状" },
+      { "what": "rank / aggression 逐档数值、invuln 帧数表、HP 表、掉落表逐行内容", "why": "是量、随机漂移或按角色索引的表，不是符号意义；逐项表值仍停在『举例、不展开』" },
+      { "what": "enemy SPEC §7.1 的 debug 状态名词表", "why": "SPEC 明写它只是开发者通用词汇，不是 class 2 的真实 +$06 编号表，转进来会批量制造错读" },
+      { "what": "状态字 / 字段里用途未明的项", "why": "已在对应域标 [U]，不从字段名猜；新增条目必须带 source" },
+      { "what": "位域与字段偏移域里的数字", "why": "那是位号或 +N 字节，不是游戏里读到的取值，按取值反查时要排除" }
+    ]
   }
 }

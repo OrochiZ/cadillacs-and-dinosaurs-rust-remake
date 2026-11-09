@@ -3,85 +3,58 @@
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 git 跟踪的耐久层。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
 
-## 本轮做了什么：记下 wof_cs 里「该做没做的」
+## 本轮做了什么：收口「覆盖索引」这一格
 
-**用户本轮要求**：`刚好你也可以记下wof_cs有哪些该做没做的`。这是顺带的一条明确交付，
-直接做、不询问。与主线（把两款游戏设计本意长期可恢复地分析清楚）的关系：
-这份是**取证边界**——谈 wof 设计时，先知道哪些 C# 侧证据不能用。
+**背景**：上一轮 Stop hook 后继续推进，已在 `re/specs/semantics.json` 加了 4 个域
+（`sound_command` / `sound_code` / `sound_header_type` / `game_phase`）和顶层 `coverage`，
+在 `re/specs/lookup.py` 加了 `cmd_coverage()` 与 dispatch；压缩打断在最后一步之前，
+没自测、没编译、没写回 DRAFT、没提交。本轮按开工机制复位后把它做完。
 
-开工核现场：`git status --short` 空、HEAD `57be9059`、无临时提交信息。
+开工核现场：`git log -8` 头 `3b5dd691`；`git status --short` 只有
+`M re/specs/lookup.py` / `M re/specs/semantics.json`；无 `R:\Temp\dino_commit_msg.txt`。
+回读两份文件，确认 43 个域、`coverage.registered` 已列全、`cmd_coverage()` 与
+`main()` dispatch 都在，缺的只是把新表与索引固化进 `--selftest`。
 
-### 现场核查（不凭旧摘要）
+### 本轮改动
 
-- `wof_cs/**` 在 dino rep 里 **Glob 无匹配**；`**/*.cs` 也无匹配。本仓库不含 C# 源码。
-- 回源定位：`DESIGN_DIFF_NOTES.md:6` 写明证据源是 `g:/wof/wt1/wof_cs/src/`。
-  实测该路径可读、`Get-ChildItem *.cs` = **100 个文件**。所以是**外部仓库**，本机只读可达。
-- wt1 自己有权威台账：`QUARANTINE.md`（1622 行 / 127 KB，标题自述「未闭合条目 36 条，全文」，
-  目录自动生成于 11-04、闭合即移除 ⇒ 数字不当现行结论）；`STATUS.md` 写明分工
-  `DRAFT.md` = 当前 TODO、`QUARANTINE.md` = 索引 + 近期条目、`docs/archive/` = 归档全文。
-- 全库 Grep 源码标记，发现混着两类，**这是本轮最要紧的方法问题**:
-  - 修复记录：「此前未移植 / 本轮已直译 / 由报警改为直译」——不是当前欠账；
-  - 当前缺口：运行期会触发的 `记录未移植…_无对应ASM` / `警报_无对应ASM` 空桩。
-  `_无对应ASM` 后缀本身是宿主补偿标记（按既有 §0 不写成 wof 机制），不等于欠账。
+- `re/specs/lookup.py`：
+  - 域数量断言从 `>= 39` 收紧到 `>= 43`；
+  - 新增 4 条覆盖索引断言（每个域都有回源分组、无已删域、无重复登记、
+    `cmd_coverage()` 输出含合计与「缺 0 / 多 0」）；
+  - 新增 5 条新表抽查（`0xFF06` 淡出、`0x30` 落音效段、声音头 5 即优先级、
+    关内阶段 4 = 等清场、`0xFFxx` 命令字不落进普通编号段）。
+- `re/specs/semantics.json`：本轮未再改；内容就是上一轮落盘的 43 域 + `coverage`。
 
-### 交付
+### 实跑验证
 
-- 新建 `notes/08-wof-cs-gaps.md`（第 8 卷，外挂的取证边界卷，**不进 §N 反查表**）：
-  权威台账指针 + 「先分清哪些不是欠账」+ 按玩法分五块（事件脚本/任务调度、玩家状态机/
-  角色与多人、打击逻辑/受击反应、怪物策略/敌人对象、宿主层），每块给源码锚点与
-  「对设计分析的影响」；末尾写边界。
-- `DESIGN_DIFF_NOTES.md` 卷清单加一行，并补一句「拿不准是原机行为还是 C# 没接完，先翻 08 卷」。
+- `python -X utf8 re/specs/lookup.py --selftest` → **42/42 通过**。
+- `python -X utf8 re/specs/lookup.py coverage` →
+  「合计 43 个域 / 306 条；索引缺 0 个域、多 0 个域」，8 个回源分组逐条列出。
+- `python -m py_compile re/specs/lookup.py` → OK；`__pycache__` 被忽略，未进工作区。
+- `git status --short` 仍只有那两个 M，编译没带出新文件。
 
-按玩法记下的确凿缺口（都回源核过当前时态）：
-- `0x0700` 协作式任务调度器 / TRAP3 / 用户栈暂未整体移植（`Cps1SystemCoroutineRuntime.cs:2591`）；
-  关卡命令空桩（`Cps1LevelScript.cs:1583`）、舞台档/子状态/ObjId/入场表项一批报警桩。
-- 魏延 / 黄忠骑马入口整段未移植且有界退化（`Cps1PlayerMulti.cs:249-268`）；赵云抓投
-  `0x1D142` 空桩（`Cps1PlayerZhaoyun1CA46.cs:60-66`）；state1/2/3 更新器未调用
-  （`Program.cs:1864`）；2P/3P 加入与多人位图 3/5/6/7 运行期不可达（QUARANTINE 第 155–157 笔）。
-- 受击反应入口三条指令仍未实现（`Cps1HitReaction124CA.cs:220`）；Actor27 受击分支、
-  Actor1C 子链、Actor19 D=02 未直译。
+### 边界
 
-### 自查订正（写盘前逐条回源）
+- **0 次 ROM 取证**；全部来自 rep 内 SPEC / 笔记的只读回源与离线脚本。
+- 不碰 `re/out/assets/` 产物层，不修 `check_docs.py` 因产物前缀报的假红，
+  不改 `CLAUDE.md` / `.gitignore` 的产物状态描述。
+- 不恢复「以 ROM 审 repo」框架；不把 `[I]` 写成 `[O]`；不从字段名猜意义。
+- 环境硬限制照旧：无 Rust 工具链、无 `dino.zip` / `re/rom` / `target` ⇒
+  编译、回归、MAME 对拍做不了，不是缺口；新脚本特意 ROM-free。
 
-- 初稿把 `Cps1Actor27Runtime.cs:19`「本层此前整层未移植」列进怪物策略欠账；
-  回源确认那是**症状链 / 修复动机**（解释 RNG 首差为何落在 f=8662），改列为「不是欠账」的例子，
-  同文件 `:30` 的「受击分支本类暂未移植」才是当前缺口。
-- 初稿把 `Cps1Actor18Runtime.cs:27`「宿主未实现 AI 时完全静止」当欠账；回源确认那是
-  **FBA 基线里该对象的实测表现**，`:528-538` 的占位协程是注释明写「本录像不可达、
-  刻意保留任务槽非空」的**有意降级**。怪物策略块据此重写，并说明证据比前几块薄。
-- `Cps1Actor16Runtime.cs:145` 的「251A ActFunc 未移植」也是实测症状，只保留 `:491`
-  的「未移植 ⇒ 显式报警」当当前桩。
-- 修掉 `::6828` 双冒号笔误。
-
-### 边界与验证
-
-- 这是**移植侧**欠账，不评 dino / wof 优劣，不推断 wof 原机缺机制，不把「笔记未登记」
-  写成「缺失」，不把已闭合的历史注释当当前缺口；QUARANTINE 闭合即移除，不抄会过期的数字。
-- **0 次 ROM 取证**；全部来自 `g:/wof/wt1/wof_cs/src/` 与 wt1 自身台账的只读核对；
-  **没有改动 wt1 仓库任何文件**。
-- `notes/08-wof-cs-gaps.md` / `DESIGN_DIFF_NOTES.md`：`CR=0 BOM=False`；
-  `DESIGN_DIFF_NOTES.md` 原有第 57/89/154 行超 2000 字节，本轮新增行 0 超长，属既存格式、不改。
-
-### 长期口径（仍在生效）
+### 长期口径（细则在耐久层，不在本文件展开）
 
 - `长时间自主推进` 仍是开放目标；局部提交、干净工作区、本轮收尾都**不算完成或缩小**。
-  Stop hook 是客户端自动重发催办，**不直读 goal 状态**；按「继续合理授权工作」直接做，不询问是否继续。
-- 不写「下一格 / 短期不再动笔」当收尾；提到方向就当轮把第一步做掉；不拿「你主动暂停」当收尾话头。
-- 交付一律**说人话**：人类理解中的游戏设计，不报内部编号、证伪流水账、校验数字当主体。
-- 产物层（`re/out/assets/`）无分析意义：不读日志、不铺分析、不修 `check_docs.py` 假红、
-  不改 `CLAUDE.md` / `.gitignore` 产物状态描述。收尾用 `git status` / `git diff --check` / `CR/BOM`。
-- 用户裁定：`dino载具是特殊关卡,没什么好看的` —— 载具换面已停；特殊关卡 / 专属演出 /
-  单个 Boss 那一段编排不构成通则；不再回查 `notes/02-mid.md` §32 / `notes/06-method.md` §85。
-- ROM 边界：ROM 主要为调查 data；仅在 `wof_cs` 写得**非常可疑**时才核实，本轮未触发。
-  不恢复「以 ROM 审 repo」框架，不把 `[I]` 写成 `[O]`。
-- 环境硬限制：无 Rust 工具链、无 `dino.zip`、无 `re/rom` / `target` ⇒ 编译、回归、
-  MAME 对拍做不了，不是缺口。
-- 写盘 LF 无 BOM；提交信息用 `git commit -F` 临时文件随后清理。
+  Stop hook 是客户端自动重发催办，**不直读 goal 状态**；按「继续合理授权工作」直接做。
+- 不写「下一格 / 短期不再动笔」当收尾；提到方向就当轮把第一步做掉。
+- 交付一律**说人话**：人类理解中的游戏设计，不报内部编号、校验数字当主体。
+- `dino载具是特殊关卡,没什么好看的` ⇒ 载具 / 特殊关卡 / 单个 Boss 那一段编排不构成通则。
+- 产物层无分析意义；ROM 主要服务于 data 调查，仅在 `wof_cs` 非常可疑时才核实。
+- 写盘 LF 无 BOM；提交信息走 `git commit -F` 临时文件随后清理。
+- 新增语义域必须带 source / scope / tag；`coverage.registered` 必须覆盖所有域；
+  离散编号不连成范围；位域 / 字段偏移域继续被 `collide` 排除。
 
-## 开工与收尾
+## 收尾
 
-- 开工：核现场 → Glob 确认 C# 不在本 rep → 回源定位外部路径 → Grep 缺口标记 →
-  读 QUARANTINE 目录与五处源码 → 写 08 卷 → 回源订正三处 → 挂卷清单。
-- 本会话已提交：`60d32087`、`39561bc0`、`c9d28ca1`、`57be9059`，每次临时信息已清理、工作区干净。
-- 本轮收尾：校验两份文件 `CR=0 BOM=False`、`git diff --check`、`git status --short`；
-  提交信息走 `git commit -F`，随后 `Remove-Item`，再复核干净工作区。
+- 校验三份文件 `CR=0 BOM=False`、新增行 `over2000=0`、`git diff --check`、
+  `git status --short`；`git commit -F` 后 `Remove-Item` 临时信息，再复核干净工作区。

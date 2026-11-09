@@ -23,6 +23,7 @@
     python re/specs/lookup.py find 攻击                按意义关键词反查
     python re/specs/lookup.py collide 4               只给一个取值，列出它在各域的所有意义
     python re/specs/lookup.py collide 0x1A            看同一编号在哪几张表里意思不同
+    python re/specs/lookup.py coverage                哪些表已转、哪些按纪律不转、为什么
     python re/specs/lookup.py --json frame_type 4     机器可读输出
     python re/specs/lookup.py --selftest              固化自测（不依赖 ROM）
 
@@ -510,6 +511,33 @@ def cmd_find(word: str):
     return 0
 
 
+def cmd_coverage():
+    """列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么。"""
+    cov = DB.get("coverage", {})
+    print("表数值 → 抽象意义：覆盖索引")
+    print("=" * 78)
+    print(cov.get("note", ""))
+    print("\n已登记（按回源分组）：")
+    for grp in cov.get("registered", []):
+        print(f"  {grp['source']}")
+        print(f"    {', '.join(grp['domains'])}")
+    print("\n按纪律没转的：")
+    for item in cov.get("not_registered", []):
+        print(f"  · {item['what']}")
+        print(f"    └ {item['why']}")
+    listed = {x for g in cov.get("registered", []) for x in g["domains"]}
+    missing = sorted(set(DOMAINS) - listed)
+    stale = sorted(listed - set(DOMAINS))
+    total = sum(len(d["values"]) for d in DOMAINS.values())
+    print(f"\n合计 {len(DOMAINS)} 个域 / {total} 条；"
+          f"索引缺 {len(missing)} 个域、多 {len(stale)} 个域。")
+    if missing:
+        print("  缺（新增域忘了登记来源）：" + ", ".join(missing))
+    if stale:
+        print("  多（缓存里已删）：" + ", ".join(stale))
+    return 0
+
+
 def cmd_collide(token: str):
     """只给一个取值，列出它在各域的所有意义 —— 确认「这个数得先知道谁在读」。"""
     print(f"取值「{token}」在已登记域里的所有意义：")
@@ -566,7 +594,8 @@ def cmd_selftest():
             if not v.get("meaning") or not v.get("tag") or v["tag"] not in ("O", "I", "U"):
                 bad.append(f"{name}.{k} 缺 meaning/tag")
     ck("每个域都有 scope/source，每条都有 meaning/tag", not bad, "; ".join(bad))
-    ck("域数量 >= 39（地面/跑/空中三张状态表都进了缓存）", len(DOMAINS) >= 39, str(len(DOMAINS)))
+    ck("域数量 >= 43（声音命令 / 编号分段 / 关内阶段四张表也进了缓存）",
+       len(DOMAINS) >= 43, str(len(DOMAINS)))
     for dn in ("player_ground_state", "player_run_state", "player_air_state"):
         ck(f"状态表 {dn} 已登记", dn in DOMAINS)
 
@@ -643,6 +672,32 @@ def cmd_selftest():
     ck("debug 词汇表不能当编号表的警告已进缓存",
        "不按那张表" in DOMAINS["enemy_ai_state"]["note"])
 
+    # 覆盖索引：每个域都必须登记回源分组，索引既不漏也不多
+    cov = DB.get("coverage", {})
+    listed = [x for g in cov.get("registered", []) for x in g["domains"]]
+    absent = sorted(set(DOMAINS) - set(listed))
+    stale = sorted(set(listed) - set(DOMAINS))
+    ck("coverage.registered 覆盖所有域", not absent, ", ".join(absent))
+    ck("coverage 没有指向已删除的域", not stale, ", ".join(stale))
+    ck("coverage 没有重复登记同一个域", len(listed) == len(set(listed)))
+    out = capture(cmd_coverage)
+    ck("coverage 命令给出合计与一致性",
+       "表数值 → 抽象意义：覆盖索引" in out
+       and f"合计 {len(DOMAINS)} 个域" in out
+       and "缺 0 个域、多 0 个域" in out)
+
+    # 本轮转进来的四张表：抽查「取值 → 抽象意义」
+    _, v = match_value(DOMAINS["sound_command"], "0xFF06")
+    ck("声音命令 0xFF06 → 音乐淡出", bool(v) and "淡出" in v["meaning"])
+    _, v = match_value(DOMAINS["sound_code"], "48")
+    ck("声音编号 0x30 落在音效段", bool(v) and "音效" in v["meaning"])
+    _, v = match_value(DOMAINS["sound_header_type"], "5")
+    ck("声音头 5 → 音效且 h 即优先级", bool(v) and "优先级" in v["meaning"])
+    _, v = match_value(DOMAINS["game_phase"], "4")
+    ck("关内阶段 4 → 等清场", bool(v) and "清场" in v["meaning"])
+    ck("0xFFxx 命令字没有混进普通编号段",
+       match_value(DOMAINS["sound_code"], "0xFF06")[1] is None)
+
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:
         print(f"  {'PASS' if good else 'FAIL'}  {label}" + (f"   [{detail}]" if not good and detail else ""))
@@ -667,6 +722,8 @@ def main(argv: list[str]) -> int:
         return cmd_find(" ".join(rest)) if rest else (print("用法：find <词>") or 1)
     if cmd == "collide":
         return cmd_collide(rest[0]) if rest else (print("用法：collide <取值>") or 1)
+    if cmd == "coverage":
+        return cmd_coverage()
     if cmd == "flags":
         return cmd_flags(rest[0], rest[1]) if len(rest) >= 2 else (print("用法：flags <位域> <值>") or 1)
     if cmd == "attr":
