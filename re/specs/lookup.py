@@ -777,6 +777,9 @@ ANI（帧记录 / 动画表）        SPR（composition）              判定�
 把身份 / 空间 / 后果合起来说，还会拦住「把攻击记录挂到非攻击帧上」这种错配；
 再接一段 `comp <bytes...>`，SPR 那一环的零件数与摆位也并排进来，
 画面和判定是两层数据就看得见了。
+整段多帧用 `lookup.py anim <bytes...>` 翻成时间线：每拍身份 / 时长、
+哪几拍真正生效、哪几拍自己挨不了打，以及末帧后的 link word 解成相对
+偏移（回环到本段还是接下一段）——「打完往哪走」也能不靠 GFX 读出来。
 """)
     return 0
 
@@ -1053,6 +1056,7 @@ def cmd_anim(tokens: list[str]):
     print("=" * 78)
     total, seen_last, identities = 0, False, []
     live_normal = special_frames = closed_attack = invuln = 0
+    link_desc = ""
     for i, off in enumerate(range(0, len(b) - stride + 1, stride)):
         rec = b[off:off + stride]
         kind, timer = rec[6], rec[7]
@@ -1082,7 +1086,36 @@ def cmd_anim(tokens: list[str]):
               + ("   → " + "；".join(marks) if marks else ""))
         if last:
             seen_last = True
-            print("       末帧后紧跟的 i16 是 link word（不是帧记录），切分到此为止")
+            link_off = off + stride
+            _, lk = match_value(DOMAINS["frame_timer"], "bit7=1")
+            print(f"       末帧标志：{say(lk)}")
+            if link_off + 2 <= len(b):
+                link = s16(b, link_off)
+                target = link_off + link
+                print(f"       link word @+{link_off:04X} = 0x{u16(b, link_off):04X}"
+                      f"（i16 {link:+d}）[O]：下一帧 = link word 自身地址 + link")
+                print(f"       → addr_of_link + link = 相对段首 {target:+d} 字节")
+                if 0 <= target < link_off and target % stride == 0:
+                    link_desc = f"回环到本段第 {target // stride} 帧"
+                    print(f"       → {link_desc} [I]：同一套动作再来一拍"
+                          "（待机呼吸 / 走跑循环 / 连段回环）")
+                elif target < 0 or target >= len(b):
+                    link_desc = "跳到本段之外"
+                    print("       → 跳到本段之外 [I]：接另一段动画（出拳后回待机之类）；"
+                          "具体是哪一段要 ANI 表基址，离线字节串给不出")
+                else:
+                    link_desc = "落在本段内但非帧起点"
+                    print("       → 落在本段内但不是帧起点 [I]：按字节偏移指向别的记录，"
+                          "别当成又一条帧记录切分")
+                print("       SPEC §3.1 [O]：tick 例程跟随 link 时返回 carry=1，"
+                      "等于告诉主状态机『这一段演完了』，下一拍翻页归它")
+                print("       link 是相对 link word 自身的有符号偏移；"
+                      "没有 ANI 段在 ROM 里的绝对基址，这里只给相对位置")
+            else:
+                link_desc = "未给 link word"
+                print("       末帧后应紧跟 i16 link word，但这串字节没给够 2 字节，"
+                      "去向读不出来")
+            print("       切分到此为止：link word 不是帧记录")
             break
     print("=" * 78)
     print(f"  这一段共 {total} tick；身份序列：{' → '.join(identities)}")
@@ -1099,8 +1132,11 @@ def cmd_anim(tokens: list[str]):
         print(f"  其中 {invuln} 帧身体盒关着：这几拍自己挨不了打"
               "（dino 侧 [O]，命中循环要求防守方 +$48 != 0）")
     print("  其余帧是起势、受击、倒地、抓投姿势或被抓，不发起攻击结算")
-    print("  段落" + ("在末帧结束，去向写在 link word 里（回环 / 接下一招）" if seen_last
-                   else "还没读到末帧，后面还有帧记录"))
+    if seen_last:
+        print(f"  段落在末帧结束，去向：{link_desc or '写在 link word 里'}"
+              "（回环 / 接下一招，逐字节解码见上面）")
+    else:
+        print("  段落还没读到末帧，后面还有帧记录")
     return 0
 
 
@@ -1797,6 +1833,18 @@ def cmd_selftest():
     ck("frame 单帧里身体盒取 0 也说『自己不可被命中』，措辞不含混",
        "没有身体盒：这一帧自己不可被命中 [O]" in
        capture(cmd_frame, ["10", "0A01", "8000", "0100", "0403", "0002"]))
+    ol = capture(cmd_anim, _ANIM_BEAT)
+    ck("ANI 时间线把末帧后的 link word 解成相对偏移，并说清去向是推断",
+       "i16 +17" in ol and "addr_of_link + link = 相对段首" in ol
+       and "跳到本段之外 [I]" in ol and "carry=1" in ol
+       and "相对 link word 自身" in ol and "去向：跳到本段之外" in ol)
+    ck("末帧标志的意义取自缓存并带 [O] 标签",
+       "末帧标志：" in ol and "[O 观察]" in ol and "link word" in ol)
+    ob = capture(cmd_anim, _ANIM_BEAT[:-1] + ["FFCE"])
+    ck("link word 指回本段帧起点时读成回环",
+       "回环到本段第 0 帧 [I]" in ob and "i16 -50" in ob)
+    ck("没给 link word 字节时不硬猜去向",
+       "没给够 2 字节" in capture(cmd_anim, _ANIM_BEAT[:-1]))
     out = capture(cmd_box, ["-1", "10", "-68", "59", "29", "42"])
     ck("box 六个数能复算出打击形状",
        "X 区间 [-68, -9]" in out and "Y 区间 [29, 71]" in out and "Z 区间 [-1, 9]" in out)
