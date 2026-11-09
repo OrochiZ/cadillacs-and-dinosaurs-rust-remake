@@ -900,7 +900,7 @@ def cmd_legacy(tokens: list[str]):
         print(f"  能查：{x['can_check']}")
         print(f"  查不到（别当证据）：{x['cannot_check']}")
         if x.get("source"):
-            print(f"  另有 [O] 回源（缓存没转成域，看这里）：{x['source']}")
+            print(f"  另有 [O] 回源（结构观察与边界看这里）：{x['source']}")
         print(f"  可查域（{len(x['domains'])}）：{', '.join(x['domains'])}")
         print("    直接翻：" + " / ".join(f"lookup.py {d}" for d in x["domains"][:3]))
         if x.get("probe"):
@@ -1351,6 +1351,33 @@ def cmd_selftest():
     out = capture(cmd_legacy, ["crowd"])
     ck("legacy 单条视图打印 [O] 回源去哪看",
        "另有 [O] 回源" in out and "enemy.rs" in out)
+
+    # wof +0x62 一字节三职：从「有 [O] 回源但没转成域」变成真能喂值查
+    d62 = DOMAINS["wof_shake_left"]
+    ck("wof +0x62 域带齐 source / scope 与三职、同名分辨说明",
+       d62["source"] and "wof" in d62["scope"]
+       and all(x in d62["note"] for x in ("硬直门", "闪白", "群体命中锁", "A5-0x62")))
+    out = capture(cmd_lookup, "wof_shake_left", "3", False)
+    ck("查 +0x62 = 3 能翻出生命周期与群体命中解锁",
+       "3 帧" in out and "群体命中锁" in out and "解锁" in out)
+    _, v = match_value(d62, "0")
+    ck("+0x62 = 0 是门关上、不是『没有硬直』", bool(v) and "解锁" in v["meaning"])
+    _, v = match_value(d62, "nonzero")
+    ck("+0x62 非零态每帧 -1 跳过本帧，数值只是还剩几帧",
+       bool(v) and "每帧" in v["meaning"] and "rts" in v["meaning"])
+    ck("+0x62 的 3 明说『能打几个』是注释读法、不是逐帧实测",
+       "不是逐帧实测" in d62["values"]["3"]["meaning"])
+    out = capture(cmd_collide, "3")
+    ck("collide 3 能列出 wof_shake_left 且不误答字段偏移",
+       "wof_shake_left" in out
+       and not any(l.strip().startswith(n + " ")
+                   for l in out.splitlines() if "->" in l
+                   for n in OFFSET_KEY_DOMAINS))
+    ck("legacy feel 现在把 +0x62 写进可查域与能查说明",
+       any(it["key"] == "feel" and "wof_shake_left" in it["domains"]
+           and "+0x62" in it["can_check"] for it in items))
+    out = capture(cmd_lookup, "attack_field", "+3", False)
+    ck("换掉 feel 的 probe 后，八字段攻击记录仍查得到命中定格", "命中定格" in out)
 
     # 取值反查的排除纪律：位域靠 bitfield 标志、字段偏移靠列表，两者合起来才算齐
     should_skip = {n for n, d in DOMAINS.items()
