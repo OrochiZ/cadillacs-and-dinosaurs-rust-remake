@@ -1387,17 +1387,46 @@ def cmd_selftest():
            if not x.get("what") or not x.get("why")]
     ck("按纪律不转的每条都写了 what/why", not bad, ", ".join(bad))
     path_re = r"[A-Za-z0-9_./-]+\.(?:md|rs|py|txt)"
-    bad = []
-    for name, dom in DOMAINS.items():
-        for p in re.findall(path_re, dom.get("source", "")):
-            if p.startswith(("dino-assets/", "dino-game/", "dino-extract/")):
-                bad.append(f"{name}:{p}")
-    for i, grp in enumerate(DB["coverage"]["registered"]):
-        for p in re.findall(path_re, grp.get("source", "")):
-            if p.startswith(("dino-assets/", "dino-game/", "dino-extract/")):
-                bad.append(f"coverage{i}:{p}")
-    ck("回源路径都从仓库根写全，不留 dino-assets/ 这类裸前缀",
+    repo_root = HERE.parent.parent
+    src_strings = [(name, dom.get("source", "")) for name, dom in DOMAINS.items()]
+    src_strings += [(f"coverage{i}", g.get("source", ""))
+                    for i, g in enumerate(DB["coverage"]["registered"])]
+    src_strings += [(f"not_registered{i}", x.get("source", ""))
+                    for i, x in enumerate(DB["coverage"]["not_registered"])]
+    src_strings += [("legacy." + x["key"], x.get("source", ""))
+                    for x in DB["legacy"]["list"]]
+    bad = [f"{tag}:{p}" for tag, s in src_strings
+           for p in re.findall(path_re, s) if not (repo_root / p).exists()]
+    ck("回源路径都从仓库根写全、且文件真实存在（不留裸文件名或裸前缀）",
        not bad, ", ".join(bad))
+    bad_line = []
+    for tag, s in src_strings:
+        for m in re.finditer(path_re, s):
+            f = repo_root / m.group(0)
+            if not f.exists():
+                continue
+            lm = re.match(r":(\d+)(?:-(\d+))?", s[m.end():m.end() + 24])
+            if not lm:
+                continue
+            nlines = len(f.read_text(encoding="utf-8", errors="replace").splitlines())
+            hi = int(lm.group(2) or lm.group(1))
+            if int(lm.group(1)) > nlines or hi > nlines:
+                bad_line.append(f"{tag}:{m.group(0)}{lm.group(0)}(文件 {nlines} 行)")
+    ck("带行号的回源引用没超出文件实际行数", not bad_line, ", ".join(bad_line))
+    prose = [(f"notreg{i}.what", x.get("what", ""))
+             for i, x in enumerate(DB["coverage"]["not_registered"])]
+    prose += [(f"notreg{i}.why", x.get("why", ""))
+              for i, x in enumerate(DB["coverage"]["not_registered"])]
+    prose += [("legacy." + x["key"] + "." + field, x.get(field, ""))
+              for x in DB["legacy"]["list"]
+              for field in ("can_check", "cannot_check")]
+    # 命令示例（lookup.py collide 4）与通配符（re/specs/*/HANDOFF.md）不是回源路径
+    prose_skip = {"lookup.py", "/HANDOFF.md"}
+    bad_prose = [f"{tag}:{p}" for tag, s in prose
+                 for p in re.findall(path_re, s)
+                 if p not in prose_skip and not (repo_root / p).exists()]
+    ck("边界说明里提到的回源文件也写全（命令示例与通配符除外）",
+       not bad_prose, ", ".join(bad_prose))
     ck("域数量 >= 57（wof 受击手册选择、玩家输入契约也进了缓存）",
        len(DOMAINS) >= 57, str(len(DOMAINS)))
     for dn in ("player_ground_state", "player_run_state", "player_air_state"):
