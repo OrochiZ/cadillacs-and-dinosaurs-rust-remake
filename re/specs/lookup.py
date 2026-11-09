@@ -28,7 +28,11 @@
     python re/specs/lookup.py wof_attack ours 00 00 00 00 0A 00 03 00 56 00 00 00 06 0E 03 00
                                                       16 字节 wof 参数行 -> 这一招一行在说什么
     python re/specs/lookup.py wof_attack enemy ...   敌→玩家那张表布局不同，字段含义看命中链
-    python re/specs/lookup.py chain                   ANI -> SPR -> 判定框 能推断什么
+    python re/specs/lookup.py chain                   ANI -> SPR -> 判定框 能推断什么（说明版）
+    python re/specs/lookup.py moment 10 0A01 8000 0100 0405 1A02
+                                                      把同一帧的几份数据合起来说「在干嘛」
+    python re/specs/lookup.py moment 10 ... attack 0A 01 00 09 03 14 00 00
+                                                      再挂上这一拳打完的后果
     python re/specs/lookup.py find 攻击                按意义关键词反查
     python re/specs/lookup.py collide 4               只给一个取值，列出它在各域的所有意义
     python re/specs/lookup.py collide 0x1A            看同一编号在哪几张表里意思不同
@@ -133,7 +137,8 @@ def cmd_list():
         print(f"  {name:22s} {d['label']}{flag}{ctx}{rng}")
         print(f"  {'':22s} scope={d['scope']}  条目 {len(d['values'])}  src={d['source']}")
     print("\n用 `lookup.py <域> [取值]` 查单值；喂字节解码：`frame` / `anim` / `comp` / "
-          "`box` / `spawn` / `script` / `attack` / `wof_attack`；串链：`chain` / `anim_id`。")
+          "`box` / `spawn` / `script` / `attack` / `wof_attack`；"
+          "串链：`chain`（说明）/ `moment`（喂同一帧的数据合成一句）/ `anim_id`。")
     print("三个索引：`coverage`（按回源分组）/ `themes`（按玩法问题）/ "
           "`legacy`（外推文九条判断各能查到什么、查不到什么）。")
 
@@ -653,7 +658,140 @@ ANI（帧记录 / 动画表）        SPR（composition）              判定�
   且「0」在 dino 是关盒、在 wof 是合法表项 —— 不先查语义就会把打击判读反。
   同理，受击编号 0x1A 在玩家侧是『背后轻击』、在敌人侧是『起身 / 眩晕』，
   编号本身不说话，先得知道是谁在读。
+
+上面是说明版。真拿到一段帧记录时不必自己拼四条命令：
+  `lookup.py moment 10 0A01 8000 0100 0405 1A02 attack 0A 01 00 09 03 14 00 00`
+把身份 / 空间 / 后果合起来说，还会拦住「把攻击记录挂到非攻击帧上」这种错配。
 """)
+    return 0
+
+
+def cmd_moment(tokens: list[str]):
+    """把同一帧的帧记录 + 可选攻击记录一次喂进来，合出「这一帧在干嘛」。
+
+    chain 是串链的说明版，这里是可跑版；还多一层 chain 讲不了的判断：
+    攻击记录不是任何时候都能往这一帧上挂，得先看帧类型与攻击盒。
+    """
+    usage = (
+        "用法：moment [10|12] <帧记录 hex...> [attack <8 bytes...>]\n"
+        "      例：moment 10 0A01 8000 0100 0405 1A02\n"
+        "          moment 10 0A01 8000 0100 0405 1A02 attack 0A 01 00 09 03 14 00 00\n"
+        "      帧记录给身份 / 一拍多长 / 盒索引；attack 给打中之后的后果。"
+    )
+    if not tokens:
+        print(usage)
+        return 1
+    atk_tokens: list[str] = []
+    if "attack" in tokens:
+        i = tokens.index("attack")
+        atk_tokens = tokens[i + 1:]
+        tokens = tokens[:i]
+    stride = None
+    if tokens and tokens[0] in ("10", "12"):
+        stride = int(tokens[0])
+        tokens = tokens[1:]
+    raw = "".join(t.replace("0x", "").replace(" ", "") for t in tokens)
+    try:
+        b = bytes.fromhex(raw)
+    except ValueError as e:
+        print(f"帧记录十六进制读不出：{e}")
+        return 1
+    if stride is None:
+        stride = 12 if len(b) == 12 else 10
+    if len(b) < 10 or (stride == 12 and len(b) < 12):
+        print(f"帧记录字节不够：拿到 {len(b)}，{stride} 字节格式需要 {stride}")
+        return 1
+    b = b[:stride]
+    rec = None
+    if atk_tokens:
+        araw = "".join(t.replace("0x", "").replace(" ", "") for t in atk_tokens)
+        try:
+            ab = bytes.fromhex(araw)
+        except ValueError as e:
+            print(f"攻击记录十六进制读不出：{e}")
+            return 1
+        if len(ab) < 8:
+            print(f"攻击记录字节不够：拿到 {len(ab)}，需要 8")
+            return 1
+        rec = ab[:8]
+
+    w0, w1 = u16(b, 0), u16(b, 2)
+    kind, timer, body, atk = b[6], b[7], b[8], b[9]
+    dur, last = timer & 0x7F, bool(timer & 0x80)
+    _, fv = match_value(DOMAINS["frame_type"], str(kind))
+    # 按 frame_type 域：4 攻击生效、6 特殊 / 必杀，只有这两类自带伤害攻击盒。
+    # 0 / 2 的 +$49 是抓投探测，8 / 10 / 12 / 14 根本不发起攻击。
+    attack_kinds, grab_kinds = (4, 6), (0, 2)
+    live = kind in attack_kinds and atk != 0
+
+    print("这一帧合起来在干嘛（帧记录 + SPR 指向 + 判定框 + 后果，一次喂进去）")
+    print("=" * 78)
+    print(f"帧记录 {stride} 字节：{' '.join(f'{x:02X}' for x in b)}")
+    print("-" * 78)
+    print(f"1) 身份 / 这一拍：{fv['meaning'] if fv else '帧类型未登记，不猜'}；"
+          f"时长 {256 if dur == 0 else dur} tick，"
+          + ("末帧，后面接一记 link word 决定回环还是接下一招" if last else "顺序走到下一帧"))
+    print(f"2) SPR 环：w0=0x{w0:04X} 指向 composition（几块图、各自贴哪、翻转与调色板）；"
+          "这一环只管画成什么样，不参与打不打得中")
+    if w0 & 0x8000:
+        print("   w0 bit15=1：复合帧，w1 是部件表的自相对偏移，不是叠加层")
+    elif w1 & 0x8000:
+        print("   w1 bit15=1：这一帧没有叠加层")
+    else:
+        print(f"   w1=0x{w1:04X} 是第二组 composition 索引，画在主体之后 / 下方")
+    print("3) 判定框环：能不能打中由 +$49 攻击盒与 +$48 身体盒决定，跟画面不是一层数据")
+    for label, idx in (("攻击盒", atk), ("身体盒", body)):
+        if idx == 0:
+            print(f"   {label} 关盒（dino 里 0 就是关；wof 里 0 是合法表项，别串）")
+            continue
+        _, bv = match_value(DOMAINS["jack_box_example"], str(idx))
+        if bv:
+            print(f"   {label} #0x{idx:02X} 若属 Jack：{bv['meaning']}")
+        else:
+            print(f"   {label} #0x{idx:02X}：索引有效，但本机只登记 Jack 示例盒；"
+                  "别的角色 / 敌人按自己的盒表取同一索引，形状不同，不套")
+    print("   前提：Jack 示例盒只见于 re/specs/anim/SPEC.md §4.1，不是通用规则")
+    print("4) 后果 / 合起来才看得出的那条：")
+    if rec is not None and not live:
+        if kind in grab_kinds:
+            why = ("这一帧的 +$49 是抓投探测盒，命中后双方进的是『抓住 / 被抓』，"
+                   "不走扣血那条链")
+        elif kind in (8, 10, 12, 14):
+            why = "这一帧是受击 / 倒地 / 抓姿势，命中循环本就跳过它，没有发起攻击这一说"
+        elif kind in attack_kinds and atk == 0:
+            why = "帧类型是攻击帧，但攻击盒关着，打不着人"
+        else:
+            why = "帧类型没登记成攻击生效帧"
+        print(f"   注意：喂了攻击记录，但这一帧不是能结算伤害的攻击帧（kind={kind}）：{why}")
+        print("   AttackRecord 不该在这一拍结算，别把两份数据硬接成同一帧。")
+        print("   帧记录不写伤害；+$58 指到哪条 AttackRecord，是状态代码按招式挂上去的，"
+              "什么时候挂、挂给谁，不归这 10/12 字节管")
+    elif rec is not None and live:
+        dmg, stun, react, stop = rec[0], rec[1], rec[2], rec[3]
+        print(f"   这一帧能打人，攻击记录也挂上了：扣 {dmg} 血、削 {stun} 点韧性、"
+              f"双方顿 {stop} 帧、反应 {react} 只是挨打者的第一张门票")
+        print("   「够得着谁」写在盒表里，「打中之后多疼」写在另一条 8 字节里；"
+              "两本册子要同一拍才对上，没有哪个数自己说出整拳")
+        for k, v in DOMAINS["jack_attack_record"]["values"].items():
+            if v.get("bytes", "").lower() == rec.hex():
+                print(f"   对照 Jack 连段：这条是 $58 = {k}，{v['meaning']}")
+                break
+    elif rec is None and live:
+        print("   这一帧能打人，但打中之后扣多少血不在这 10/12 字节里；"
+              "帧记录不带伤害，+$58 指到 AttackRecord 才补上后果")
+        print("   要接后果再喂 `attack <8 bytes>`（或 `anim_id 1 4` 按编号带出）")
+    else:
+        print("   这一帧关盒 / 不是攻击生效帧，谈不上打中；"
+              "`box` 与 `attack` 都不该往这一帧上套")
+    if body != 0 and atk != 0:
+        print("   还有一条只有并排看才成立：两个盒同时非空，能打人的这一帧自己仍可被反击——"
+              "攻防同帧，不另起一个无敌开关")
+    print("-" * 78)
+    print("看不到 GFX 仍能知道：身份、这一拍多长、打哪儿够多远、这一拳多疼、"
+          "自己会不会被打、打完往哪走")
+    print("看不到 GFX 无法知道：这一帧画的是拳头还是刀光、色板长相 —— 那归 composition/code")
+    print("chain 是这一串的说明版，moment 是喂数据的可跑版。"
+          "wof 半边不是 8 字节 AttackRecord，用 `wof_attack <ours|enemy> <16 bytes>`")
     return 0
 
 
@@ -1379,6 +1517,40 @@ def cmd_selftest():
     out = capture(cmd_chain)
     ck("chain 把四个环节串起来并指向新命令",
        "attack 0A 01 00 09 03 14 00 00" in out and "这一拳的后果" in out)
+    ck("chain 的说明版指向可跑的 moment",
+       "lookup.py moment" in out and "错配" in out)
+
+    # moment：同一帧的几份数据合成一句，且拦住「攻击记录挂到非攻击帧」
+    frame = ["10", "0A01", "8000", "0100", "0405", "1A02"]
+    rec = ["0A", "01", "00", "09", "03", "14", "00", "00"]
+    ck("moment 不给参数会给用法", "用法：moment" in capture(cmd_moment, []))
+    out = capture(cmd_moment, frame)
+    ck("只喂帧记录：说清后果不在帧里、指出怎么补",
+       "帧记录不带伤害" in out and "attack <8 bytes>" in out
+       and "身份" in out and "判定框环" in out)
+    ck("SPR 环与判定框环分开：画面不决定打不打得中",
+       "不参与打不打得中" in out and "跟画面不是一层数据" in out)
+    out = capture(cmd_moment, frame + ["attack"] + rec)
+    ck("挂上攻击记录：身份 / 空间 / 后果合起来，接得到 Jack 连段",
+       "扣 10 血" in out and "两本册子" in out and "$58 = 0" in out
+       and "攻防同帧" in out)
+    dead = ["10", "0A01", "8000", "0100", "0005", "1A02"]
+    out = capture(cmd_moment, dead + ["attack"] + rec)
+    ck("抓投探测帧挂攻击记录会被拦住，并说清走的是抓住 / 被抓那条链",
+       "不该在这一拍结算" in out and "不归这 10/12 字节管" in out
+       and "抓投探测盒" in out and "扣 10 血" not in out)
+    special = ["10", "0A01", "8000", "0100", "0605", "1A02"]
+    out = capture(cmd_moment, special + ["attack"] + rec)
+    ck("特殊 / 必杀帧（kind 6）也算攻击帧，不被误判成错配",
+       "这一帧能打人" in out and "不该在这一拍结算" not in out)
+    ck("攻击帧判据有出处：frame_type 6 登记成特殊 / 必杀攻击",
+       "攻击" in DOMAINS["frame_type"]["values"]["6"]["meaning"])
+    ck("盒索引按 SPEC 写成十六进制，对得上 0x1A",
+       "身体盒 #0x1A" in capture(cmd_moment, frame))
+    ck("攻击记录字节不够会直说",
+       "攻击记录字节不够" in capture(cmd_moment, frame + ["attack", "0A", "01"]))
+    ck("doc 与 list 都跟上 moment",
+       "lookup.py moment" in __doc__ and "moment" in capture(cmd_list))
 
     # wof 16 字节参数行：与 dino attack 对称的「喂字节」入口
     ours = ["00", "00", "00", "00", "0A", "00", "03", "00",
@@ -1597,6 +1769,8 @@ def main(argv: list[str]) -> int:
         return cmd_list()
     if cmd == "chain":
         return cmd_chain()
+    if cmd == "moment":
+        return cmd_moment(rest)
     if cmd == "find":
         return cmd_find(" ".join(rest)) if rest else (print("用法：find <词>") or 1)
     if cmd == "collide":
