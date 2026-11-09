@@ -1484,6 +1484,30 @@ def cmd_selftest():
                  if p not in prose_skip and not (repo_root / p).exists()]
     ck("边界说明里提到的回源文件也写全（命令示例与通配符除外）",
        not bad_prose, ", ".join(bad_prose))
+    sect_titles = set()
+    for md in repo_root.rglob("*.md"):
+        if ".git" in md.parts or "out" in md.parts:
+            continue
+        for line in md.read_text(encoding="utf-8", errors="replace").splitlines():
+            m = re.match(r"^#{1,6}\s+§?(\d+(?:\.\d+)?)\b", line.strip())
+            if m:
+                sect_titles.add(m.group(1))
+
+    def all_strings(x):
+        if isinstance(x, str):
+            yield x
+        elif isinstance(x, dict):
+            for v in x.values():
+                yield from all_strings(v)
+        elif isinstance(x, list):
+            for v in x:
+                yield from all_strings(v)
+
+    sect_refs = {m.group(1) for s in all_strings(DB)
+                 for m in re.finditer(r"§(\d+(?:\.\d+)?)", s)}
+    bad_sect = sorted(n for n in sect_refs if n not in sect_titles)
+    ck("缓存引用的章节号也能在全库 md 里翻到对应标题",
+       not bad_sect, ", ".join(bad_sect))
     ck("域数量 >= 57（wof 受击手册选择、玩家输入契约也进了缓存）",
        len(DOMAINS) >= 57, str(len(DOMAINS)))
     for dn in ("player_ground_state", "player_run_state", "player_air_state"):

@@ -208,7 +208,7 @@
     "wave_terminator": {
       "label": "波次 / 分组记录的收尾值",
       "scope": "dino",
-      "source": "re/specs/enemy/SPEC.md §8.2；notes/02-mid.md §28",
+      "source": "re/specs/enemy/SPEC.md §8.2；notes/02-mid.md §28.1–§28.7（同屏预算与波次编排；该卷这节只分子节、没有单独的『28』标题）",
       "values": {
         "negative": { "meaning": "首字为负（如 0x9FFF）= 分组结束标记；没有另写 end marker", "tag": "O" },
         "end&0xE": { "meaning": "收尾值低位编码『怎么收』（给 GO / 换区 / 通关）", "tag": "O" }
