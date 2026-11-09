@@ -808,8 +808,11 @@ ANI（帧记录 / 动画表）        SPR（composition）              判定�
 再接一段 `comp <bytes...>`，SPR 那一环的零件数与摆位也并排进来，
 画面和判定是两层数据就看得见了。
 整段多帧用 `lookup.py anim <bytes...>` 翻成时间线：每拍身份 / 时长、
-哪几拍真正生效、哪几拍自己挨不了打，以及末帧后的 link word 解成相对
-偏移（回环到本段还是接下一段）——「打完往哪走」也能不靠 GFX 读出来。
+哪几拍真正生效、哪几拍自己挨不了打，两个盒索引合起来的四种拍子各占
+几拍、各占多少时间，以及末帧后的 link word 解成相对偏移（回环到本段
+还是接下一段）——「打完往哪走」也能不靠 GFX 读出来。
+所以 moment 管「这一帧在干嘛」，anim 管「这一段怎么排」，别混；
+单帧没给末帧后那 2 字节，就不要从 bit7 硬猜去向。
 """)
     return 0
 
@@ -998,8 +1001,11 @@ def cmd_moment(tokens: list[str]):
               "打中多疼归攻击记录 —— 判定不跟着画面走，也没有谁替全场把整拳写死")
     print("-" * 78)
     print("看不到 GFX 仍能知道：身份、这一拍多长、打哪儿够多远、这一拳多疼、"
-          "自己会不会被打、打完往哪走")
+          "自己会不会被打；若是末帧，还知道后面该有一记 link word 决定去向")
     print("看不到 GFX 无法知道：这一帧画的是拳头还是刀光、色板长相 —— 那归 composition/code")
+    print("「打完往哪走」不在这条单帧命令里：用 `anim <bytes...>` 喂整段，"
+          "末帧后那 2 字节 link word 才解得成回环还是接下一段；"
+          "单帧只看见 bit7，没给那 2 字节就别硬猜去向")
     print("chain 是这一串的说明版，moment 是喂数据的可跑版。"
           "wof 半边不是 8 字节 AttackRecord，用 `wof_attack <ours|enemy> <16 bytes>`")
     return 0
@@ -2176,6 +2182,16 @@ def cmd_selftest():
        "attack 0A 01 00 09 03 14 00 00" in out and "这一拳的后果" in out)
     ck("chain 的说明版指向可跑的 moment",
        "lookup.py moment" in out and "错配" in out)
+    chain_out = capture(cmd_chain)
+    mo = capture(cmd_moment, ["10", "0A01", "8000", "0100", "0405", "1A02"])
+    know = [l for l in mo.splitlines() if l.startswith("看不到 GFX 仍能知道")]
+    ck("moment 不把整段 anim 才有的『打完往哪走』算成单帧能力，并指对命令",
+       len(know) == 1 and "打完往哪走" not in know[0]
+       and "「打完往哪走」不在这条单帧命令里" in mo
+       and "`anim <bytes...>`" in mo and "单帧只看见 bit7" in mo)
+    ck("chain 说明版分清单帧与整段，并列出整段能读出的节奏",
+       "moment 管「这一帧在干嘛」" in chain_out
+       and "四种拍子各占" in chain_out)
 
     # moment：同一帧的几份数据合成一句，且拦住「攻击记录挂到非攻击帧」
     frame = ["10", "0A01", "8000", "0100", "0405", "1A02"]
