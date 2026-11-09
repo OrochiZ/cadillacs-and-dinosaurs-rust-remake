@@ -318,12 +318,14 @@
       }
     },
     "kill_all": {
-      "label": "$50E 清场原因",
+      "label": "$50E 清场标志（一处写、多个敌人各读一次；不是一次擦除全场）",
       "scope": "dino",
-      "source": "re/specs/enemy/SPEC.md §8.5；§8.2 2-minute rule",
+      "source": "re/specs/enemy/SPEC.md §8.5 / §10.3 / §8.2 2-minute rule；dino-rs/crates/dino-game/src/game/enemy.rs:952-968",
+      "context_dependent": true,
+      "note": "查之前先分清三件事：哪一侧（只有 dino 侧证据）、谁在读（每个活着的敌人在自己那一帧的第一次调用各读一次，不是全局遍历一次）、是不是宿主层（--debug-keys 的 F2 按 §0 不进设计对照）。这个标志不擦除任何对象：kill_all_check 0x326F8 读到非零就把该敌人自己的 hp 置 0、切进 dying 态、给 2 帧 hitstop，之后由它自己的死亡链走完 120 帧闪烁才归还槽位（同文件 978-1003、SPEC §10.3）。所以『清场』是结果不是动作，收尾仍由各对象自己走完，别读成一次中央广播；这也正是 notes/05-objects.md 末尾『没有一次总广播』判断里最像反例的一处。值 1 / 2 只决定击杀记给谁（$4E0 的 killer / 0xFF 不记分），不改变『各自走完死亡态』。原机波次超时把它开成 5 帧窗口（$50E=2，b80 从 0x1E 数到 0x19，SPEC §8.2），窗口里谁还活着谁自己领；宿主调试键的『只活一帧』别当原机语义。",
       "values": {
-        "1": { "meaning": "Boss 死或特殊道具（stage 3 radio）触发的清场，记给 $4E0", "tag": "O" },
-        "2": { "meaning": "波次 7200 帧超时：清场但不记分", "tag": "O" }
+        "1": { "meaning": "Boss 死或特殊道具（stage 3 radio）置起标志：每个活着的敌人自己转成死亡态，击杀记给 $4E0 指向的 killer", "tag": "O" },
+        "2": { "meaning": "波次 7200 帧预算耗尽置起标志：每个活着的敌人同样自己走完死亡态，但 credit 写 0xFF、不给任何玩家记分", "tag": "O" }
       }
     },
     "entrance": {
