@@ -59,6 +59,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import itertools
 import json
 import pathlib
 import re
@@ -2061,6 +2062,30 @@ def cmd_selftest():
            for n in should_skip))
     ck("所有登记键都能被自己反查命中",
        all(match_value(d, k)[0] == k for d in DOMAINS.values() for k in d["values"]))
+    parse_bad = []
+    for name, dom in DOMAINS.items():
+        vals = dom["values"]
+        ranges = [(int(m.group(1)), int(m.group(2)), k)
+                  for k in vals
+                  for m in [re.fullmatch(r"(\d+)-(\d+)", k)] if m]
+        exact = [int(k) for k in vals if k.isdigit()]
+        for a, b in itertools.combinations(ranges, 2):
+            if a[0] <= b[1] and b[0] <= a[1]:
+                parse_bad.append(f"{name}:范围重叠 {a[2]}/{b[2]}")
+        for n in exact:
+            if any(lo <= n <= hi for lo, hi, _ in ranges):
+                parse_bad.append(f"{name}:精确键 {n} 落在范围内")
+        aliases = [str(v.get("alias", "")) for v in vals.values()]
+        aliases = [a for a in aliases if a]
+        if len(aliases) != len(set(aliases)):
+            parse_bad.append(f"{name}:别名撞车")
+    ck("范围键不重叠、精确键不掉进范围、别名不撞车",
+       not parse_bad, ", ".join(parse_bad))
+    ck("同义不是抄重：三个域的 note 讲清了为什么多个键一句话",
+       all(w in DOMAINS[n]["note"] for n, w in
+           (("drop_code", "不是登记重复"),
+            ("container_variant", "编号不同不等于规则不同"),
+            ("jack_anim_set0", "不是把意义抄重了"))))
     ck("字段偏移域里没有纯数字键，两个位域都标了 bitfield",
        all(not any(re.fullmatch(r"\d+", k) for k in DOMAINS[n]["values"])
            for n in OFFSET_KEY_DOMAINS)
