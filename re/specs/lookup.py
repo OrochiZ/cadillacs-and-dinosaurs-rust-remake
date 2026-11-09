@@ -1480,10 +1480,22 @@ def cmd_selftest():
     ck("cannot_check 不再把 [O] 观察笼统叫叙事",
        all("叙事结论" not in it["cannot_check"] and "叙事概括" not in it["cannot_check"]
            for it in items))
-    for key, marker in (("crowd", "enemy.rs"), ("feel", "Cps1Collision.cs")):
+    for key, marker in (("crowd", "enemy.rs"), ("feel", "Cps1Collision.cs"),
+                        ("combo", "notes/02-mid.md")):
         it = next(x for x in items if x["key"] == key)
         ck(f"legacy {key} 的 source 指到具体回源",
            marker in it.get("source", "") and "[O] 级回源" in it["cannot_check"])
+    ck("combo 说清连打阈值门有 [O] 回源但按纪律不转",
+       any(it["key"] == "combo" and "不是叙事" in it["cannot_check"]
+           and "不硬编" in it["cannot_check"] and "条件分支" in it["cannot_check"]
+           for it in items))
+    ck("覆盖索引写明连打累计四层为什么不转",
+       any("StunVal" in x["what"] and "不硬编" in x["why"]
+           and "未验" in x["why"]
+           for x in DB["coverage"]["not_registered"]))
+    out = capture(cmd_legacy, ["combo"])
+    ck("legacy combo 单条视图能打印新挂的回源",
+       "另有 [O] 回源" in out and "0x7E86" in out)
     out = capture(cmd_legacy, ["crowd"])
     ck("legacy 单条视图打印 [O] 回源去哪看",
        "另有 [O] 回源" in out and "enemy.rs" in out)
