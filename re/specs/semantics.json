@@ -1196,7 +1196,7 @@
     ]
   },
   "legacy": {
-    "note": "GAMEPLAY_LEGACY.md 九条外推判断 → 缓存里哪些域是它的数据底座。与 themes 正交：themes 按玩法问题归域，这里按一句设计判断归域，并且必须写清「能查到什么」和「查不到什么、为什么」。只列本 rep 已登记的证据；右栏「当代同类常见做法」是外推观察，不占域。probe 可以挂一条或多条，每一条都是 --selftest 里真跑过的命令样本，不是又一份声明；判断讲到两侧的，两侧都得有各自的样本，别让 can_check 写宽了却只有半边有证明；哪些算「讲两侧」按外推文正文和它自己写下的边界判定，不按 can_check 的措辞——第二节明写 wof 那句不并成同一套因果、不放大成两款共同架构，就不算两侧，别拿搓招状态域凑一条 wof 样本。can_check 只写缓存里真有取值或真有命令能翻出来的东西；没有对应可查取值的说法一律放 cannot_check，并写明它是量、是未验命名、还是「有 [O] 回源但没转成域」的结构观察——后一类另带 source，别把「缓存没登记」写成「没有证据」。给压缩恢复后从一句判断走回可查数据用，不当待办清单。",
+    "note": "GAMEPLAY_LEGACY.md 九条外推判断 → 缓存里哪些域是它的数据底座。与 themes 正交：themes 按玩法问题归域，这里按一句设计判断归域，并且必须写清「能查到什么」和「查不到什么、为什么」。只列本 rep 已登记的证据；右栏「当代同类常见做法」是外推观察，不占域。probe 可以挂一条或多条，每一条都是 --selftest 里真跑过的命令样本，不是又一份声明；判断讲到两侧的，两侧都得有各自的样本，别让 can_check 写宽了却只有半边有证明；哪些算「讲两侧」按外推文正文和它自己写下的边界判定，不按 can_check 的措辞——第二节明写 wof 那句不并成同一套因果、不放大成两款共同架构，别拿搓招状态域凑一条 wof 样本；第五节边界写明都是 dino 侧登记、第七节那句「两边调度层同构」的 wof 侧按边界不转，同样不算讲两侧。can_check 只写缓存里真有取值或真有命令能翻出来的东西；没有对应可查取值的说法一律放 cannot_check，并写明它是量、是未验命名、还是「有 [O] 回源但没转成域」的结构观察——后一类另带 source，别把「缓存没登记」写成「没有证据」。给压缩恢复后从一句判断走回可查数据用，不当待办清单。",
     "list": [
       {
         "key": "beat",
@@ -1253,7 +1253,7 @@
         "question": "谁这一刻有资格出手、包围里的空当从哪来",
         "domains": ["pool_a_class", "pool_e_class", "pool_tag", "enemy_ai_state", "entrance", "spawn_flags", "spawn_pool", "wave_terminator", "credit_player", "camera_mode"],
         "can_check": "class 2 的 AI 状态逐档（拿主意 / 接近 / 亮相 / 保持距离 / 攻击 / 冲刺 / 下坠）、六种入场方式、生成记录里的几人局与难度门、波次收尾负值、相机锁档位",
-        "cannot_check": "「六个接近槽 / 按上一帧左右人数定包抄 / 名单每帧清空 / 各条链自带准入门」有 [O] 级回源（见 source），不是叙事；但缓存登记的只是 AI 状态档 / 入场 / 生成门这类离散编号，没有把这几道小门转成『取值 → 意义』的域，按『不从概括固化』不硬编，所以这里查不到逐项取值；「没有攻击令牌」是没有某物，不是取值；同屏上限与波次预算属排除的硬件层",
+        "cannot_check": "「六个接近槽 / 按上一帧左右人数定包抄 / 名单每帧清空 / 各条链自带准入门」有 [O] 级回源（见 source），不是叙事；但缓存登记的只是 AI 状态档 / 入场 / 生成门这类离散编号，没有把这几道小门转成『取值 → 意义』的域，按『不从概括固化』不硬编，所以这里查不到逐项取值；「没有攻击令牌」是没有某物，不是取值；同屏上限与波次预算属排除的硬件层；外推文第五节边界明写这一格都是 dino 侧登记、不放大成两款共同架构，wof 侧按 §11.0 不臆断缺等价组织，所以不按讲两侧补样本",
         "source": "re/specs/enemy/SPEC.md §14 [O]（no attack-token 由 grep $e1/$e5 实证、6 slots、target prefers < 3 enemies）；notes/01-early.md §13.0 / §13.1（enemy.rs 四段闭环：enemy_census / enemy_pick_target / enemy_c2_retarget_slot / enemy_c2_steer_slot）；notes/05-objects.md §78",
         "probe": { "argv": ["enemy_ai_state", "2"], "expect": "站位槽" }
       },
@@ -1272,7 +1272,7 @@
         "question": "过场里玩家还在不在自己那套状态机",
         "domains": ["dino_script_action", "dino_script_record", "game_mode", "game_phase", "camera_lock", "player_mode", "presence"],
         "can_check": "41 个过场动作大多是等条件或覆写输入、三个全局档位跨记录沿用、0xFFFF 是 wait-until、顶层模式与关内阶段各用各的状态字",
-        "cannot_check": "wof 关卡脚本约 25 type / 事件队列 9 type 只有数量概括、C# 侧有未覆盖命令空桩，按 wof 边界不转；单个 Boss 专属编排不构成通则",
+        "cannot_check": "wof 关卡脚本约 25 type / 事件队列 9 type 只有数量概括、C# 侧有未覆盖命令空桩，按 wof 边界不转；单个 Boss 专属编排不构成通则；正文虽写『两边调度层还都是协作式任务轮』，那是结构同构的观察、wof 侧没有转成『取值 → 意义』的域，按同一判据不按讲两侧补 wof 样本",
         "probe": {"argv": ["dino_script_record", "+4"], "expect": "wait-until"}
       },
       {

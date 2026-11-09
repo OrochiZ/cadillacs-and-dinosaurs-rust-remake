@@ -1729,6 +1729,9 @@ def cmd_selftest():
     ck("combo 不硬凑 wof 样本：正文自己写了不并成同一套因果",
        "不并成同一套因果" in cb["cannot_check"]
        and all(pr["argv"][0] != "wof_rkey1" for pr in legacy_probes(cb)))
+    ck("不算讲两侧的三条都写清了理由，没留半边悬念",
+       all("不按" in next(x for x in items if x["key"] == k)["cannot_check"]
+           for k in ("combo", "crowd", "continuity")))
     _, d14 = match_value(DOMAINS["enemy_hurt_reaction"], "14")
     _, w14 = match_value(DOMAINS["wof_reaction"], "14")
     ck("death 两侧样本是同一个编号的不同回答，不是凑数",
