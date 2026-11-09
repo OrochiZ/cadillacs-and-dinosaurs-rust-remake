@@ -29,7 +29,7 @@
     python re/specs/lookup.py collide 4               只给一个取值，列出它在各域的所有意义
     python re/specs/lookup.py collide 0x1A            看同一编号在哪几张表里意思不同
     python re/specs/lookup.py attack_id 0x5A          查一个攻击编号是哪一招
-    python re/specs/lookup.py anim_id 1 4             查 Jack 第 1 套第 4 段是哪一招
+    python re/specs/lookup.py anim_id 1 4             查这一招是哪段，并带出这一拳的后果
     python re/specs/lookup.py coverage                哪些表已转、哪些按纪律不转、为什么
     python re/specs/lookup.py themes                  按玩法主题列出可查的域
     python re/specs/lookup.py themes state_machine    只看状态机这一块
@@ -780,6 +780,25 @@ def cmd_anim_id(tokens: list[str]):
     emit(dname, k, v, False)
     if set_n == 1:
         print("  对齐查：attack_id（$58）/ player_ground_state（状态字）/ combo_counter（+$B2）")
+        m = re.search(r"\$58\s*=\s*(\d+)", v["meaning"])
+        if m:
+            a = m.group(1)
+            _, av = match_value(DOMAINS["attack_id"], a)
+            _, rv = match_value(DOMAINS["jack_attack_record"], a)
+            print(f"  ── 这一拳的后果（$58 = {a}，不用再拼命令）──")
+            if av:
+                print(f"  攻击编号表里 $58 = {a} 是：{av['meaning']}")
+            if rv:
+                hx = " ".join(rv["bytes"][i:i + 2] for i in range(0, 16, 2))
+                print(f"  攻击属性记录 8 字节：{hx}")
+                print(f"  {rv['meaning']}")
+                print(f"  逐字段看后果：lookup.py attack {rv['bytes']}")
+            else:
+                print(f"  $58 = {a} 的逐字节攻击属性记录在 ROM 表里，本机不登记，"
+                      "不替它猜数值（招名仍查 attack_id）。")
+        else:
+            print("  这一段没写 $58，是同一招的伸臂 / 命中变体；攻击记录随主招，"
+                  "别把变体当成新的一招另配一份数值。")
     return 0
 
 
@@ -1164,6 +1183,14 @@ def cmd_selftest():
     ck("anim_id 3 0 → 只给套级用途、不猜逐段", "没有逐段编号表" in out)
     out = capture(cmd_anim_id, ["1", "12"])
     ck("set1 的 10-13 是连续跳跃攻击族", "跳跃攻击" in out)
+    out = capture(cmd_anim_id, ["1", "4"])
+    ck("anim_id 直接带出这一拳的攻击记录与后果",
+       "攻击属性记录 8 字节" in out and "1D 0B 06 0D 09 20 18 00" in out
+       and "终结拳" in out and "lookup.py attack" in out)
+    out = capture(cmd_anim_id, ["1", "0"])
+    ck("anim_id 1 0 带出刺拳记录", "0A 01 00 09 03 14 00 00" in out)
+    out = capture(cmd_anim_id, ["1", "2"])
+    ck("没写 $58 的变体段不另配数值", "别把变体当成新的一招" in out)
     _, v = match_value(DOMAINS["combo_counter"], "3")
     ck("连段计数 3 → 终结拳", bool(v) and "终结拳" in v["meaning"])
     ck("Jack 专属表标了作用域，没写成四角色通用",
