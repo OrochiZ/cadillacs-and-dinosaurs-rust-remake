@@ -311,7 +311,7 @@ def cmd_frame(tokens: list[str]):
     print(f"  +7    timer   = 0x{timer:02X}  → 时长 {256 if dur == 0 else dur} tick；"
           f"bit7={'1 末帧，后跟 i16 link word' if last else '0 顺序下一帧'}")
     print(f"  +8    body_box   = 0x{body:02X}  → " +
-          ("没有身体盒（这一帧打不到它） [O]" if body == 0 else f"身体盒索引 {body}（查 +$44 表第 {body} 项）"))
+          ("没有身体盒：这一帧自己不可被命中 [O]" if body == 0 else f"身体盒索引 {body}（查 +$44 表第 {body} 项）"))
     print(f"  +9    attack_box = 0x{atk:02X}  → " +
           ("没有攻击盒 / 关盒 [O]" if atk == 0 else f"攻击盒索引 {atk}（查 +$44 表第 {atk} 项）"))
     if stride == 12:
@@ -884,7 +884,11 @@ def cmd_moment(tokens: list[str]):
     print("3) 判定框环：能不能打中由 +$49 攻击盒与 +$48 身体盒决定，跟画面不是一层数据")
     for label, idx in (("攻击盒", atk), ("身体盒", body)):
         if idx == 0:
-            print(f"   {label} 关盒（dino 里 0 就是关；wof 里 0 是合法表项，别串）")
+            if label == "身体盒":
+                print(f"   {label} 关盒 [O]：这一帧自己不可被命中；"
+                      "和『这一帧不打人』是两件事，别混成一句")
+            else:
+                print(f"   {label} 关盒（dino 里 0 就是关；wof 里 0 是合法表项，别串）")
             continue
         _, bv = match_value(DOMAINS["jack_box_example"], str(idx))
         if bv:
@@ -1048,7 +1052,7 @@ def cmd_anim(tokens: list[str]):
     print(f"ANI 段：{len(b)} 字节，按 {stride} 字节/帧切分")
     print("=" * 78)
     total, seen_last, identities = 0, False, []
-    live_normal = special_frames = closed_attack = 0
+    live_normal = special_frames = closed_attack = invuln = 0
     for i, off in enumerate(range(0, len(b) - stride + 1, stride)):
         rec = b[off:off + stride]
         kind, timer = rec[6], rec[7]
@@ -1058,21 +1062,24 @@ def cmd_anim(tokens: list[str]):
         label = fv["meaning"] if fv else "未登记"
         identities.append(label.split("：")[0].split("；")[0])
         total += dur
-        mark = ""
+        marks = []
+        if body == 0:
+            invuln += 1
+            marks.append("自己不可被命中 [O]（身体盒关着）")
         if kind in ATTACK_KINDS:
             if not atk:
                 closed_attack += 1
-                mark = "   → 攻击帧但攻击盒关着，这一帧打不着人"
+                marks.append("攻击帧但攻击盒关着，这一帧打不着人")
             else:
                 live_normal += 1
-                mark = "   → 攻击生效"
+                marks.append("攻击生效")
         elif kind in SPECIAL_KINDS:
             special_frames += 1
-            mark = ("   → 特殊 / 必杀帧 [I 推断]：普通命中循环只认攻方 4，"
-                    "不并入生效帧")
+            marks.append("特殊 / 必杀帧 [I 推断]：普通命中循环只认攻方 4，不并入生效帧")
         print(f"  帧 {i:02d} @+{off:04X}  kind=0x{kind:02X}  {label} {fmt(fv['tag']) if fv else ''}")
         print(f"       {dur:3d} tick   body_box={body:#04x}  attack_box={atk:#04x}"
-              + ("   [末帧]" if last else "") + mark)
+              + ("   [末帧]" if last else "")
+              + ("   → " + "；".join(marks) if marks else ""))
         if last:
             seen_last = True
             print("       末帧后紧跟的 i16 是 link word（不是帧记录），切分到此为止")
@@ -1088,6 +1095,9 @@ def cmd_anim(tokens: list[str]):
     if closed_attack:
         print(f"  另有 {closed_attack} 个攻击帧把攻击盒关着：打不着人，"
               "属于收势 / 过渡，不算生效帧")
+    if invuln:
+        print(f"  其中 {invuln} 帧身体盒关着：这几拍自己挨不了打"
+              "（dino 侧 [O]，命中循环要求防守方 +$48 != 0）")
     print("  其余帧是起势、受击、倒地、抓投姿势或被抓，不发起攻击结算")
     print("  段落" + ("在末帧结束，去向写在 link word 里（回环 / 接下一招）" if seen_last
                    else "还没读到末帧，后面还有帧记录"))
@@ -1635,6 +1645,18 @@ def cmd_selftest():
        "没有盒" in DOMAINS["box_index_zero"]["values"]["dino"]["meaning"]
        and "合法" in DOMAINS["box_index_zero"]["values"]["wof"]["meaning"])
     ck("frame_type 0 是 [I] 不是 [O]", DOMAINS["frame_type"]["values"]["0"]["tag"] == "I")
+    ck("身体盒取 0 单独成域，和攻击盒取 0 分开查",
+       "body_box_zero" in DOMAINS
+       and "不可被命中" in DOMAINS["body_box_zero"]["values"]["0"]["meaning"]
+       and DOMAINS["body_box_zero"]["values"]["0"]["tag"] == "O"
+       and "不打人" in DOMAINS["box_index_zero"]["values"]["dino"]["meaning"]
+       and "body_box_zero" in DOMAINS["box_index_zero"]["note"])
+    ck("身体盒关盒标了上下文相关，并写清 dino / wof 证据边界",
+       DOMAINS["body_box_zero"].get("context_dependent")
+       and "别和 box_index_zero 混" in DOMAINS["body_box_zero"]["note"]
+       and "wof 侧没有" in DOMAINS["body_box_zero"]["note"])
+    ck("身体盒取 0 能按取值反查到，不混进攻击盒那条",
+       "body_box_zero" in capture(cmd_collide, "0"))
 
     # 裸十六进制与范围取值
     n, _ = parse_value("0A")
@@ -1765,6 +1787,16 @@ def cmd_selftest():
        "普通命中循环只认攻方 +$2E == 4" in mo and "正面轻击" not in mo)
     ck("攻击判据收紧回 SPEC §4.4 的攻方类型 4，6 单列不混",
        ATTACK_KINDS == (4,) and SPECIAL_KINDS == (6,))
+    ck("ANI 时间线把身体盒关着的帧读成『自己挨不了打』并统计出来",
+       "自己不可被命中 [O]" in out and "其中 1 帧身体盒关着" in out
+       and "这几拍自己挨不了打" in out)
+    mo2 = capture(cmd_moment, ["10", "0A01", "8000", "0100", "0403", "0002"])
+    ck("moment 把身体盒关盒与攻击盒关盒分开说",
+       "身体盒 关盒 [O]：这一帧自己不可被命中" in mo2
+       and "和『这一帧不打人』是两件事" in mo2)
+    ck("frame 单帧里身体盒取 0 也说『自己不可被命中』，措辞不含混",
+       "没有身体盒：这一帧自己不可被命中 [O]" in
+       capture(cmd_frame, ["10", "0A01", "8000", "0100", "0403", "0002"]))
     out = capture(cmd_box, ["-1", "10", "-68", "59", "29", "42"])
     ck("box 六个数能复算出打击形状",
        "X 区间 [-68, -9]" in out and "Y 区间 [29, 71]" in out and "Z 区间 [-1, 9]" in out)
