@@ -1262,6 +1262,22 @@ def cmd_selftest():
             if not v.get("meaning") or not v.get("tag") or v["tag"] not in ("O", "I", "U"):
                 bad.append(f"{name}.{k} 缺 meaning/tag")
     ck("每个域都有 scope/source，每条都有 meaning/tag", not bad, "; ".join(bad))
+    bad = [n for n, d in DOMAINS.items() if not d.get("label")]
+    ck("每个域都有给人读的 label", not bad, ", ".join(bad))
+    bad = [n for n, d in DOMAINS.items()
+           if d.get("context_dependent") and not d.get("note")]
+    ck("上下文相关域都带 note，讲清查之前要确认什么", not bad, ", ".join(bad))
+    refs = []
+    for src, group in (("legacy", DB["legacy"]["list"]),
+                       ("themes", DB["themes"]["list"]),
+                       ("coverage", DB["coverage"]["registered"])):
+        for x in group:
+            refs += [(src, n) for n in x.get("domains", [])]
+    bad = [f"{s}:{n}" for s, n in refs if n not in DOMAINS]
+    ck(f"三条索引引用的 {len(refs)} 处域名都真实存在", not bad, ", ".join(bad))
+    bad = [str(i) for i, x in enumerate(DB["coverage"]["not_registered"])
+           if not x.get("what") or not x.get("why")]
+    ck("按纪律不转的每条都写了 what/why", not bad, ", ".join(bad))
     ck("域数量 >= 57（wof 受击手册选择、玩家输入契约也进了缓存）",
        len(DOMAINS) >= 57, str(len(DOMAINS)))
     for dn in ("player_ground_state", "player_run_state", "player_air_state"):

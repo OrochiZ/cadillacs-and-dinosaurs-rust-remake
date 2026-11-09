@@ -126,10 +126,11 @@
     "box_index_zero": {
       "label": "盒索引取 0 的含义（两边相反，最容易误读的一处）",
       "scope": "both",
-      "source": "re/specs/anim/SPEC.md §1；notes/03-frame.md §49.5",
-      "context_dependent": true,
-      "values": {
-        "dino": { "meaning": "0 = 没有盒 / 显式关盒：攻击 pass 直接早退，这一帧不打人", "tag": "O" },
+    "source": "re/specs/anim/SPEC.md §1；notes/03-frame.md §49.5",
+    "context_dependent": true,
+    "note": "这个域的键就是上下文：dino / wof 不是同一个编号的两种读法，而是两款游戏对『盒索引取 0』给了相反的规则。查之前先说哪一侧；跨游戏搬判定代码时最该改的就是那句 ==0 早退——在 dino 是关盒，在 wof 会把合法表项丢掉。",
+    "values": {
+      "dino": { "meaning": "0 = 没有盒 / 显式关盒：攻击 pass 直接早退，这一帧不打人", "tag": "O" },
         "wof": { "meaning": "0 = 表第 0 项，合法且有实体矩形；禁止加 ==0 早退门", "tag": "O", "note": "wof 靠动画阶段与 +$62 之类的门表达『这帧不打人』" }
       }
     },
