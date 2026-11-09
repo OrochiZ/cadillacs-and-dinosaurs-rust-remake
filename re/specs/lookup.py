@@ -53,8 +53,8 @@
     python re/specs/lookup.py --selftest              固化自测（不依赖 ROM）
 
 边界：本工具只回答「这个取值在这份 rep 已登记的意义里是什么」，不推断未登记取值、
-不把 [I] 说成 [O]、不做跨游戏等价；喂字节翻意义的解码输出也带上 [O] / [I] / [U] 标签，
-别只挑其中一句读。未命中就直说未登记。
+不把 [I] 说成 [O]、不做跨游戏等价；喂字节翻意义的解码输出统一带
+[O 观察] / [I 推断] / [U 未登记] 标签，别只挑其中一句读。未命中就直说未登记。
 同一编号在玩家侧 / 敌人侧、dino / wof 侧含义可以相反，上下文相关的域会提示先确认对象。
 """
 from __future__ import annotations
@@ -301,11 +301,11 @@ def cmd_frame(tokens: list[str]):
     print("  ← w0 bit15=1：复合帧，w1 是部件表自相对偏移" if w0 & 0x8000 else "")
     print(f"  +2..3 w1 = 0x{w1:04X}  ", end="")
     print("叠加层：无（bit15=1）" if w1 & 0x8000 else "叠加 composition 索引（画在主体之后/下方）")
-    print(f"  +4    param_a = 0x{p_a:02X}  → obj+$2C：按状态而定，脱离处境无固定意义 [U]")
+    print(f"  +4    param_a = 0x{p_a:02X}  → obj+$2C：按状态而定，脱离处境无固定意义 [U 未登记]")
     if p_a == 1:
-        print("         └ 在拳类动画里 = 连段取消窗口开放 [I]（re/specs/anim/SPEC.md §1）")
+        print("         └ 在拳类动画里 = 连段取消窗口开放 [I 推断]（re/specs/anim/SPEC.md §1）")
     print(f"  +5    param_b = 0x{p_b:02X}  → obj+$2D：相位索引；"
-          "分身绘制时按它查 +$38 偏移表重同步 [O]")
+          "分身绘制时按它查 +$38 偏移表重同步 [O 观察]")
     kv, vv = match_value(DOMAINS["frame_type"], str(kind))
     print(f"  +6    kind    = 0x{kind:02X}  → obj+$2E 帧类型：", end="")
     print(say(vv))
@@ -314,9 +314,9 @@ def cmd_frame(tokens: list[str]):
     print(f"  +7    timer   = 0x{timer:02X}  → 时长 {256 if dur == 0 else dur} tick；"
           f"bit7={'1 末帧，后跟 i16 link word' if last else '0 顺序下一帧'}")
     print(f"  +8    body_box   = 0x{body:02X}  → " +
-          ("没有身体盒：这一帧自己不可被命中 [O]" if body == 0 else f"身体盒索引 {body}（查 +$44 表第 {body} 项）"))
+          ("没有身体盒：这一帧自己不可被命中 [O 观察]" if body == 0 else f"身体盒索引 {body}（查 +$44 表第 {body} 项）"))
     print(f"  +9    attack_box = 0x{atk:02X}  → " +
-          ("没有攻击盒 / 关盒 [O]" if atk == 0 else f"攻击盒索引 {atk}（查 +$44 表第 {atk} 项）"))
+          ("没有攻击盒 / 关盒 [O 观察]" if atk == 0 else f"攻击盒索引 {atk}（查 +$44 表第 {atk} 项）"))
     if stride == 12:
         print(f"  +10..11 attach = 0x{u16(b, 10):04X}  → obj+$60；高字节 = 附着点索引（持械 / 抓人）")
     print("-" * 78)
@@ -354,11 +354,11 @@ def infer(kind, body, atk, dur, last, w0) -> list[str]:
         out.append("没有身体盒 → 这一帧自己不可被命中（必杀 / 无敌 / 演出帧）")
     elif kind in SKIP_DEFEND_KINDS:
         out.append(f"有身体盒 #{body}，但受击 / 倒地身份被命中循环跳过"
-                   " → 这一拍不会被连锁追打 [O]（不是靠关盒实现的无敌）")
+                   " → 这一拍不会被连锁追打 [O 观察]（不是靠关盒实现的无敌）")
     else:
         out.append(f"有身体盒 #{body} → 自己仍可被反击，攻防同时成立")
     if kind in GRAB_POSE_KINDS:
-        out.append("抓住 / 被抓姿势 [O]：不发起攻击，但 0xC / 0xE 仍在防守方"
+        out.append("抓住 / 被抓姿势 [O 观察]：不发起攻击，但 0xC / 0xE 仍在防守方"
                    "命中分派表里，这一拍自己仍可能挨打，别读成无敌")
     out.append(f"这一拍占 {256 if dur == 0 else dur} tick（0 不是不显示，是 256）")
     out.append("末帧后的 link word 决定是回环还是跳到另一段（连段接哪一招写在这里）" if last
@@ -471,7 +471,7 @@ def cmd_script(tokens: list[str]):
     _, av = match_value(act_dom, f"0x{action:02X}")
     print(f"  +0 action = 0x{action:02X}  → " +
           (f"{av['meaning']} {fmt(av['tag'])}" if av
-           else "不在 41 项里，走 script_action 的 default 空分支 [O]"))
+           else "不在 41 项里，走 script_action 的 default 空分支 [O 观察]"))
     print("        └ 这是跳表 0x1DBD6 的字节偏移，不是动作序号；"
           "全部 41 项查 `lookup.py dino_script_action`")
     # +1/+3 是布尔档位字（player.rs 按 ==0 / !=0 读）；文案取自缓存，开/关按本条取值实时判
@@ -622,7 +622,7 @@ def cmd_attack(tokens: list[str]):
         print(f"\n  对照 Jack 连段：这条记录的 $58 = {k}。{say(v)}")
         print("  三拳并排（10/15/29 伤害、9/9/13 顿帧、反应 0/2/6）：")
         print("  伤害与削韧逐拳跳档；顿帧前两拳都是 9，只在收束那拳拉到 13；")
-        print("  反应 0 → 2 → 6（SPEC 把 6 标成击倒 [I]），火花也只在最后一拳给。")
+        print("  反应 0 → 2 → 6（SPEC 把 6 标成击倒 [I 推断]），火花也只在最后一拳给。")
         print("  「连段是打出来的」不是手感形容词，是三行逐招数据里写好的代价递进；")
         print("  按 input_buffer 的读法，前两拳不加重自己的停顿，续拳窗口照旧，")
         print("  重的时间成本留给收尾那一下。")
@@ -898,7 +898,7 @@ def cmd_moment(tokens: list[str]):
     for label, idx in (("攻击盒", atk), ("身体盒", body)):
         if idx == 0:
             if label == "身体盒":
-                print(f"   {label} 关盒 [O]：这一帧自己不可被命中；"
+                print(f"   {label} 关盒 [O 观察]：这一帧自己不可被命中；"
                       "和『这一帧不打人』是两件事，别混成一句")
             else:
                 print(f"   {label} 关盒（dino 里 0 就是关；wof 里 0 是合法表项，别串）")
@@ -916,7 +916,7 @@ def cmd_moment(tokens: list[str]):
             why = ("这一帧的 +$49 是抓投探测盒，命中后双方进的是『抓住 / 被抓』，"
                    "不走扣血那条链")
         elif kind in SKIP_DEFEND_KINDS:
-            why = ("这一帧是受击 / 倒地身份：SPEC §4.4 [O] 的命中循环跳过防守方"
+            why = ("这一帧是受击 / 倒地身份：SPEC §4.4 [O 观察] 的命中循环跳过防守方"
                    " 8 / 0xA，它也不是攻方类型 4，不发起攻击")
         elif kind in GRAB_POSE_KINDS:
             why = ("这一帧是抓住 / 被抓姿势，不是攻方类型 4，不发起攻击；"
@@ -1083,7 +1083,7 @@ def cmd_anim(tokens: list[str]):
         marks = []
         if body == 0:
             invuln += 1
-            marks.append("自己不可被命中 [O]（身体盒关着）")
+            marks.append("自己不可被命中 [O 观察]（身体盒关着）")
         if kind in ATTACK_KINDS:
             if not atk:
                 closed_attack += 1
@@ -1107,21 +1107,21 @@ def cmd_anim(tokens: list[str]):
                 link = s16(b, link_off)
                 target = link_off + link
                 print(f"       link word @+{link_off:04X} = 0x{u16(b, link_off):04X}"
-                      f"（i16 {link:+d}）[O]：下一帧 = link word 自身地址 + link")
+                      f"（i16 {link:+d}）[O 观察]：下一帧 = link word 自身地址 + link")
                 print(f"       → addr_of_link + link = 相对段首 {target:+d} 字节")
                 if 0 <= target < link_off and target % stride == 0:
                     link_desc = f"回环到本段第 {target // stride} 帧"
-                    print(f"       → {link_desc} [I]：同一套动作再来一拍"
+                    print(f"       → {link_desc} [I 推断]：同一套动作再来一拍"
                           "（待机呼吸 / 走跑循环 / 连段回环）")
                 elif target < 0 or target >= len(b):
                     link_desc = "跳到本段之外"
-                    print("       → 跳到本段之外 [I]：接另一段动画（出拳后回待机之类）；"
+                    print("       → 跳到本段之外 [I 推断]：接另一段动画（出拳后回待机之类）；"
                           "具体是哪一段要 ANI 表基址，离线字节串给不出")
                 else:
                     link_desc = "落在本段内但非帧起点"
-                    print("       → 落在本段内但不是帧起点 [I]：按字节偏移指向别的记录，"
+                    print("       → 落在本段内但不是帧起点 [I 推断]：按字节偏移指向别的记录，"
                           "别当成又一条帧记录切分")
-                print("       SPEC §3.1 [O]：tick 例程跟随 link 时返回 carry=1，"
+                print("       SPEC §3.1 [O 观察]：tick 例程跟随 link 时返回 carry=1，"
                       "等于告诉主状态机『这一段演完了』，下一拍翻页归它")
                 print("       link 是相对 link word 自身的有符号偏移；"
                       "没有 ANI 段在 ROM 里的绝对基址，这里只给相对位置")
@@ -1144,7 +1144,7 @@ def cmd_anim(tokens: list[str]):
               "属于收势 / 过渡，不算生效帧")
     if invuln:
         print(f"  其中 {invuln} 帧身体盒关着：这几拍自己挨不了打"
-              "（dino 侧 [O]，命中循环要求防守方 +$48 != 0）")
+              "（dino 侧 [O 观察]，命中循环要求防守方 +$48 != 0）")
     print("  其余帧是起势、受击、倒地、抓投姿势或被抓，不发起攻击结算")
     if seen_last:
         print(f"  段落在末帧结束，去向：{link_desc or '写在 link word 里'}"
@@ -1850,25 +1850,25 @@ def cmd_selftest():
     ck("frame_type 域级 note 也写明五组身份，查数时看得到",
        "五组" in DOMAINS["frame_type"]["note"])
     ck("ANI 时间线把身体盒关着的帧读成『自己挨不了打』并统计出来",
-       "自己不可被命中 [O]" in out and "其中 1 帧身体盒关着" in out
+       "自己不可被命中 [O 观察]" in out and "其中 1 帧身体盒关着" in out
        and "这几拍自己挨不了打" in out)
     mo2 = capture(cmd_moment, ["10", "0A01", "8000", "0100", "0403", "0002"])
     ck("moment 把身体盒关盒与攻击盒关盒分开说",
-       "身体盒 关盒 [O]：这一帧自己不可被命中" in mo2
+       "身体盒 关盒 [O 观察]：这一帧自己不可被命中" in mo2
        and "和『这一帧不打人』是两件事" in mo2)
     ck("frame 单帧里身体盒取 0 也说『自己不可被命中』，措辞不含混",
-       "没有身体盒：这一帧自己不可被命中 [O]" in
+       "没有身体盒：这一帧自己不可被命中 [O 观察]" in
        capture(cmd_frame, ["10", "0A01", "8000", "0100", "0403", "0002"]))
     ol = capture(cmd_anim, _ANIM_BEAT)
     ck("ANI 时间线把末帧后的 link word 解成相对偏移，并说清去向是推断",
        "i16 +17" in ol and "addr_of_link + link = 相对段首" in ol
-       and "跳到本段之外 [I]" in ol and "carry=1" in ol
+       and "跳到本段之外 [I 推断]" in ol and "carry=1" in ol
        and "相对 link word 自身" in ol and "去向：跳到本段之外" in ol)
-    ck("末帧标志的意义取自缓存并带 [O] 标签",
+    ck("末帧标志的意义取自缓存并带 [O 观察] 标签",
        "末帧标志：" in ol and "[O 观察]" in ol and "link word" in ol)
     ob = capture(cmd_anim, _ANIM_BEAT[:-1] + ["FFCE"])
     ck("link word 指回本段帧起点时读成回环",
-       "回环到本段第 0 帧 [I]" in ob and "i16 -50" in ob)
+       "回环到本段第 0 帧 [I 推断]" in ob and "i16 -50" in ob)
     ck("没给 link word 字节时不硬猜去向",
        "没给够 2 字节" in capture(cmd_anim, _ANIM_BEAT[:-1]))
     f8 = capture(cmd_frame, ["10", "0A01", "8000", "0100", "0803", "1A00"])
@@ -2487,6 +2487,33 @@ def cmd_selftest():
               for v in dom["values"].values() if v["tag"] == "U"))
 
     # 解码输出也带证据标签：别让 [I] 在「这一帧在干嘛」里被读成观察
+    # 只扫解码命令的实际输出：用法说明 / 注释 / unknown 里的「标 [U]」、
+    # legacy 里的「[O] 级回源」讲的是标签体系本身，不是给某句话打标签，不在扫描范围。
+    short_tag = re.compile(r"\[[OIU]\]")
+    decode_dumps = [
+        ("frame", cmd_frame, ["10", "0A01", "8000", "0100", "0405", "1A02"]),
+        ("anim", cmd_anim, _ANIM_BEAT),
+        ("moment", cmd_moment, ["10", "0A01", "8000", "0100", "0405", "1A02",
+                                "attack", "0A", "01", "00", "09", "03", "14", "00", "00"]),
+        ("comp", cmd_comp, ["0002", "0002", "0005", "0003", "0802", "0803",
+                            "FFF8", "FFE0", "0008", "FFF0"]),
+        ("box", cmd_box, ["-1", "10", "-68", "59", "29", "42"]),
+        ("spawn", cmd_spawn, ["04D0", "0084", "0004", "0000", "0000", "0000", "0000"]),
+        ("script", cmd_script, ["2C", "00", "05", "01", "000A"]),
+        ("attack", cmd_attack, ["0A", "01", "00", "09", "03", "14", "00", "00"]),
+        ("wof_attack", cmd_wof_attack, ["ours", "00", "00", "00", "00", "0A", "00",
+                                        "03", "00", "56", "00", "00", "00", "06", "0E", "03", "00"]),
+        ("chain", cmd_chain, None),
+    ]
+    tag_bad, tag_seen = [], 0
+    for name, fn, args in decode_dumps:
+        txt = capture(fn, args) if args is not None else capture(fn)
+        if short_tag.search(txt):
+            tag_bad.append((name, short_tag.findall(txt)[:3]))
+        tag_seen += sum(txt.count(x) for x in ("[O 观察]", "[I 推断]", "[U 未登记]"))
+    ck("解码输出统一用 [O 观察] / [I 推断] / [U 未登记]，不再夹短标签",
+       not tag_bad and tag_seen >= 5,
+       str(tag_bad[:3]) + f"；标准标签共 {tag_seen} 处")
     ck("say() 把 meaning 与置信标签一起带出，缺省也不冒充登记",
        "[I 推断]" in say(DOMAINS["frame_type"]["values"]["6"])
        and "[U 未登记]" in say(DOMAINS["jack_anim_set1"]["values"]["15"])
