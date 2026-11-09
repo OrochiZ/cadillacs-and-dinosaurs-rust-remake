@@ -1756,6 +1756,14 @@ def cmd_selftest():
     out = capture(cmd_list)
     ck("list 末尾给出解码命令与三个索引",
        all(x in out for x in ("attack", "script", "coverage", "themes", "legacy")))
+    nav_cmds = ("frame", "anim", "comp", "box", "spawn", "script", "attack",
+                "wof_attack", "moment", "chain", "collide", "coverage",
+                "themes", "legacy")
+    nav_out = {n: capture(main, [n]) for n in nav_cmds}
+    ck("总入口阅读顺序第 7 条列的查数入口都还在、没退化成未知域",
+       all("没有这个域" not in o for o in nav_out.values())
+       and "用法：moment" in nav_out["moment"]
+       and "ANI → SPR → 判定框" in nav_out["chain"])
 
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:
