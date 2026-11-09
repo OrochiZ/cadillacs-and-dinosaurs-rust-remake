@@ -1503,6 +1503,24 @@ def cmd_selftest():
     out = capture(cmd_lookup, "attack_field", "+3", False)
     ck("换掉 feel 的 probe 后，八字段攻击记录仍查得到命中定格", "命中定格" in out)
 
+    # 判断讲两侧的，证据底座也得跟到两侧
+    ck("swing 的底座不再只有 dino 半边",
+       any(it["key"] == "swing"
+           and all(d in it["domains"] for d in
+                   ("wof_shake_left", "wof_atk_field", "wof_reaction"))
+           and "+0x62" in it["can_check"] and "逐帧实测" in it["cannot_check"]
+           for it in items))
+    ck("beat 的底座也接上 wof 双方同写那一拍",
+       any(it["key"] == "beat" and "wof_shake_left" in it["domains"]
+           and "双方同写" in it["can_check"] for it in items))
+    out = capture(main, ["wof_attack", "ours", "00", "00", "00", "00", "0A", "00",
+                         "03", "00", "56", "00", "00", "00", "06", "0E", "03", "00"])
+    ck("swing 新增的 wof 半边能真跑出群体命中解锁",
+       "群体命中锁" in out and "解锁" in out)
+    ck("按 wof 边界不转的那几条没有硬塞 wof 域",
+       all(not any(d.startswith("wof_") for d in it["domains"])
+           for it in items if it["key"] in ("crowd", "continuity", "difficulty")))
+
     # 取值反查的排除纪律：位域靠 bitfield 标志、字段偏移靠列表，两者合起来才算齐
     should_skip = {n for n, d in DOMAINS.items()
                    if d.get("bitfield") or n in OFFSET_KEY_DOMAINS}

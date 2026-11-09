@@ -1201,8 +1201,8 @@
         "key": "beat",
         "title": "一、Beat 是拍子：一场架是被编舞出来的",
         "question": "这一拍谁排、多长、谁跟谁对齐、下一波什么时候进",
-        "domains": ["frame_timer", "frame_type", "input_buffer", "combo_counter", "entrance", "enemy_ai_state", "spawn_command", "wave_ctrl_r4", "wave_ctrl_r5", "camera_lock", "camera_mode", "dino_script_action", "wave_end"],
-        "can_check": "一拍几 tick 由帧记录给、命中定格与续拳缓冲各自怎么攒、进场 / 站位 / 出手 / 收势由谁挑、波次按什么阈值放行、镜头锁到哪个字才松、过场脚本哪些动作在等世界回话",
+        "domains": ["frame_timer", "frame_type", "input_buffer", "combo_counter", "entrance", "enemy_ai_state", "spawn_command", "wave_ctrl_r4", "wave_ctrl_r5", "camera_lock", "camera_mode", "dino_script_action", "wave_end", "wof_shake_left"],
+        "can_check": "一拍几 tick 由帧记录给、命中定格与续拳缓冲各自怎么攒、进场 / 站位 / 出手 / 收势由谁挑、波次按什么阈值放行、镜头锁到哪个字才松、过场脚本哪些动作在等世界回话；wof 那一拍由双方同写的 +0x62 一起数完，查 wof_shake_left 看这段生命周期怎么同时管硬直门、闪白与群体命中解锁",
         "cannot_check": "玩家实际感到的节奏与「句读」是读法，没有逐帧 trace；波次逐条挑的那几个数是量，按 §94.3 不转成取值语义",
         "probe": {"argv": ["frame_timer", "bit7=1"], "expect": "link word"}
       },
@@ -1219,9 +1219,9 @@
         "key": "swing",
         "title": "三、一次挥击是一段有结构的时间，不是一个瞬间的是 / 否",
         "question": "这一帧是什么身份、打多久、打哪儿、打完往哪走",
-        "domains": ["frame_type", "attack_field", "box_field", "box_index_zero", "jack_box_example", "jack_attack_record", "anim_set", "comp_format"],
-        "can_check": "喂一条帧记录翻出身份 / 时长 / 盒索引，喂六个 i16 或示例盒索引翻出前伸与高度，喂 8 字节攻击记录翻出这一拳的后果",
-        "cannot_check": "造型长相、拳脚外观、色板 —— 看不到 GFX 就不猜；命中火花的实际观感无实证",
+        "domains": ["frame_type", "attack_field", "box_field", "box_index_zero", "jack_box_example", "jack_attack_record", "anim_set", "comp_format", "wof_shake_left", "wof_atk_field", "wof_reaction"],
+        "can_check": "喂一条帧记录翻出身份 / 时长 / 盒索引，喂六个 i16 或示例盒索引翻出前伸与高度，喂 8 字节攻击记录翻出这一拳的后果；wof 半边能查 +0x62 的 0 / 3 / 4 / 5 怎么把一套动作排成依次解锁的几个目标，也能喂 16 字节参数行翻出那一招的反应门票与 shake",
+        "cannot_check": "造型长相、拳脚外观、色板 —— 看不到 GFX 就不猜；命中火花的实际观感无实证；wof 侧『一套动作能依次打到 3–5 人』是代码注释给的读法，没有逐帧实测，别写成实测手感",
         "probe": {"argv": ["frame", "10", "0A01", "8000", "0100", "0405", "1A02"], "expect": "59 像素"}
       },
       {

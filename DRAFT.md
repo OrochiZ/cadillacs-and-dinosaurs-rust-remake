@@ -3,53 +3,47 @@
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 git 跟踪的耐久层。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
 
-## 本轮做了什么：wof 16 字节参数行也变成「喂字节就翻意义」（第二十七格）
+## 本轮做了什么：把讲两侧的证据底座接上 wof 半边（第二十八格）
 
-**背景**：第二十六格 `1b04bf9b` 已提交（wof `+0x62` 域，67 域 / 526 条，
-169/169，工作区干净）。继续时发现一个对称缺口：dino 有 `attack <8 字节>`，
-wof 的「一招一行 16 字节」只有 `wof_atk_field` 字段字典、没有喂字节入口。
-用户长期要的是「看到某个数据就能简单知道抽象意义」，两边都该能喂。
+**背景**：第二十七格 `3165d856` 已提交（wof 16 字节参数行解码，
+67 域 / 532 条，182/182，工作区干净）。这一格做一次底座一致性核对：
+用 PowerShell 读 `semantics.json` 扫九条 `legacy`，看每条挂了几个
+`wof_` 域、`can_check` / `cannot_check` 有没有提到 wof。
 
-### 回源前提
+### 扫描结果：两条真缺，三条是纪律不是漏
 
-`notes/06-method.md §94.12` 两表字段对照表、`§94.13` 地址算术：
-- 我方 `0x6DB44` / 敌方 `0x6E754`，都是 16 字节但行内布局不同；
-  反应字节一个在 `+0xC`、一个在 `+0xA`；攻击力在我方表是基值、
-  在敌方表是难度索引增量（伤害另查 `0x6EE84+d6`，不写在这一行）。
-- `0x6E75F = 0x6E754 + 0x0B` 不是第三张表，是同一列被 `0x8D00` 链重读。
-- 三条命中链 `0x7FF2` / `0x8228·0x8726` / `0x8D00` 取第几格、算什么各不同。
-- `wof_reaction`（敌人侧 `0x11878`）/ `wof_player_reaction`（玩家侧 `0x11720`）
-  是两侧不同手册，同一个 `0x0E` 一边碎尸族、一边击飞。
-
-**缓存缺的六格**已按回源补齐，没新造语义：`ours:+0xB` / `ours:+0xE` /
-`enemy:+0..3` / `enemy:+6..7` / `enemy:+8..9` / `enemy:+0xC`。
-`wof_atk_field` 的 label / source / note 同步写清两表布局，
-以及 shake 那一格的取值该去 `wof_shake_left` 查。
+- `swing`（第三节）判断正文明确讲 wof 三帧锁依次解锁 3–5 人，
+  可查域 8 个全是 dino 的帧 / 盒 / 攻击记录 ⇒ 真缺。
+- `beat`（第一节）外推文第 473 行补充讲「定格是双方共同持有的一份
+  时间（dino 三处同写、wof `+0x62` 双方同写）」，底座 13 域无 wof ⇒ 真缺。
+- `values` 的 `can_check` 写「0 在 dino 是关盒 / wof 是合法表项」，
+  靠 `box_index_zero` 一个域就覆盖两侧，不是缺（按 `wof_` 前缀数太粗，
+  人工核过）。
+- `continuity` 提 wof 是在 `cannot_check`（关卡脚本数量概括 + C# 空桩，
+  按 wof 边界不转）；`crowd` / `difficulty` 主体是 dino census / 波次，
+  wof 那半边按 §11.0 不臆断 ⇒ 这三条「没有 wof 域」是纪律，别硬塞。
 
 ### 落盘内容
 
-- `lookup.py`：新增 `cmd_wof_attack()`；`cmd_attack` 末尾互链；doc 用法、
-  `cmd_list()` 末尾导航、main dispatch 同步；自测加 13 条断言，
-  169 → **182/182**。
-- `semantics.json`：`wof_atk_field` 补 6 键（9 → 15），更新 label / source / note。
-  没有新增域，coverage / themes / legacy 不用动。
-- `DESIGN_DIFF_NOTES.md`：补一段两边对照——dino 一招是填好格子的行、
-  wof 是一串没有名字的位置，取第几格算什么靠命中链；按 §94.23 标明
-  06 卷 §94.13 已倒推过，这里只是变成可查入口，不另算一条设计。
+- `semantics.json`：
+  - `legacy.beat` 加 `wof_shake_left`，`can_check` 补「wof 那一拍由双方
+    同写的 `+0x62` 一起数完」。
+  - `legacy.swing` 加 `wof_shake_left` / `wof_atk_field` / `wof_reaction`，
+    `can_check` 补 wof 半边能查什么，`cannot_check` 补「『能依次打到
+    3–5 人』是注释读法、没有逐帧实测」守证据强度。
+  - 没新增域 / 键，coverage / themes / probe 不用动。
+- `lookup.py`：自测加 4 条断言（swing / beat 接上两侧、swing 的 wof
+  半边真跑 `wof_attack ours`、按边界不转的三条没硬塞 wof 域），
+  182 → **186/186**。
+- `DESIGN_DIFF_NOTES.md`：`legacy` 入口段补一句「判断讲两侧的，底座
+  也得跟到两侧」，并写明另三条「缺域」是纪律不是漏查。
 
-**命令守住的三条边界**：民间资料把反应列读成「烧死 / 全碎」是未验命名
-（§94.14 三方对账只核到两角），明说不固化；回源没给消费端的格子
-（我方 `+0xA`、敌方 `+0xD..0xF`）明说「不硬答」；两表布局不同、三条链
-读法不同都写进输出。按 §11.0 不串等价、不评优劣、不推断原机缺什么。
-输出还自动带出 `wof_player_reaction` 里「宿主常量名 DMGREACT_BURN
-落的是击倒」这个反例，正好给「别按名字补意义」作证。
+**没有新增设计判断**：这两条只是把已经能查的数据接回已有判断，
+按 §94.23 不重复计数。
 
-**一次自查**：`+0xF` 的说明初稿在字段 meaning 与 gaps 里重复了一次，
-把 meaning 收成只讲这一格，重复留给 gaps 的一条，没改业务语义。
-
-**验证**：`--selftest 182/182`、`py_compile`、`git diff --check`、
+**验证**：`--selftest 186/186`、`py_compile`、`git diff --check`、
 CR=False / BOM=False、`over2000` 除 `DESIGN_DIFF_NOTES.md` 既存 3 行外全 0、
-实跑 `wof_attack ours` / `enemy`、`coverage` 合计 67 域 / 532 条、索引缺 0 多 0。
+实跑 `legacy swing` / `legacy beat` 核过更新后的文案。
 
 ### 长期口径（细则在耐久层，不在本文件展开）
 
@@ -65,6 +59,9 @@ CR=False / BOM=False、`over2000` 除 `DESIGN_DIFF_NOTES.md` 既存 3 行外全 
 - 示例数据（Jack 专属）一律带角色限定，不套到别的角色 / 敌人；盒索引要连盒表一起读。
 - `legacy` 是顶层索引不是 `domains`；每条必须同时写 can_check / cannot_check /
   probe，probe 必须能被 `--selftest` 真跑通；有 [O] 回源但没转成域的另带 source。
+- 判断讲两侧的，底座也得跟到两侧；但「按 wof 边界不转」的那几条没 wof 域
+  是纪律，别见零就补。按 `wof_` 前缀数域只是粗筛，`box_index_zero` 这类
+  单域覆盖两侧，人工核过再判缺口。
 - 每次加命令都要同步 doc 用法与 `cmd_list()` 末尾导航，自测留一条防回归。
 - 工具报错先分「真问题」还是「我的判据不对」；**证据强度也要双向守**：
   不把 [I] 写成 [O]，也不把 [O] 级代码观察降成「叙事」。降级前先回源。
