@@ -97,6 +97,14 @@ _ANIM_BEAT = ["10", "0A01", "8000", "0100", "0006", "1A00",
               "0A01", "8000", "0100", "0402", "1A00",
               "0A01", "8000", "0100", "0085", "1A00", "0011"]
 
+# 四种拍子各造一帧：两个盒都在 / 只关攻击盒 / 只关身体盒 / 两个都关。
+# 自测与全命令冒烟共用，验证四格互斥不漏、加起来正好是这一段全部帧。
+_ANIM_QUAD = ["0A01", "8000", "0100", "0403", "1A02",
+              "0A01", "8000", "0100", "0403", "1A00",
+              "0A01", "8000", "0100", "0604", "0005",
+              "0A01", "8000", "0100", "0483", "0000",
+              "0010"]
+
 # SPEC §3.6 只逐段列了 Jack 的前三套；第 3/4/5 套只有套级用途。
 SET_DOMAINS = {0: "jack_anim_set0", 1: "jack_anim_set1", 2: "jack_anim_set2"}
 
@@ -1090,7 +1098,9 @@ def cmd_anim(tokens: list[str]):
     print(f"ANI 段：{len(b)} 字节，按 {stride} 字节/帧切分")
     print("=" * 78)
     total, seen_last, identities = 0, False, []
-    live_normal = special_frames = closed_attack = invuln = one_sided = 0
+    live_normal = special_frames = closed_attack = invuln = 0
+    # 两个盒索引字节的四种组合：这是开关组合，不是帧身份分类，边界见 body_box_zero.note。
+    quad = {"both": 0, "recover": 0, "one_sided": 0, "pause": 0}
     link_desc = ""
     for i, off in enumerate(range(0, len(b) - stride + 1, stride)):
         rec = b[off:off + stride]
@@ -1105,9 +1115,15 @@ def cmd_anim(tokens: list[str]):
         if body == 0:
             invuln += 1
             marks.append("自己不可被命中 [O 观察]（身体盒关着）")
-        if body == 0 and atk:
-            one_sided += 1
-            marks.append("攻防不对等 [O 观察]：带攻击盒却自己挨不了打")
+        if body and atk:
+            quad["both"] += 1
+        elif body and not atk:
+            quad["recover"] += 1
+        elif atk and not body:
+            quad["one_sided"] += 1
+            marks.append("攻防不对等 [O 观察]：带 +$49 却自己挨不了打")
+        else:
+            quad["pause"] += 1
         if kind in ATTACK_KINDS:
             if not atk:
                 closed_attack += 1
@@ -1166,11 +1182,23 @@ def cmd_anim(tokens: list[str]):
     if closed_attack:
         print(f"  另有 {closed_attack} 个攻击帧把攻击盒关着：打不着人，"
               "属于收势 / 过渡，不算生效帧")
+    quad_n = sum(quad.values())
+    print(f"  两个盒索引合起来看（按 +$49 / +$48 两个字节，不是帧身份分类）："
+          f"共 {quad_n} 拍 → 攻防同帧 {quad['both']} / 收势过渡 {quad['recover']} / "
+          f"攻防不对等 {quad['one_sided']} / 纯停顿 {quad['pause']}")
+    print("    · 攻防同帧＝出招同时自己也在被命中名单里；收势＝打不着人但仍可能挨打；"
+          "不对等＝带 +$49 却挨不了打；纯停顿＝两件事都不发生")
+    print("    · 非攻击帧（kind 0 / 2）的 +$49 是抓投探测，不是攻击盒；"
+          "四格只按『这个字节非 0』读，不给它硬安一个攻击身份")
+    print("    · 8 / 0xA 虽按字节落进前两格，身份仍被命中循环跳过；"
+          "0xC / 0xE 抓姿势不发起攻击，自己仍可能挨打——别把四格当成谁会被打中")
+    print("    · 一段戏里『能打人』与『会挨打』分开排，是逐帧写好的拍子 [I 推断]，"
+          "只有 dino 侧证据，别套 wof")
     if invuln:
         print(f"  其中 {invuln} 帧身体盒关着：这几拍自己挨不了打"
               "（dino 侧 [O 观察]，命中循环要求防守方 +$48 != 0）")
-    if one_sided:
-        print(f"  其中 {one_sided} 拍攻防不对等：带着攻击盒、自己却不在被命中名单里"
+    if quad["one_sided"]:
+        print(f"  其中 {quad['one_sided']} 拍攻防不对等：带着 +$49、自己却不在被命中名单里"
               "（dino 侧 [O 观察]）；出招和『还能被还手』被拆成两件事，"
               "是逐帧排出来的空拍 [I 推断]，拍子结构写在帧记录里而非一条全局规则；"
               "专名边界见 body_box_zero.note")
@@ -1913,6 +1941,21 @@ def cmd_selftest():
        "其中 1 拍攻防不对等" in ol and "空拍 [I 推断]" in ol
        and "专名边界见 body_box_zero.note" in ol
        and "dino 侧 [O 观察]" in ol)
+    ck("ANI 时间线把整段的四种拍子分布数出来，不是只数攻防不对等",
+       "两个盒索引合起来看" in ol
+       and "共 5 拍 → 攻防同帧 1 / 收势过渡 3 / 攻防不对等 1 / 纯停顿 0" in ol
+       and "抓投探测，不是攻击盒" in ol
+       and "别把四格当成谁会被打中" in ol
+       and "逐帧写好的拍子 [I 推断]" in ol
+       and "只有 dino 侧证据" in ol)
+    ck("四格按两个字节组合互斥不漏：四种各造一帧，分布正好各 1",
+       "共 4 拍 → 攻防同帧 1 / 收势过渡 1 / 攻防不对等 1 / 纯停顿 1" in
+       capture(cmd_anim, _ANIM_QUAD))
+    ck("缓存 note 写清四格是开关组合、不是帧身份，也不回答谁最终挨打",
+       "不等于帧身份分类" in DOMAINS["body_box_zero"]["note"]
+       and "抓投探测、不是攻击盒" in DOMAINS["body_box_zero"]["note"]
+       and "不是『这一帧算哪类帧』" in DOMAINS["body_box_zero"]["note"]
+       and "0xC / 0xE" in DOMAINS["body_box_zero"]["note"])
     ck("ANI 时间线把末帧后的 link word 解成相对偏移，并说清去向是推断",
        "i16 +17" in ol and "addr_of_link + link = 相对段首" in ol
        and "跳到本段之外 [I 推断]" in ol and "carry=1" in ol
@@ -2742,6 +2785,7 @@ SMOKE_CASES = [
     ("anim", ["anim", "10", "0A01", "8000", "0100", "0405", "1A02",
               "0A01", "8000", "0100", "0085", "1A02"]),
     ("anim_beat", ["anim"] + _ANIM_BEAT),
+    ("anim_quad", ["anim"] + _ANIM_QUAD),
     ("comp", ["comp", "0002", "0002", "0005", "0003", "0802", "0803",
               "FFF8", "FFE0", "0008", "FFF0"]),
     ("box", ["box", "-1", "10", "-68", "59", "29", "42"]),
