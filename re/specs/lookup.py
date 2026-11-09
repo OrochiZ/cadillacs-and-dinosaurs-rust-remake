@@ -1721,9 +1721,23 @@ def cmd_selftest():
             out = capture(main, pr["argv"])
             ck(f"legacy {it['key']} 的样本 {' '.join(pr['argv'])} 跑得通",
                pr["expect"] in out)
-    ck("讲到两侧的判断，两侧各有一条真跑样本",
+    both_sides = ("beat", "swing", "death", "feel", "values")
+    ck("讲两侧的判断各自两侧都有真跑样本（第二节按正文边界不算）",
        all(len(legacy_probes(next(x for x in items if x["key"] == k))) >= 2
-           for k in ("beat", "swing")))
+           for k in both_sides))
+    cb = next(x for x in items if x["key"] == "combo")
+    ck("combo 不硬凑 wof 样本：正文自己写了不并成同一套因果",
+       "不并成同一套因果" in cb["cannot_check"]
+       and all(pr["argv"][0] != "wof_rkey1" for pr in legacy_probes(cb)))
+    _, d14 = match_value(DOMAINS["enemy_hurt_reaction"], "14")
+    _, w14 = match_value(DOMAINS["wof_reaction"], "14")
+    ck("death 两侧样本是同一个编号的不同回答，不是凑数",
+       d14 is not None and w14 is not None
+       and d14["meaning"] != w14["meaning"])
+    vs = legacy_probes(next(x for x in items if x["key"] == "values"))
+    ck("values 的 0 在两侧各有一条样本",
+       any(pr["argv"][:2] == ["box_index_zero", "dino"] for pr in vs)
+       and any(pr["argv"][:2] == ["box_index_zero", "wof"] for pr in vs))
     sw = next(x for x in items if x["key"] == "swing")
     ck("swing 的底座接上「一拍也不是一条数据」的合成样本",
        "合成一句" in sw["can_check"]

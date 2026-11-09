@@ -1196,7 +1196,7 @@
     ]
   },
   "legacy": {
-    "note": "GAMEPLAY_LEGACY.md 九条外推判断 → 缓存里哪些域是它的数据底座。与 themes 正交：themes 按玩法问题归域，这里按一句设计判断归域，并且必须写清「能查到什么」和「查不到什么、为什么」。只列本 rep 已登记的证据；右栏「当代同类常见做法」是外推观察，不占域。probe 可以挂一条或多条，每一条都是 --selftest 里真跑过的命令样本，不是又一份声明；判断讲到两侧的，两侧都得有各自的样本，别让 can_check 写宽了却只有半边有证明。can_check 只写缓存里真有取值或真有命令能翻出来的东西；没有对应可查取值的说法一律放 cannot_check，并写明它是量、是未验命名、还是「有 [O] 回源但没转成域」的结构观察——后一类另带 source，别把「缓存没登记」写成「没有证据」。给压缩恢复后从一句判断走回可查数据用，不当待办清单。",
+    "note": "GAMEPLAY_LEGACY.md 九条外推判断 → 缓存里哪些域是它的数据底座。与 themes 正交：themes 按玩法问题归域，这里按一句设计判断归域，并且必须写清「能查到什么」和「查不到什么、为什么」。只列本 rep 已登记的证据；右栏「当代同类常见做法」是外推观察，不占域。probe 可以挂一条或多条，每一条都是 --selftest 里真跑过的命令样本，不是又一份声明；判断讲到两侧的，两侧都得有各自的样本，别让 can_check 写宽了却只有半边有证明；哪些算「讲两侧」按外推文正文和它自己写下的边界判定，不按 can_check 的措辞——第二节明写 wof 那句不并成同一套因果、不放大成两款共同架构，就不算两侧，别拿搓招状态域凑一条 wof 样本。can_check 只写缓存里真有取值或真有命令能翻出来的东西；没有对应可查取值的说法一律放 cannot_check，并写明它是量、是未验命名、还是「有 [O] 回源但没转成域」的结构观察——后一类另带 source，别把「缓存没登记」写成「没有证据」。给压缩恢复后从一句判断走回可查数据用，不当待办清单。",
     "list": [
       {
         "key": "beat",
@@ -1216,7 +1216,7 @@
         "question": "能不能接下一拳，由什么决定",
         "domains": ["combo_counter", "input_buffer", "jack_anim_set1", "jack_attack_record", "attack_id", "player_ground_state", "dino_cmd_state", "wof_rkey1"],
         "can_check": "命中才准续拳、定格期间按键攒在哪一格、三拳 10/15/29 与 9/9/13 的代价递进、四张表怎么对齐同一连段第几下、两边指令技状态编码各交给谁消费",
-        "cannot_check": "连打手感怎么变；wof 侧「动画播完 + 窗口内新按键沿」的具体帧数未逐帧验，按 §94.11 标未验；wof『连打压力涨到阈值就清累计、把顿帧换成固定短顿』有 [O] 级回源（见 source），不是叙事，但那是条件分支与会过期的累计量，没有离散编号表，按『不从概括固化』不硬编，缓存里查不到逐项取值",
+        "cannot_check": "连打手感怎么变；wof 侧「动画播完 + 窗口内新按键沿」的具体帧数未逐帧验，按 §94.11 标未验；wof『连打压力涨到阈值就清累计、把顿帧换成固定短顿』有 [O] 级回源（见 source），不是叙事，但那是条件分支与会过期的累计量，没有离散编号表，按『不从概括固化』不硬编，缓存里查不到逐项取值；外推文第二节边界明写 wof 那句不并成同一套因果、不放大成两款共同架构，所以这条不按『讲两侧』补 wof 样本",
         "source": "notes/02-mid.md §37.3（0x7E86 阈值门 Cps1Collision.cs:5097-5120、0x17B2 累计器 :5179-5219、StunLeft 逐帧 -1 归零清累计 Cps1EnemyAI.cs:1132-1139）；GAMEPLAY_LEGACY.md 逐拍还原表「连打压力涨到 0x1E 阈值就清累计、把顿帧换成固定短顿」",
         "probe": {"argv": ["input_buffer", "$AD"], "expect": "续拳"}
       },
@@ -1240,9 +1240,12 @@
         "title": "四、「怎么死」是受击状态自己决定的，结果是带信息的",
         "question": "反应编号之后还隔着什么",
         "domains": ["player_hurt_reaction", "enemy_hurt_reaction", "wof_hurt_book", "wof_reaction", "wof_player_reaction", "wof_atk_field", "drop_code", "container_variant"],
-        "can_check": "反应编号只是第一张门票、玩家侧与敌人侧同一编号意思不同、按入口地址选受击手册、按 ObjId 的动画 / 碎尸链、掉落与容器变体",
+        "can_check": "反应编号只是第一张门票、玩家侧与敌人侧同一编号意思不同、按入口地址选受击手册、按 ObjId 的动画 / 碎尸链、掉落与容器变体；同一个 14 在 dino 敌人侧是无抬升后滑、在 wof 反应表里却翻到碎尸族，两侧各自有可查取值",
         "cannot_check": "wof 民间资料「死 / 附 / 效 / 呆」四列的效果名未验（§94.14 三方对账只核到两角），不把 06 / 0C 直接读成「烧死 / 全碎」",
-        "probe": {"argv": ["wof_reaction", "14"], "expect": "碎尸"}
+        "probe": [
+          {"argv": ["enemy_hurt_reaction", "14"], "expect": "后滑"},
+          {"argv": ["wof_reaction", "14"], "expect": "碎尸"}
+        ]
       },
       {
         "key": "crowd",
@@ -1280,7 +1283,10 @@
         "can_check": "八字段攻击记录逐字段语义（含 +3 命中定格、+4 音效、+5 得分）、wof 两张 16 字节参数行各字段被哪条链读、武器种类与耐久、掉落码；wof +0x62 的 0 / 3 / 4 / 5 各是什么——一个字节的生命周期怎么同时管硬直门、闪白、群体命中锁，以及归零为什么会解锁下一个目标",
         "cannot_check": "「wof 那一个字节兼着硬直门 / 闪白 / 群体命中锁」有 [O] 级回源（见 source），不是叙事；这一块已转成可查取值，能喂 0 / 3 / 4 / 5 查那段生命周期。仍查不到的是：伤害 / 顿帧的具体数值是量，换大换小只改手感，回源 tables.txt；3 / 4 / 5 之间只差几帧也是量，不是离散档位名；玩家可见的连打手感没做逐帧 trace，按 §94.11 标未验；同卷 A5-0x62 的全局屏幕震动计数器属相机层，不与对象 +0x62 混；连打阈值门与短期压力计那层同属按纪律不转，理由进 coverage.not_registered，别在这里展开成假编号",
         "source": "notes/02-mid.md §37.3（+0x62 = ShakeLeft，Cps1Types.cs:298；Cps1Collision.cs:337-341 群体命中锁 3 帧、:3464-3470 双方同写、:5127 闪白循环）；notes/04-state.md:54 同名不同义登记",
-        "probe": { "argv": ["wof_shake_left", "3"], "expect": "群体命中锁" }
+        "probe": [
+          {"argv": ["attack_field", "+3"], "expect": "命中定格"},
+          {"argv": ["wof_shake_left", "3"], "expect": "群体命中锁"}
+        ]
       },
       {
         "key": "values",
@@ -1289,7 +1295,11 @@
         "domains": ["box_index_zero", "wave_terminator", "credit_player", "dino_script_record", "comp_extra", "frame_timer", "attack_id", "camera_lock"],
         "can_check": "「0」在 dino 是关盒 / wof 是合法表项、负值收尾、0xFF 不记归属、bit7 末帧；lookup.py collide 4 看同一编号在十几张表里各讲什么",
         "cannot_check": "值为什么离散的成因里可能有硬件成分，按本题边界不推断作者意图；ROM 字节表 / 图块编号 / 色板按用户边界不转",
-        "probe": {"argv": ["collide", "4"], "expect": "frame_type"}
+        "probe": [
+          {"argv": ["box_index_zero", "dino"], "expect": "关盒"},
+          {"argv": ["box_index_zero", "wof"], "expect": "合法"},
+          {"argv": ["collide", "4"], "expect": "frame_type"}
+        ]
       }
     ]
   }
