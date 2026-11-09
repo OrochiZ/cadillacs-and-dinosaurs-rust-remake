@@ -1968,6 +1968,11 @@ def cmd_selftest():
     ck("九条 probe 都带 argv 与 expect（挂多条的逐条都要有）",
        all(pr["argv"] and pr["expect"]
            for it in items for pr in legacy_probes(it)))
+    diff = next(x for x in items if x["key"] == "difficulty")
+    ck("难度条除了波次，还挂上「贴脸后按档停顿」这条 AI 证据",
+       any(pr["argv"] == ["enemy_ai_state", "14"] for pr in legacy_probes(diff))
+       and "aggression" in diff["can_check"]
+       and "逐帧实证" in diff["cannot_check"])
     for it in items:
         for pr in legacy_probes(it):
             out = capture(main, pr["argv"])

@@ -1266,9 +1266,12 @@
         "title": "六、同一套打法，难度只拧紧节奏",
         "question": "难度改的是哪一层的数",
         "domains": ["wave_ctrl_r4", "wave_ctrl_r5", "wave_end", "kill_all", "enemy_ai_state", "game_phase"],
-        "can_check": "波次按玩家数分档放行、关内阶段档位、收招 / 入场暂停门、波次控制器自己的两个状态字",
-        "cannot_check": "rank / aggression 逐档数值、HP 表、invuln 帧数表是量，按 §94.3 与 coverage.not_registered 不转；「难度不改打法」是读法，没有逐难度对照的逐帧实证",
-        "probe": {"argv": ["wave_ctrl_r4", "0"], "expect": "7200"}
+        "can_check": "波次按玩家数分档放行、关内阶段档位、收招 / 入场暂停门、波次控制器自己的两个状态字；杂兵贴到玩家脸上先停一拍再出手，等待帧按 aggression 档（随 rank 变）查表 0x34210，档位越高等越短",
+        "cannot_check": "rank / aggression 逐档数值、HP 表、invuln 帧数表是量，按 §94.3 与 coverage.not_registered 不转；「难度不改打法」是读法，没有逐难度对照的逐帧实证；0x34210 那张表只给档位与帧数区间，不逐档登记意义",
+        "probe": [
+          {"argv": ["wave_ctrl_r4", "0"], "expect": "7200"},
+          {"argv": ["enemy_ai_state", "14"], "expect": "0x34210"}
+        ]
       },
       {
         "key": "continuity",
