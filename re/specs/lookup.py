@@ -26,6 +26,8 @@
     python re/specs/lookup.py attack_id 0x5A          查一个攻击编号是哪一招
     python re/specs/lookup.py anim_id 1 4             查 Jack 第 1 套第 4 段是哪一招
     python re/specs/lookup.py coverage                哪些表已转、哪些按纪律不转、为什么
+    python re/specs/lookup.py themes                  按玩法主题列出可查的域
+    python re/specs/lookup.py themes state_machine    只看状态机这一块
     python re/specs/lookup.py --json frame_type 4     机器可读输出
     python re/specs/lookup.py --selftest              固化自测（不依赖 ROM）
 
@@ -575,6 +577,36 @@ def cmd_coverage():
     return 0
 
 
+def cmd_themes(tokens: list[str]):
+    """按玩法主题列出可查的域；与 coverage 的「按回源文件分组」正交。"""
+    items = DB.get("themes", {}).get("list", [])
+    if not items:
+        print("缓存里没有主题索引")
+        return 1
+    if not tokens:
+        print("按设计问题查缓存（与 coverage 的回源分组正交）")
+        print("=" * 78)
+        print(DB["themes"].get("note", ""))
+        for t in items:
+            print(f"  {t['key']:20s} {t['label']}  ({len(t['domains'])} 个域)")
+            print(f"  {'':20s} {t['question']}")
+        print("\n用 `lookup.py themes <主题>` 看这一块有哪些域；"
+              "`lookup.py <域> [取值]` 查具体意义。")
+        return 0
+    key = tokens[0]
+    t = next((x for x in items if x["key"] == key), None)
+    if not t:
+        print(f"没有这个主题：{key}。可用：{', '.join(x['key'] for x in items)}")
+        return 1
+    print(f"{t['label']} — {t['question']}")
+    print("-" * 78)
+    for name in t["domains"]:
+        d = DOMAINS.get(name)
+        print(f"  {name:24s} {d['label'] if d else '（域不存在）'}")
+    print(f"\n（{len(t['domains'])} 个域；具体取值用 `lookup.py <域> [取值]` 查）")
+    return 0
+
+
 def cmd_collide(token: str):
     """只给一个取值，列出它在各域的所有意义 —— 确认「这个数得先知道谁在读」。"""
     print(f"取值「{token}」在已登记域里的所有意义：")
@@ -814,6 +846,20 @@ def cmd_selftest():
        any("街机前端" in x["what"] and "硬件" in x["why"] and "游戏性" in x["why"]
            for x in nr))
 
+    # 主题索引：与 coverage 正交，每个域恰好归一处
+    items = DB.get("themes", {}).get("list", [])
+    listed = [x for t in items for x in t["domains"]]
+    ck("主题索引覆盖所有域，且每个域只归一处",
+       sorted(listed) == sorted(DOMAINS) and len(listed) == len(set(listed)),
+       f"listed={len(listed)} domains={len(DOMAINS)}")
+    ck("主题里的域名都真实存在", all(x in DOMAINS for x in listed))
+    out = capture(cmd_themes, [])
+    ck("themes 无参数能列出四块主题",
+       all(x in out for x in ("state_machine", "hit_logic", "event_script", "enemy_strategy")))
+    out = capture(cmd_themes, ["state_machine"])
+    ck("themes state_machine 能列出该块域名",
+       "combo_counter" in out and "input_buffer" in out)
+
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:
         print(f"  {'PASS' if good else 'FAIL'}  {label}" + (f"   [{detail}]" if not good and detail else ""))
@@ -840,6 +886,8 @@ def main(argv: list[str]) -> int:
         return cmd_collide(rest[0]) if rest else (print("用法：collide <取值>") or 1)
     if cmd == "coverage":
         return cmd_coverage()
+    if cmd == "themes":
+        return cmd_themes(rest)
     if cmd == "anim_id":
         return cmd_anim_id(rest)
     if cmd == "flags":

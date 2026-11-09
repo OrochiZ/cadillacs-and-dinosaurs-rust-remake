@@ -938,5 +938,46 @@
       { "what": "街机前端 G.$1A 的 START / TEST / SERVICE 位、G.$20 投币位、EEPROM 设置字节", "why": "用户明确排除『适配古代硬件特色和低性能』的部分；这些是机台 / 硬件层，不参与关卡里那场架怎么排，转进来会把机台适配误当游戏性" },
       { "what": "位域与字段偏移域里的数字", "why": "那是位号或 +N 字节，不是游戏里读到的取值，按取值反查时要排除" }
     ]
+  },
+  "themes": {
+    "note": "按『这个域主要回答哪一类设计问题』归一处，与 coverage 的『按回源文件分组』正交。一个域只归一处，其它侧面写在问句里；给压缩恢复后从玩法问题反查缓存用，不当待办清单。",
+    "list": [
+      {
+        "key": "state_machine",
+        "label": "状态机",
+        "question": "这一拍谁拿着控制权、演完往哪翻页；同一个编号在不同对象身上是不是同一个回答",
+        "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "enemy_hurt_reaction", "enemy_ai_state", "weapon_attack_state", "combo_counter", "input_buffer", "wof_hurt_book", "wof_player_reaction"]
+      },
+      {
+        "key": "hit_logic",
+        "label": "打击逻辑",
+        "question": "这一下算不算打中、打哪儿、打出什么；两侧对『0』和反应编号的约定差在哪",
+        "domains": ["frame_type", "box_index_zero", "attack_field", "box_field", "attack_id", "wof_reaction", "wof_atk_field", "sound_id", "jack_anim_set1", "container_variant"]
+      },
+      {
+        "key": "event_script",
+        "label": "事件脚本",
+        "question": "关卡什么时候放行、一波人怎么放完、翻到哪一页；音乐轨自己的命令字也归这里",
+        "domains": ["spawn_command", "spawn_flags", "spawn_pool", "wave_end", "wave_terminator", "kill_all", "wave_ctrl_r4", "wave_ctrl_r5", "credit_player", "seq_command"]
+      },
+      {
+        "key": "enemy_strategy",
+        "label": "怪物策略",
+        "question": "谁上场、怎么进来、围得紧不紧、掉什么；镜头钉在哪决定这一波在哪打",
+        "domains": ["entrance", "pool_a_class", "pool_e_class", "pool_tag", "item_kind", "drop_code", "camera_mode"]
+      },
+      {
+        "key": "flow_space",
+        "label": "流程与空间",
+        "question": "这一帧到底跑不跑游戏帧、关内到哪一拍",
+        "domains": ["game_mode", "game_phase"]
+      },
+      {
+        "key": "data_format",
+        "label": "数据层与绘制",
+        "question": "看不到 GFX 也能读出的帧 / 盒 / 属性字形状，以及声音编号与声像怎么走",
+        "domains": ["anim_set", "draw_flags", "sprite_attr", "comp_format", "frame_timer", "box_mode", "facing", "param_a", "jack_anim_set0", "jack_anim_set2", "weapon_kind", "sound_command", "sound_code", "sound_header_type", "pan_mode"]
+      }
+    ]
   }
 }
