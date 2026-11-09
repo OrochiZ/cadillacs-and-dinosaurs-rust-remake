@@ -474,6 +474,135 @@
         "18": { "meaning": "不带淡出地换区域", "tag": "O" },
         "19": { "meaning": "关卡结束（带淡出，HUD 保留）", "tag": "O" }
       }
+    },
+
+    "game_mode": {
+      "label": "顶层游戏模式（G.$4D0，game task 0xA870 的跳转表）",
+      "scope": "dino",
+      "source": "re/specs/flow/SPEC.md §4；ENDING.md 开头",
+      "note": "整局最外层的那本手册：它决定这一帧到底跑不跑游戏帧，还是选人 / 过场 / 结算 / 结局。",
+      "values": {
+        "0": { "meaning": "开机 / 投币加入：清层、初始化 rank，然后转选人", "tag": "O" },
+        "4": { "meaning": "选人画面", "tag": "O" },
+        "8": { "meaning": "每关之间的过场（阻塞式，演完才走）", "tag": "O" },
+        "12": { "meaning": "真正的游戏帧；之后再按 G.$4D1 分派关内阶段", "tag": "O", "alias": "0x0C" },
+        "16": { "meaning": "无人游玩时的续关画面", "tag": "O", "alias": "0x10" },
+        "20": { "meaning": "game over，回 attract", "tag": "O", "alias": "0x14" },
+        "24": { "meaning": "game over 的另一条入口，同样回 attract", "tag": "O", "alias": "0x18" },
+        "28": { "meaning": "结局演出", "tag": "O", "alias": "0x1C" }
+      }
+    },
+    "player_run_state": {
+      "label": "玩家跑动档状态字（mode 2 / sub 0 / $06=2，表 0x19FC0）",
+      "scope": "dino",
+      "source": "re/specs/player/SPEC.md §3.2 状态表",
+      "context_dependent": true,
+      "note": "同一个状态字 $06 在地面 / 跑动 / 空中三张表里各有一本手册。查这里必须确认 $06 档位是 2；与 player_ground_state、player_air_state 对照。",
+      "values": {
+        "0": { "meaning": "跑", "tag": "O" },
+        "2": { "meaning": "跑动中持近战武器（type 0x201/0x202）", "tag": "O" },
+        "4": { "meaning": "从玩家代码之外进入的状态，用途未登记", "tag": "U" }
+      }
+    },
+    "player_air_state": {
+      "label": "玩家空中档状态字（mode 2 / sub 0 / $06=4，表 0x1A598）",
+      "scope": "dino",
+      "source": "re/specs/player/SPEC.md §3.2 状态表",
+      "context_dependent": true,
+      "note": "空中这一档单独一张表，角色差异写在这里：同一个编号在不同角色身上是不同的跳跃攻击。与另外两张状态表对照。",
+      "values": {
+        "0": { "meaning": "原地起跳", "tag": "O" },
+        "2": { "meaning": "蹬墙跳（Hannah / Mustapha 特有）", "tag": "O" },
+        "4": { "meaning": "落地", "tag": "O" },
+        "6": { "meaning": "没起跳的下落", "tag": "O" },
+        "8": { "meaning": "跑动起跳", "tag": "O" },
+        "10": { "meaning": "跳跃攻击高位 / 俯冲（0x0E）", "tag": "O" },
+        "12": { "meaning": "跳跃攻击低位（0x0C）", "tag": "O" },
+        "14": { "meaning": "Hannah 空中必杀（0x0E）", "tag": "O" },
+        "16": { "meaning": "Hannah 空中必杀（0x10）", "tag": "O" },
+        "18": { "meaning": "空中冲刺攻击（Hannah / Mustapha / Mess）", "tag": "O" },
+        "22": { "meaning": "Jack 的跑跳攻击", "tag": "O" },
+        "24": { "meaning": "定时姿势（Hannah / Mustapha），用途未登记", "tag": "U" },
+        "26": { "meaning": "定时姿势（Hannah / Mustapha），用途未登记", "tag": "U" },
+        "28": { "meaning": "未登记状态", "tag": "U" },
+        "30": { "meaning": "抱着物件跳跃（0x1E）", "tag": "O" },
+        "32": { "meaning": "抱着物件跳跃（0x20）", "tag": "O" },
+        "40": { "meaning": "跑跳攻击（Hannah）", "tag": "O" },
+        "42": { "meaning": "跑跳攻击（Mustapha）", "tag": "O" },
+        "44": { "meaning": "跑跳攻击（Mess）", "tag": "O" },
+        "48": { "meaning": "指令技（下、上+攻击），按角色另查表 0x1B72E", "tag": "O" },
+        "54": { "meaning": "俯冲落地", "tag": "O" }
+      }
+    },
+    "enemy_ai_state": {
+      "label": "杂兵 class 2 的真实 AI 状态（+$06，派发表 0x33EFA）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §7.4 各 State 小节",
+      "context_dependent": true,
+      "note": "别拿 §7.1 的 debug 词汇表当编号表：SPEC 明写「class 2 的 +$06 不按那张表走」，那只是开发者的通用词汇，每个 class 各用自己的子集和编号。这正是缓存必须带 source 的原因。",
+      "values": {
+        "0": { "meaning": "拿主意：看是否腾空、等攻击冷却、按 aggression 掷一次要不要起连段", "tag": "O" },
+        "2": { "meaning": "接近 / 绕圈：朝站位槽走，撞上玩家就转等待攻击，够远会考虑冲刺", "tag": "O" },
+        "4": { "meaning": "亮相挑衅（taunt），演完回接近", "tag": "O" },
+        "6": { "meaning": "保持距离 / 兜圈子，在站位上暂停一段时间", "tag": "O" },
+        "8": { "meaning": "攻击：按 0x34258 表进子状态", "tag": "O" },
+        "10": { "meaning": "冲刺 / 突进，途中可能起冲刺攻击", "tag": "O", "alias": "0xA" },
+        "12": { "meaning": "下坠（被打飞或离地）", "tag": "O", "alias": "0xC" },
+        "14": { "meaning": "撞到玩家后的等待再攻击（入口 0x3555A），SPEC 未单列标题", "tag": "U", "alias": "0xE" },
+        "16": { "meaning": "跳下台阶（hop down）", "tag": "O", "alias": "0x10" }
+      }
+    },
+    "pool_a_class": {
+      "label": "池 A 对象类别编号（+$20 = class * 4，派发表 0x2346C）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §3.2 class map；classmap.txt",
+      "note": "只登记 SPEC 里点名的类别；未列出的编号多是布景 / 弹丸 / 辅助对象，classmap.txt 里名字为空，不猜。",
+      "values": {
+        "2": { "meaning": "基本杂兵：FERRIS / GNEISS / DRIVER（变体在 +$26 高字节）", "tag": "O" },
+        "3": { "meaning": "LASH T.", "tag": "O" },
+        "4": { "meaning": "TYROG，恐龙 Boss", "tag": "O" },
+        "6": { "meaning": "BLUDGE", "tag": "O" },
+        "10": { "meaning": "HAMMER T. / BLK ELMER / WRENCH T.", "tag": "O" },
+        "13": { "meaning": "POACHER J / SKINNER / GUTTER", "tag": "O" },
+        "14": { "meaning": "BLADE / RAZOR，持刀杂兵", "tag": "O" },
+        "18": { "meaning": "VICE T. / WALTHER，第一关 Boss", "tag": "O" },
+        "20": { "meaning": "PUNK / THUG", "tag": "O" },
+        "24": { "meaning": "SHIVAT，恐龙", "tag": "O" },
+        "25": { "meaning": "SLICE，Boss", "tag": "O" },
+        "29": { "meaning": "R HOPPER，恐龙", "tag": "O" },
+        "31": { "meaning": "HOGG，第三关车载段 Boss", "tag": "O" },
+        "34": { "meaning": "KNIFE", "tag": "O" },
+        "36": { "meaning": "MORGAN，Boss", "tag": "O" },
+        "38": { "meaning": "MACK", "tag": "O" },
+        "40": { "meaning": "MORGUE，Boss", "tag": "O" },
+        "55": { "meaning": "FERRIS / GNEISS 的脚本化变体", "tag": "O" },
+        "61": { "meaning": "BUTCHER，Boss", "tag": "O" },
+        "63": { "meaning": "BLADE 变体（0x1C）", "tag": "O" },
+        "64": { "meaning": "PUNK（0x1D）/ WRENCH T.（0x24）变体", "tag": "O" },
+        "71": { "meaning": "SLISAUR，恐龙 Boss", "tag": "O" },
+        "72": { "meaning": "TYROG 变体（0x1B）", "tag": "O" },
+        "79": { "meaning": "HAMMER T. 一族的偷猎者变体（追恐龙）", "tag": "O" },
+        "82": { "meaning": "ZEKE", "tag": "O" },
+        "84": { "meaning": "FESSENDEN（最终 Boss）及其部件", "tag": "O" },
+        "86-89": { "meaning": "FESSENDEN 的部件对象", "tag": "O" },
+        "91": { "meaning": "TYROG 2", "tag": "O" },
+        "94": { "meaning": "FESSENDEN 第二形态", "tag": "O" }
+      }
+    },
+    "container_variant": {
+      "label": "可破坏容器变体（池 E class 5 的 +$26）",
+      "scope": "dino",
+      "source": "re/specs/enemy/SPEC.md §13.2 1382 行",
+      "note": "变体不是换个贴图，是换一组「能不能打、挡不挡路、能不能举起来」的规则组合。",
+      "values": {
+        "0": { "meaning": "可打、实心挡路、可举起", "tag": "O" },
+        "2": { "meaning": "可打、实心挡路、可举起", "tag": "O" },
+        "4": { "meaning": "可打、实心挡路、可举起", "tag": "O" },
+        "6": { "meaning": "可打、可举起，但不实心", "tag": "O" },
+        "8": { "meaning": "可打、可举起，但不实心", "tag": "O" },
+        "10": { "meaning": "可打、实心挡路，但举不起来", "tag": "O", "alias": "0xA" },
+        "12": { "meaning": "可打、实心挡路、可举起", "tag": "O", "alias": "0xC" }
+      }
     }
   }
 }

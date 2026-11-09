@@ -566,7 +566,9 @@ def cmd_selftest():
             if not v.get("meaning") or not v.get("tag") or v["tag"] not in ("O", "I", "U"):
                 bad.append(f"{name}.{k} 缺 meaning/tag")
     ck("每个域都有 scope/source，每条都有 meaning/tag", not bad, "; ".join(bad))
-    ck("域数量 >= 30（ANI/SPR 之外确有扩展）", len(DOMAINS) >= 30, str(len(DOMAINS)))
+    ck("域数量 >= 39（地面/跑/空中三张状态表都进了缓存）", len(DOMAINS) >= 39, str(len(DOMAINS)))
+    for dn in ("player_ground_state", "player_run_state", "player_air_state"):
+        ck(f"状态表 {dn} 已登记", dn in DOMAINS)
 
     # 关键取值映射
     _, v = match_value(DOMAINS["wof_reaction"], "0x0E")
@@ -628,6 +630,18 @@ def cmd_selftest():
     out = capture(cmd_collide, "4")
     ck("collide 4 命中多个域且显式排除位域/字段偏移",
        out.count(" -> ") >= 5 and "已跳过" in out)
+    ck("collide 4 同时列出三张玩家状态表",
+       all(x in out for x in ("player_ground_state", "player_run_state", "player_air_state")))
+
+    # 本轮新补的成表数值
+    _, v = match_value(DOMAINS["game_mode"], "0x0C")
+    ck("game_mode 0x0C → 真正的游戏帧", bool(v) and "游戏帧" in v["meaning"])
+    _, v = match_value(DOMAINS["pool_a_class"], "18")
+    ck("pool_a_class 18 → 第一关 Boss", bool(v) and "VICE T." in v["meaning"])
+    _, v = match_value(DOMAINS["container_variant"], "0xA")
+    ck("容器变体 0xA → 举不起来", bool(v) and "举不起来" in v["meaning"])
+    ck("debug 词汇表不能当编号表的警告已进缓存",
+       "不按那张表" in DOMAINS["enemy_ai_state"]["note"])
 
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:
