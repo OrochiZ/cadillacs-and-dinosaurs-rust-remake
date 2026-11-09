@@ -789,6 +789,12 @@ def cmd_selftest():
        "camera_mode" in out and "camera_lock" in out
        and "区域结束" in out and "锁住" in out)
     ck("字段偏移域 camera_event 不参与按取值反查", "camera_event ->" not in out)
+    ck("镜头锁与波次收尾能串成一条放行链",
+       "enemy/SPEC.md §8.3" in DOMAINS["camera_lock"]["source"]
+       and "GO" in DOMAINS["wave_end"]["values"]["0"]["meaning"]
+       and "$7A9" in DOMAINS["wave_end"]["values"]["0"]["meaning"])
+    ck("六份 SPEC 已正面核过的口径写进覆盖索引",
+       "正面核过" in DB["coverage"]["note"] and "不是漏查" in DB["coverage"]["note"])
     _, v = match_value(DOMAINS["spawn_pool"], "3")
     ck("spawn_pool 3 → 池 E", bool(v) and "池 E" in v["meaning"], v["meaning"] if v else "miss")
     _, v = match_value(DOMAINS["box_field"], "10")

@@ -3,52 +3,46 @@
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 git 跟踪的耐久层。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
 
-## 本轮做了什么：把「关卡什么时候放行」的数据底座补进缓存（第十二格）
+## 本轮做了什么：补核 enemy SPEC，订正相机两域回源并闭合检索范围（第十三格）
 
-**背景**：`9fbb9ece` 收口漏扫的 HANDOFF 目录后，工作区干净、
-`R:\Temp\dino_commit_msg.txt` 已清理。Stop hook 催办后继续。
-上一格收的是「哪些目录不用再翻」，这一格正面核六份 SPEC 本身，
-看 58 个域是不是把成表都转完了。
+**背景**：`66155da6` 补 `camera_lock` / `camera_event` 后，工作区干净。
+上一格说「正面核六份 SPEC」，但 `enemy/SPEC.md` 的章节标题被输出上限
+截断、只看到 §0，留了个尾巴；这一格补齐核完并订正回源口径。
 
-### 正面回源，先划边界
+### 补核 enemy SPEC 的结论
 
-- `anim/SPEC.md §4.5` 攻击属性 8 字节字段布局 → 已在 `attack_field`。
-- `sound/SPEC.md §12/§14` 音高 / 音量 / 包络 / 乘法表 / 样本与乐器表 →
-  全是量与表内容，按 `coverage.not_registered` 既有两条不转；
-  §14 的 twin voices 属声音实现层，也不进玩法判断。
-- `stage/SPEC.md §6.6` 模式表已在 `camera_mode`；`§5.2` 事件记录是
-  字段布局。真缺口是 **`§5.1` 的 `$7b4` 相机锁三档**——笔记里反复讲
-  「门闩锁相机、阈值达标放行」，却没有可查的取值意义。
+- `§6.4 Rank events` 全是量的增减（rank ±3 / speed ±1、查表值），
+  `§8.5 Other flags` 是计数与载具专属标志（`$518`，按用户边界不转），
+  `§3.1` 名字表、`§9` 逐关脚本都不是「取值 → 抽象意义」成表。
+- `§8.2 / §8.3 / §8.5` 已有的口径对得上缓存：`wave_end`（0 GO /
+  2 自动走下一区域 / 4 关卡结束）、`kill_all`（1 记分 / 2 超时不记分）
+  都完整，**没有新缺口**。
+- `§8.3` 给了比 stage SPEC 更直接的一句：**镜头恰好停在波次开始处，
+  一直锁到波次收尾字把 `$7A9` GO 置起来**；segment table 0x21B2A
+  的 16 字节记录字段名与 stage `§5.2` 对齐。
 
 ### 落点
 
-- `semantics.json` 新增 `camera_lock`（0 自由 / 1 这一波打完前锁 /
-  2 锁到关卡结束），note 写清「锁着不等于暂停世界：mode 4 每帧仍把
-  camX 钉在事件给的 X 上，等 $6D go flag 才放行」，并标明这是共享
-  事实、不是替所有人定拍子的裁决。
-- 新增 `camera_event`（16 字节事件记录的字段键 `+0..+F`），note 写明
-  `X = 0xFFFF` 是表终止符、加载时记下 camY 并让事件序号 +1。
-- `coverage.registered` 的 stage 组、`themes.event_script` 同步登记；
-  `OFFSET_KEY_DOMAINS` 加 `camera_event`，不参与 `collide` 反查。
-- 自测 83 → **88/88**（相机锁、事件字段、终止符、`collide 1` 两义、
-  字段偏移域排除）。
-- `DESIGN_DIFF_NOTES.md`「拿这份缓存真跑一次」那段补一个真例证：
-  同样是 `1`，在镜头模式表里是「区域结束、淡出换调色板」，在锁状态
-  表里是「这一波还没打完、先别往前走」——一个说翻页、一个说放行，
-  接回「一个数字没有全局意思」。
+- `camera_mode` 的 source 把含糊的「§8.3 wave lock」订正为
+  `re/specs/enemy/SPEC.md §8.3`（stage 的 §8 是 tilemap streaming，
+  没有 §8.3，原写法会指错文件）。
+- `camera_lock` 的 source 补 `enemy/SPEC.md §8.3`，note 补
+  「镜头恰好停在波次开始处」。
+- `camera_event` 的 source 补 `enemy/SPEC.md §8.3（segment table 0x21B2A）`。
+- `coverage.note` 补一句：六份 `re/specs/*/SPEC.md` 的成表已正面核过
+  一轮，`not_registered` 写的是按纪律不转的理由、不是漏查，别再从头翻。
+  与上一格 HANDOFF 收口合起来，`re/specs` 的检索范围彻底闭合。
+- 自测 88 → **90/90**：新增「镜头锁与波次收尾能串成一条放行链」
+  （`camera_lock` 回源 §8.3 + `wave_end 0` 的 GO / `$7A9`）与
+  「六份 SPEC 已正面核过的口径写进覆盖索引」两条。
 
 ### 实跑验证
 
-- `--selftest` 88/88；`py_compile` OK。
-- JSON 侧核对：60 域 / 459 条，`coverage` 缺 0 个域，
-  `themes` 列出 60 个、去重后 60 个。
-- `collide 1` 实跑同时列出 `camera_mode` 与 `camera_lock` 两种不同
-  意义；`camera_event.+B` 可查；被排除的 7 个字段偏移域在尾部列明。
-- 四份改动文件 `CR=0 BOM=False`；`DESIGN_DIFF_NOTES.md` 超 2000 字节的
+- `--selftest` 90/90；`py_compile` OK；60 域 / 459 条、
+  `coverage` 缺 0 个域、`themes` 列出 60 个且去重 60 个。
+- 四份文件 `CR=0 BOM=False`；`DESIGN_DIFF_NOTES.md` 超 2000 字节的
   仍是既存第 57 / 89 / 154 行，本轮新增行 0 超长；
   `git diff --check` exit=0。
-- PowerShell `Select-Object -Last` 造成的中文乱码是已知管道显示问题，
-  完整输出与 Python 断言已核对，不是数据错。
 
 ### 边界
 
@@ -56,7 +50,7 @@
 - 不碰 `re/out/assets/` 产物层，不修 `check_docs.py` 假红，
   不改 `CLAUDE.md` / `.gitignore`。
 - 不恢复「以 ROM 审 repo」框架；不把 `[I]` 写成 `[O]`；不从字段名猜意义；
-  量 / 表内容 / 硬件实现层按纪律不转。
+  量 / 表内容 / 硬件实现层 / 载具专属标志按纪律不转。
 - 载具 / 特殊关卡 / 单个 Boss 专属演出不构成通则，不往那里钻。
 
 ### 长期口径（细则在耐久层，不在本文件展开）

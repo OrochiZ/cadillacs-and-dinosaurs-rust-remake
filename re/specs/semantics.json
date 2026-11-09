@@ -463,7 +463,7 @@
     "camera_mode": {
       "label": "镜头模式（camera segment 的 mode 字节，表 0x2092E）",
       "scope": "dino",
-      "source": "re/specs/stage/SPEC.md §6.6；§8.3 wave lock",
+      "source": "re/specs/stage/SPEC.md §6.6；re/specs/enemy/SPEC.md §8.3 wave lock",
       "note": "镜头不是被动跟随：mode 4 会把镜头钉在战斗起点，直到波次收尾字放行。关卡空间是按这份表一页页翻的。",
       "values": {
         "0": { "meaning": "正常游玩：跟随 X/Y + 流式补图", "tag": "O" },
@@ -490,8 +490,8 @@
     "camera_lock": {
       "label": "相机锁状态（$7b4，别的模块也会读）",
       "scope": "dino",
-      "source": "re/specs/stage/SPEC.md §5.1 / §6.6；notes 里「门闩锁相机、阈值达标放行」",
-      "note": "锁着不等于把世界暂停：mode 4 每帧仍把 camX 钉在事件给的 X 上，等 $6D go flag 才换模式、解锁、放行。这是「这一段打完没」的共享事实，不是替所有人定拍子的裁决。",
+      "source": "re/specs/stage/SPEC.md §5.1 / §6.6；re/specs/enemy/SPEC.md §8.3；notes 里「门闩锁相机、阈值达标放行」",
+      "note": "锁着不等于把世界暂停：mode 4 每帧仍把 camX 钉在事件给的 X 上——镜头恰好停在波次开始处——等 $6D go flag 才换模式、解锁、放行。这是「这一段打完没」的共享事实，不是替所有人定拍子的裁决。",
       "values": {
         "0": { "meaning": "自由：镜头跟着玩家走", "tag": "O" },
         "1": { "meaning": "锁住：这一波 / 这一段区域打完之前别往前走（wave/area end）", "tag": "O" },
@@ -501,7 +501,7 @@
     "camera_event": {
       "label": "相机事件记录（16 字节，按 X 触发的一条脚本）",
       "scope": "dino",
-      "source": "re/specs/stage/SPEC.md §5.2（0x2099A / 0x209C0）；字段键不是取值，按数值反查时要排除",
+      "source": "re/specs/stage/SPEC.md §5.2（0x2099A / 0x209C0）；re/specs/enemy/SPEC.md §8.3（segment table 0x21B2A）；字段键不是取值，按数值反查时要排除",
       "note": "一条记录就是「走到这个 X 时，镜头换成哪种模式、算哪一段区域、阈值怎么给」。X = 0xFFFF 是表终止符，不是一条事件；加载时还把当时的 camY 记下来、事件序号 +1。",
       "values": {
         "+0": { "meaning": "触发 X（同时也是锁镜头钉住的 X）", "tag": "O" },
@@ -958,7 +958,7 @@
     }
   },
   "coverage": {
-    "note": "按回源 SPEC 列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么不转。给压缩恢复后用，不当待办清单。",
+    "note": "按回源 SPEC 列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么不转。给压缩恢复后用，不当待办清单。六份 re/specs/*/SPEC.md 的成表已正面核过一轮：not_registered 里写的是按纪律不转的理由，不是漏查，别再从头翻一遍。",
     "registered": [
       { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "comp_extra", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id", "jack_anim_set0", "jack_anim_set1", "jack_anim_set2", "combo_counter"] },
       { "source": "notes/06-method.md §94.12–§94.18", "domains": ["wof_reaction", "wof_atk_field", "wof_player_reaction", "wof_hurt_book"] },
