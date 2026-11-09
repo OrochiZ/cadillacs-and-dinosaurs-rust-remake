@@ -901,6 +901,10 @@ def cmd_legacy(tokens: list[str]):
         print(f"  查不到（别当证据）：{x['cannot_check']}")
         print(f"  可查域（{len(x['domains'])}）：{', '.join(x['domains'])}")
         print("    直接翻：" + " / ".join(f"lookup.py {d}" for d in x["domains"][:3]))
+        if x.get("probe"):
+            pr = x["probe"]
+            print(f"    可跑样本：lookup.py {' '.join(pr['argv'])}"
+                  f"  → 输出里应有「{pr['expect']}」（--selftest 会真跑一次）")
     print("\n  这是证据底座盘点，不是又九条设计判断；"
           "右栏「当代同类常见做法」是外推观察，不占域。")
     return 0
@@ -1322,6 +1326,17 @@ def cmd_selftest():
        and "rank / aggression" in out and "五、一群敌人" not in out)
     out = capture(cmd_legacy, ["nope"])
     ck("legacy 未知 key 直说并给出可用列表", "没有这一条" in out and "beat" in out)
+    ck("九条 probe 都带 argv 与 expect",
+       all(it["probe"]["argv"] and it["probe"]["expect"] for it in items))
+    for it in items:
+        pr = it["probe"]
+        out = capture(main, pr["argv"])
+        ck(f"legacy {it['key']} 的可查样本跑得通", pr["expect"] in out)
+    ck("crowd 把叙事结论降级到查不到、不当数据底座",
+       any(it["key"] == "crowd" and "叙事" in it["cannot_check"]
+           and "别把叙事当数据底座" in it["cannot_check"] for it in items))
+    ck("feel 把 wof 一字节三用降为叙事概括",
+       any(it["key"] == "feel" and "叙事概括" in it["cannot_check"] for it in items))
 
     # 入口一致性：doc 与 list 都得跟上后来加的命令
     ck("doc 不再把无参数误写成列域",

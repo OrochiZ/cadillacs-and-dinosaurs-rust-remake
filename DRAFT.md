@@ -3,63 +3,49 @@
 > 只放本轮、压缩后捡不回的残差。跨轮结论一律进 git 跟踪的耐久层。
 > 规矩：新会话 / 压缩后开工先读本文件 → 读完删除重建（不是编辑）。每轮收尾把本轮残差写回。
 
-## 本轮做了什么：从「一招的后果」到「九条判断的证据底座」（第二十～二十二格 + 一次入口修订，四次提交）
+## 本轮做了什么：把「能查到什么」从声明变成真跑的样本（第二十三格；本轮此前四格已提交）
 
-**背景**：用户「继续」。前几格在做设计判断（时间 / 空间维度），本轮回到用户
-反复强调的真实任务「把各种表数值的抽象意义都转成缓存」。开工先核：六份 SPEC
-成表已转过一轮（64 域 / 516 条），HUD 消息环按 02 卷 §26「保留、不扩张」，
-enemy SPEC §17 是逐 class 专属状态机，`not_registered` 12 条边界都站得住。
+**背景**：用户「继续」。本轮此前四格把「看到数据 → 知道意义 → 接回设计判断」
+接成链：`6cd75d37` 补 Jack 三拳攻击记录与示例判定盒 + `attack` 命令；
+`35596e27` 给 `anim_id` 接上「这一拳的后果」导航；`2df148f6` 给外推文九条
+判断建 `legacy` 证据底座；`a34bfc31` 修 doc 与 `cmd_list()` 两个入口。
+缓存 66 域 / 521 条，自测 141/141，工作区干净。
 
-**找题过程（先验证真空白，不猜方向）**：sound / flow 两份 SPEC 的成表都已在
-缓存里；读 `frame` / `infer` / `chain` 发现真实断口——`frame` 读出「攻击盒 #2」，
-`box` 却要人手敲六个 i16，`attack_field` / `box_field` 只有字段偏移语义，
-没有「一招的完整后果」成品。回源 anim SPEC §4.1 / §4.5：明写 Jack 两个示例
-盒的六个 i16、三拳逐字节攻击属性记录；`jack_anim_set1` 里 `$58 = 0/2/4`
-正指这三拳，`attack_id` 是 `$58` → 招名（14 条，只有 0/2/4 有逐字节记录）。
+**这一格的问题**：`legacy` 九条的 `can_check` 只是作者写的声明，没验证过；
+按「声明不算证明」，逐条核它在 66 个域里到底有没有取值支撑。
 
-### 第二十格（`6cd75d37`，已提交）
+### 查出来的真问题（不是猜）
 
-- `semantics.json` 新增 `jack_attack_record`（键 `$58=0/2/4`，带 `k0/k1/k2`
-  alias 与 `bytes`）、`jack_box_example`（`0x02` / `0x1A`）两域，均标
-  `dino / Jack only`、带 source / [O]，note 写明 reaction 6 是 [I]、示例不套
-  别人；coverage / themes 同步补齐 → 66 域 / 521 条。
-- `lookup.py` 新增 `attack <8 bytes>`（自动认出 k0/k1/k2、并排讲三拳代价递进、
-  未登记直说不猜）；`frame` 命中示例盒带出形状（限定 Jack）；`chain` 补第四环。
-- `DESIGN_DIFF_NOTES.md` 补新查法 + 三拳代价递进落点（§94.23 不重复计数）。
-- 自查收紧：去掉 k0 重复；「才不会被掐掉」的因果推断改成「按 input_buffer
-  的读法」，reaction 6 明标 [I]。自测 115 → 129。
+- 只在 `domains` 的 label / note / values 里数关键词（排除 `legacy` 自己写的字）：
+  「左右人数」「包抄」「每帧清」「名单」「准入门」「硬直门」「闪白」
+  「群体命中锁」全部 0 次；「六个」只出现在 `box_field`（6×i16）、
+  `enemy_ai_state`、`dino_script_action`（41 项），都不指接近槽。
+- ⇒ `legacy.crowd` 把「六个接近槽 / 按上一帧左右人数定包抄 / 名单每帧清空 /
+  各条链自带准入门」写成能查，其实是 enemy SPEC §14 与 05 卷 §78 的**叙事结论**；
+  `legacy.feel` 把「wof 一字节兼硬直门 / 闪白 / 群体命中锁」写成能查，
+  其实缓存只登记了同一字节在不同链里的字段语义。两处都属「把概括固化」。
 
-### 第二十一格（`35596e27`，已提交）
+### 落盘内容
 
-- `anim_id 1 4` 只说「终结拳，对齐查 attack_id」，没把人带到刚补的后果。
-  `cmd_anim_id` 从段意义里的 `$58 = N` 查 `attack_id` 招名、查
-  `jack_attack_record` 逐字节记录，直接打印后果并给 `lookup.py attack <bytes>`；
-  没有逐字节记录的 `$58` 档位直说在 ROM 里、不猜；没写 `$58` 的伸臂 / 命中
-  变体说明「攻击记录随主招，不另配数值」。自测 129 → 132。
+- `semantics.json`：两条的 `can_check` 改窄成缓存里真有的取值
+  （class 2 AI 状态逐档 / 六种入场 / 几人局与难度门 / 波次收尾 / 相机锁；
+  八字段攻击记录 / wof 两张参数行字段语义 / 武器耐久 / 掉落码），
+  落空的说法连同理由挪进 `cannot_check`；`legacy.note` 补「probe 是真跑样本，
+  can_check 只写真有取值或真有命令能翻出来的东西，叙事结论一律放 cannot_check」。
+- 九条各加 `probe`（argv + expect）：`frame_timer bit7=1` / `input_buffer $AD` /
+  `frame 10 ...` / `wof_reaction 14` / `enemy_ai_state 2` / `wave_ctrl_r4 0` /
+  `dino_script_record +4` / `attack_field +3` / `collide 4`。
+  用 Python 脚本一次精确插入并断言每处唯一命中，未重排 JSON 格式。
+- `lookup.py`：`cmd_legacy` 单条视图打印可跑样本；`--selftest` 里
+  `capture(main, probe["argv"])` 逐条实跑并断言 expect，再加
+  「crowd / feel 已降级」「九条 probe 都有 argv 与 expect」等断言。
+  141 → **153/153**。
+- `DESIGN_DIFF_NOTES.md` 补一段：这两条判断目前靠的是代码叙事不是可查数据，
+  读外推文要放在另一档；按 §94.23 不重复计数。
 
-### 第二十二格（`2df148f6`，已提交）
-
-- 外推文九节、逐拍还原、证据边界、时间 / 空间维度判断都核过，继续加设计判断
-  会注水；改找结构性缺口：`GAMEPLAY_LEGACY.md` 九条判断和 `semantics.json`
-  的 66 域目前是两张皮，`themes` 按玩法问题分组，没说「这句判断能查到什么、
-  查不到什么」。
-- `semantics.json` 新增顶层 `legacy`：九条，每条带 key / title / question /
-  domains / can_check / cannot_check。关键不是列域名，而是**必须写清查不到
-  什么、为什么**——玩家实感无逐帧 trace、rank / aggression 是量按 §94.3 不转、
-  wof 民间资料四列未验、当代同类做法是外推观察不占域。
-- `lookup.py` 新增 `legacy [key]`（无参列九条，带 key 只展开一条），doc 与
-  dispatch 同步；`DESIGN_DIFF_NOTES.md` 补入口说明，标明是证据底座盘点、
-  按 §94.23 不重复计数。自测 132 → 139/139；实跑 `legacy` / `legacy difficulty`
-  核过全量与单条。
-
-### 入口一致性修订（随本次提交落地）
-
-- 审计 doc 用法与 `main()` 分发，发现 doc 第 9 行把「无参数」误写成「列出
-  所有可查的域」；实际无参数打印用法说明，列域是 `list` 命令。另发现
-  `list` 末尾提示还停在 `chain` / `spawn`，没提后来加的 `attack` / `script`
-  和三个索引 —— 这是压缩恢复后第一眼看的入口，不能停在旧能力上。
-- 修 doc 加 `lookup.py list` 行；`cmd_list()` 末尾改成完整导航（解码命令 +
-  `coverage` / `themes` / `legacy` 三个索引）；自测加 2 条防回归，139 → 141/141。
+**验证**：`--selftest 153/153`、`py_compile`、`git diff --check`、
+CR=0 / BOM=False、新增行 `over2000=0`（`DESIGN_DIFF_NOTES.md` 那 3 行是既存）、
+实跑 `legacy crowd` / `legacy feel` 核过降级后文案。
 
 ### 长期口径（细则在耐久层，不在本文件展开）
 
@@ -74,5 +60,6 @@ enemy SPEC §17 是逐 class 专属状态机，`not_registered` 12 条边界都�
   离散编号不连成范围；位域 / 字段偏移域继续被 `collide` 排除。
 - 示例数据（Jack 专属）一律带角色限定，不套到别的角色 / 敌人；盒索引要连盒表一起读。
 - `legacy` 是顶层索引不是 `domains`，不影响 coverage / themes 的一一对应；
-  每条必须同时写 can_check 与 cannot_check，外推观察不占域。
+  每条必须同时写 can_check / cannot_check / probe，叙事结论不进 can_check，
+  外推观察不占域；probe 必须能被 `--selftest` 真跑通。
 - 每次加命令都要同步 doc 用法与 `cmd_list()` 末尾导航，自测留一条防回归。

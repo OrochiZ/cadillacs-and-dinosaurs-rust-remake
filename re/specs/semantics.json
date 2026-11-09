@@ -1160,7 +1160,7 @@
     ]
   },
   "legacy": {
-    "note": "GAMEPLAY_LEGACY.md 九条外推判断 → 缓存里哪些域是它的数据底座。与 themes 正交：themes 按玩法问题归域，这里按一句设计判断归域，并且必须写清「能查到什么」和「查不到什么、为什么」。只列本 rep 已登记的证据；右栏「当代同类常见做法」是外推观察，不占域。给压缩恢复后从一句判断走回可查数据用，不当待办清单。",
+    "note": "GAMEPLAY_LEGACY.md 九条外推判断 → 缓存里哪些域是它的数据底座。与 themes 正交：themes 按玩法问题归域，这里按一句设计判断归域，并且必须写清「能查到什么」和「查不到什么、为什么」。只列本 rep 已登记的证据；右栏「当代同类常见做法」是外推观察，不占域。每条 probe 是 --selftest 里真跑一次的命令样本，不是又一份声明；can_check 只写缓存里真有取值或真有命令能翻出来的东西，叙事结论一律放 cannot_check。给压缩恢复后从一句判断走回可查数据用，不当待办清单。",
     "list": [
       {
         "key": "beat",
@@ -1168,7 +1168,8 @@
         "question": "这一拍谁排、多长、谁跟谁对齐、下一波什么时候进",
         "domains": ["frame_timer", "frame_type", "input_buffer", "combo_counter", "entrance", "enemy_ai_state", "spawn_command", "wave_ctrl_r4", "wave_ctrl_r5", "camera_lock", "camera_mode", "dino_script_action", "wave_end"],
         "can_check": "一拍几 tick 由帧记录给、命中定格与续拳缓冲各自怎么攒、进场 / 站位 / 出手 / 收势由谁挑、波次按什么阈值放行、镜头锁到哪个字才松、过场脚本哪些动作在等世界回话",
-        "cannot_check": "玩家实际感到的节奏与「句读」是读法，没有逐帧 trace；波次逐条挑的那几个数是量，按 §94.3 不转成取值语义"
+        "cannot_check": "玩家实际感到的节奏与「句读」是读法，没有逐帧 trace；波次逐条挑的那几个数是量，按 §94.3 不转成取值语义",
+        "probe": {"argv": ["frame_timer", "bit7=1"], "expect": "link word"}
       },
       {
         "key": "combo",
@@ -1176,7 +1177,8 @@
         "question": "能不能接下一拳，由什么决定",
         "domains": ["combo_counter", "input_buffer", "jack_anim_set1", "jack_attack_record", "attack_id", "player_ground_state", "dino_cmd_state", "wof_rkey1"],
         "can_check": "命中才准续拳、定格期间按键攒在哪一格、三拳 10/15/29 与 9/9/13 的代价递进、四张表怎么对齐同一连段第几下、两边指令技状态编码各交给谁消费",
-        "cannot_check": "连打手感怎么变；wof 侧「动画播完 + 窗口内新按键沿」的具体帧数未逐帧验，按 §94.11 标未验"
+        "cannot_check": "连打手感怎么变；wof 侧「动画播完 + 窗口内新按键沿」的具体帧数未逐帧验，按 §94.11 标未验",
+        "probe": {"argv": ["input_buffer", "$AD"], "expect": "续拳"}
       },
       {
         "key": "swing",
@@ -1184,7 +1186,8 @@
         "question": "这一帧是什么身份、打多久、打哪儿、打完往哪走",
         "domains": ["frame_type", "attack_field", "box_field", "box_index_zero", "jack_box_example", "jack_attack_record", "anim_set", "comp_format"],
         "can_check": "喂一条帧记录翻出身份 / 时长 / 盒索引，喂六个 i16 或示例盒索引翻出前伸与高度，喂 8 字节攻击记录翻出这一拳的后果",
-        "cannot_check": "造型长相、拳脚外观、色板 —— 看不到 GFX 就不猜；命中火花的实际观感无实证"
+        "cannot_check": "造型长相、拳脚外观、色板 —— 看不到 GFX 就不猜；命中火花的实际观感无实证",
+        "probe": {"argv": ["frame", "10", "0A01", "8000", "0100", "0405", "1A02"], "expect": "59 像素"}
       },
       {
         "key": "death",
@@ -1192,15 +1195,17 @@
         "question": "反应编号之后还隔着什么",
         "domains": ["player_hurt_reaction", "enemy_hurt_reaction", "wof_hurt_book", "wof_reaction", "wof_player_reaction", "wof_atk_field", "drop_code", "container_variant"],
         "can_check": "反应编号只是第一张门票、玩家侧与敌人侧同一编号意思不同、按入口地址选受击手册、按 ObjId 的动画 / 碎尸链、掉落与容器变体",
-        "cannot_check": "wof 民间资料「死 / 附 / 效 / 呆」四列的效果名未验（§94.14 三方对账只核到两角），不把 06 / 0C 直接读成「烧死 / 全碎」"
+        "cannot_check": "wof 民间资料「死 / 附 / 效 / 呆」四列的效果名未验（§94.14 三方对账只核到两角），不把 06 / 0C 直接读成「烧死 / 全碎」",
+        "probe": {"argv": ["wof_reaction", "14"], "expect": "碎尸"}
       },
       {
         "key": "crowd",
         "title": "五、一群敌人的分寸是涌现的，不是发的号码牌",
         "question": "谁这一刻有资格出手、包围里的空当从哪来",
         "domains": ["pool_a_class", "pool_e_class", "pool_tag", "enemy_ai_state", "entrance", "spawn_flags", "spawn_pool", "wave_terminator", "credit_player", "camera_mode"],
-        "can_check": "六个接近槽、按上一帧左右人数定包抄、当帧攻击者名单每帧清空重建、各条结算链自带准入门、波次收尾负值",
-        "cannot_check": "「没有攻击令牌」是没有某物，不是取值，按纪律不做成域；同屏上限与波次预算属排除的硬件层"
+        "can_check": "class 2 的 AI 状态逐档（拿主意 / 接近 / 亮相 / 保持距离 / 攻击 / 冲刺 / 下坠）、六种入场方式、生成记录里的几人局与难度门、波次收尾负值、相机锁档位",
+        "cannot_check": "「六个接近槽 / 按上一帧左右人数定包抄 / 当帧攻击者名单每帧清空重建 / 各条结算链自带准入门」是 enemy SPEC §14 与 05 卷 §78 的叙事结论，缓存里没有逐项取值，按『不从概括固化』不转，别把叙事当数据底座；「没有攻击令牌」是没有某物，不是取值；同屏上限与波次预算属排除的硬件层",
+        "probe": { "argv": ["enemy_ai_state", "2"], "expect": "站位槽" }
       },
       {
         "key": "difficulty",
@@ -1208,7 +1213,8 @@
         "question": "难度改的是哪一层的数",
         "domains": ["wave_ctrl_r4", "wave_ctrl_r5", "wave_end", "kill_all", "enemy_ai_state", "game_phase"],
         "can_check": "波次按玩家数分档放行、关内阶段档位、收招 / 入场暂停门、波次控制器自己的两个状态字",
-        "cannot_check": "rank / aggression 逐档数值、HP 表、invuln 帧数表是量，按 §94.3 与 coverage.not_registered 不转；「难度不改打法」是读法，没有逐难度对照的逐帧实证"
+        "cannot_check": "rank / aggression 逐档数值、HP 表、invuln 帧数表是量，按 §94.3 与 coverage.not_registered 不转；「难度不改打法」是读法，没有逐难度对照的逐帧实证",
+        "probe": {"argv": ["wave_ctrl_r4", "0"], "expect": "7200"}
       },
       {
         "key": "continuity",
@@ -1216,15 +1222,17 @@
         "question": "过场里玩家还在不在自己那套状态机",
         "domains": ["dino_script_action", "dino_script_record", "game_mode", "game_phase", "camera_lock", "player_mode", "presence"],
         "can_check": "41 个过场动作大多是等条件或覆写输入、三个全局档位跨记录沿用、0xFFFF 是 wait-until、顶层模式与关内阶段各用各的状态字",
-        "cannot_check": "wof 关卡脚本约 25 type / 事件队列 9 type 只有数量概括、C# 侧有未覆盖命令空桩，按 wof 边界不转；单个 Boss 专属编排不构成通则"
+        "cannot_check": "wof 关卡脚本约 25 type / 事件队列 9 type 只有数量概括、C# 侧有未覆盖命令空桩，按 wof 边界不转；单个 Boss 专属编排不构成通则",
+        "probe": {"argv": ["dino_script_record", "+4"], "expect": "wait-until"}
       },
       {
         "key": "feel",
         "title": "八、手感写在逐招的数据里，不写在通用后期效果里",
         "question": "「这一拳什么感觉」住在哪一层",
         "domains": ["attack_field", "wof_atk_field", "wof_reaction", "jack_attack_record", "weapon_kind", "weapon_attack_state", "sound_id", "drop_code"],
-        "can_check": "八字段攻击记录逐字段语义、wof 一字节兼硬直门 / 闪白 / 群体命中锁、武器耐久与掉落、逐招音效与得分",
-        "cannot_check": "伤害 / 顿帧的具体数值是量，换大换小只改手感，回源 tables.txt；不做逐帧体感对拍"
+        "can_check": "八字段攻击记录逐字段语义（含 +3 命中定格、+4 音效、+5 得分）、wof 两张 16 字节参数行各字段被哪条链读、武器种类与耐久、掉落码",
+        "cannot_check": "「wof 那一个字节兼着硬直门 / 闪白 / 群体命中锁」是外推文第八节的叙事概括；缓存只登记了同一字节在不同链里的字段语义，没有把这三样合成一个可查取值。伤害 / 顿帧的具体数值是量，换大换小只改手感，回源 tables.txt；不做逐帧体感对拍",
+        "probe": { "argv": ["attack_field", "+3"], "expect": "命中定格" }
       },
       {
         "key": "values",
@@ -1232,7 +1240,8 @@
         "question": "哪些数是尺子、哪些数是门牌",
         "domains": ["box_index_zero", "wave_terminator", "credit_player", "dino_script_record", "comp_extra", "frame_timer", "attack_id", "camera_lock"],
         "can_check": "「0」在 dino 是关盒 / wof 是合法表项、负值收尾、0xFF 不记归属、bit7 末帧；lookup.py collide 4 看同一编号在十几张表里各讲什么",
-        "cannot_check": "值为什么离散的成因里可能有硬件成分，按本题边界不推断作者意图；ROM 字节表 / 图块编号 / 色板按用户边界不转"
+        "cannot_check": "值为什么离散的成因里可能有硬件成分，按本题边界不推断作者意图；ROM 字节表 / 图块编号 / 色板按用户边界不转",
+        "probe": {"argv": ["collide", "4"], "expect": "frame_type"}
       }
     ]
   }
