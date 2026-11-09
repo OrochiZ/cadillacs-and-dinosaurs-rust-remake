@@ -899,6 +899,8 @@ def cmd_legacy(tokens: list[str]):
         print(f"  问的是：{x['question']}")
         print(f"  能查：{x['can_check']}")
         print(f"  查不到（别当证据）：{x['cannot_check']}")
+        if x.get("source"):
+            print(f"  另有 [O] 回源（缓存没转成域，看这里）：{x['source']}")
         print(f"  可查域（{len(x['domains'])}）：{', '.join(x['domains'])}")
         print("    直接翻：" + " / ".join(f"lookup.py {d}" for d in x["domains"][:3]))
         if x.get("probe"):
@@ -1332,11 +1334,23 @@ def cmd_selftest():
         pr = it["probe"]
         out = capture(main, pr["argv"])
         ck(f"legacy {it['key']} 的可查样本跑得通", pr["expect"] in out)
-    ck("crowd 把叙事结论降级到查不到、不当数据底座",
-       any(it["key"] == "crowd" and "叙事" in it["cannot_check"]
-           and "别把叙事当数据底座" in it["cannot_check"] for it in items))
-    ck("feel 把 wof 一字节三用降为叙事概括",
-       any(it["key"] == "feel" and "叙事概括" in it["cannot_check"] for it in items))
+    ck("crowd 说清缺的是可查域、不是缺证据",
+       any(it["key"] == "crowd" and "[O] 级回源" in it["cannot_check"]
+           and "不是叙事" in it["cannot_check"] and "不硬编" in it["cannot_check"]
+           for it in items))
+    ck("feel 说清一字节三职有 [O] 回源、不是叙事",
+       any(it["key"] == "feel" and "[O] 级回源" in it["cannot_check"]
+           and "不是叙事" in it["cannot_check"] for it in items))
+    ck("cannot_check 不再把 [O] 观察笼统叫叙事",
+       all("叙事结论" not in it["cannot_check"] and "叙事概括" not in it["cannot_check"]
+           for it in items))
+    for key, marker in (("crowd", "enemy.rs"), ("feel", "Cps1Collision.cs")):
+        it = next(x for x in items if x["key"] == key)
+        ck(f"legacy {key} 的 source 指到具体回源",
+           marker in it.get("source", "") and "[O] 级回源" in it["cannot_check"])
+    out = capture(cmd_legacy, ["crowd"])
+    ck("legacy 单条视图打印 [O] 回源去哪看",
+       "另有 [O] 回源" in out and "enemy.rs" in out)
 
     # 取值反查的排除纪律：位域靠 bitfield 标志、字段偏移靠列表，两者合起来才算齐
     should_skip = {n for n, d in DOMAINS.items()
