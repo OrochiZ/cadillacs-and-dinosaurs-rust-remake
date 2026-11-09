@@ -17,6 +17,7 @@ Everything here is derived from `../dino.zip` (MAME set "dino", World 930201). D
 | `specs/stage/` | Palettes, background layers, stage maps, camera. |
 | `specs/player/` | Player state machine and combat rules. |
 | `specs/enemy/` | Enemy AI, stage event scripts, items. |
+| `specs/semantics.json`, `specs/lookup.py` | Hand-checked "value -> abstract meaning" cache plus its offline query/decode script: no ROM, no third-party packages. Run `lookup.py` with no args for full usage; `unknown` lists what is still unregistered, `themes` groups domains by gameplay question with evidence strength. For design conclusions, see `../DESIGN_DIFF_NOTES.md` at the repo root. |
 
 Python: `.venv/bin/python -I` (capstone, numpy, pillow).
 

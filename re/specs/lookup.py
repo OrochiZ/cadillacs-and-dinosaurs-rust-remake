@@ -2137,6 +2137,11 @@ def cmd_selftest():
     out = capture(cmd_list)
     ck("list 末尾给出解码命令与三个索引、以及 unknown 入口",
        all(x in out for x in ("attack", "script", "coverage", "themes", "legacy", "unknown")))
+    readme = (repo_root / "re/README.md").read_text(encoding="utf-8")
+    context = (repo_root / "re/specs/CONTEXT.md").read_text(encoding="utf-8")
+    ck("re/ 工作区两个入口也指得到语义缓存与查询脚本",
+       all(x in readme for x in ("semantics.json", "lookup.py", "unknown", "themes"))
+       and all(x in context for x in ("semantics.json", "lookup.py")))
     nav_cmds = ("frame", "anim", "comp", "box", "spawn", "script", "attack",
                 "wof_attack", "moment", "chain", "collide", "coverage",
                 "unknown", "themes", "legacy")

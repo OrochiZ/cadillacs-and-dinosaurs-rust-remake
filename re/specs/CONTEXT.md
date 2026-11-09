@@ -15,6 +15,8 @@ S=/Volumes/Shanto/Repos/Personal/Github/roms/re
 - $S/tools/d <hexaddr> <count>   disassemble count instructions from hexaddr (shell wrapper)
 - $S/tools/gfx.py         load_gfx(), tile16(g, code) decoder (16x16, 128 bytes per tile)
 - Python: $S/venv/bin/python -I  (has capstone 5, numpy, pillow). Always run with -I.
+- $S/specs/semantics.json  hand-checked "value -> abstract meaning" cache (machine-readable, for gameplay design analysis)
+- $S/specs/lookup.py       offline query/decode script for it: no ROM, no third-party packages; no args prints full usage
 - Do NOT edit files in $S/tools or $S/out. Put your own scripts/outputs in your own $S/specs/<topic>/ folder.
 - REA (the RE MCP server) cannot open 68000 code here (no Ghidra; m68k ELF unsupported), so use the
   capstone listing. Hopper/Ghidra are not usable for this CPU in this session.
