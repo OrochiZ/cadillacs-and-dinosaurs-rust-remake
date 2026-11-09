@@ -595,8 +595,8 @@ def cmd_selftest():
             if not v.get("meaning") or not v.get("tag") or v["tag"] not in ("O", "I", "U"):
                 bad.append(f"{name}.{k} 缺 meaning/tag")
     ck("每个域都有 scope/source，每条都有 meaning/tag", not bad, "; ".join(bad))
-    ck("域数量 >= 50（招式 / 武器 / 波次 / 音序 / 声像也进了缓存）",
-       len(DOMAINS) >= 50, str(len(DOMAINS)))
+    ck("域数量 >= 51（wof 玩家侧受击分类也进了缓存）",
+       len(DOMAINS) >= 51, str(len(DOMAINS)))
     for dn in ("player_ground_state", "player_run_state", "player_air_state"):
         ck(f"状态表 {dn} 已登记", dn in DOMAINS)
 
@@ -724,6 +724,22 @@ def cmd_selftest():
     out = capture(cmd_collide, "4")
     ck("collide 4 现在也列出招式 / 波次 / 音序几张表",
        all(x in out for x in ("attack_id", "wave_ctrl_r4", "seq_command")))
+
+    # wof 侧第三张表：同一个编号在玩家侧 / 敌人侧不同
+    _, pv = match_value(DOMAINS["wof_player_reaction"], "0x0E")
+    _, ev = match_value(DOMAINS["wof_reaction"], "0x0E")
+    ck("wof 玩家侧 0x0E → 击飞", bool(pv) and "击飞" in pv["meaning"])
+    ck("wof 敌人侧 0x0E → 碎尸族", bool(ev) and "碎尸" in ev["meaning"])
+    ck("wof 同一个 0x0E 两侧确实不同",
+       bool(pv and ev) and pv["meaning"] != ev["meaning"])
+    out = capture(cmd_collide, "0x0E")
+    ck("collide 0x0E 同时列出 wof 两侧",
+       "wof_player_reaction" in out and "wof_reaction" in out)
+    ck("wof 玩家侧未点名的 0x0A 不硬答",
+       match_value(DOMAINS["wof_player_reaction"], "0x0A")[1] is None)
+    nr = DB["coverage"]["not_registered"]
+    ck("民间资料四列按纪律不转的理由已写进覆盖索引",
+       any("民间资料" in x["what"] and "未验" in x["why"] for x in nr))
 
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:

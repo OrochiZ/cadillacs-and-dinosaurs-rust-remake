@@ -786,13 +786,28 @@
         "6": { "meaning": "两段速度向下扫：先按 -v 到 limit，再按 -speed2 到 0 停", "tag": "O" },
         "7": { "meaning": "朝速度方向扫到 limit 就停，并复制一条延迟 4 步、反方向的双胞胎轨", "tag": "O" }
       }
+    },
+    "wof_player_reaction": {
+      "label": "wof 玩家侧受击分类（入口 0x11720，五角色 B=2 受击段共用）",
+      "scope": "wof",
+      "source": "notes/06-method.md §94.14 玩家 0x11720 一行；§94.18 共用性核实",
+      "context_dependent": true,
+      "note": "这是玩家侧入口，不是敌人侧 0x11878 那张表：同一个 0x0E 在玩家侧落『击飞』、在敌人侧进碎尸族。只登记 §94.14 明确点名的几格，其余编号未登记；宿主常量名 DMGREACT_BURN=0x04 / DMGREACT_SPECIAL=0x06 与实际落点不符，不按名字补意义。",
+      "values": {
+        "4": { "meaning": "落「击倒」（宿主常量名却叫 DMGREACT_BURN，不按名字读）", "tag": "O", "alias": "0x04" },
+        "6": { "meaning": "落「击飞」（宿主常量名叫 DMGREACT_SPECIAL）", "tag": "O", "alias": "0x06" },
+        "8": { "meaning": "落「击飞」", "tag": "O", "alias": "0x08" },
+        "12": { "meaning": "落「击飞」", "tag": "O", "alias": "0x0C" },
+        "14": { "meaning": "落「击飞」", "tag": "O", "alias": "0x0E" },
+        "16": { "meaning": "落「击飞」", "tag": "O", "alias": "0x10" }
+      }
     }
   },
   "coverage": {
     "note": "按回源 SPEC 列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么不转。给压缩恢复后用，不当待办清单。",
     "registered": [
       { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id"] },
-      { "source": "notes/06-method.md §94.12–§94.16", "domains": ["wof_reaction", "wof_atk_field"] },
+      { "source": "notes/06-method.md §94.12–§94.18", "domains": ["wof_reaction", "wof_atk_field", "wof_player_reaction"] },
       { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "attack_id", "weapon_kind", "weapon_attack_state"] },
       { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant", "wave_ctrl_r4", "wave_ctrl_r5"] },
       { "source": "re/specs/stage/SPEC.md", "domains": ["camera_mode"] },
@@ -805,6 +820,7 @@
       { "what": "ROM 字节表、图块编号、色板、composition 里的 code", "why": "用户边界：不复制 ROM 字节表；看不到 GFX 就不猜造型，只登记能推出的打击形状" },
       { "what": "rank / aggression 逐档数值、invuln 帧数表、HP 表、掉落表逐行内容", "why": "是量、随机漂移或按角色索引的表，不是符号意义；逐项表值仍停在『举例、不展开』" },
       { "what": "enemy SPEC §7.1 的 debug 状态名词表", "why": "SPEC 明写它只是开发者通用词汇，不是 class 2 的真实 +$06 编号表，转进来会批量制造错读" },
+      { "what": "wof 民间资料「死 / 附 / 效 / 呆」四列的编号 → 效果名（06 烧死、0C 全碎、02 击倒…）", "why": "§94.14 三方对账只核到数据 ↔ 代码两角，玩家可见现象一角未验；资料把编号直接读成效果名，中间还隔着受击状态机、血量、ObjId 与状态档位。转进来会把未验命名固化成语义，与 debug 词汇表同性质" },
       { "what": "状态字 / 字段里用途未明的项", "why": "已在对应域标 [U]，不从字段名猜；新增条目必须带 source" },
       { "what": "位域与字段偏移域里的数字", "why": "那是位号或 +N 字节，不是游戏里读到的取值，按取值反查时要排除" }
     ]
