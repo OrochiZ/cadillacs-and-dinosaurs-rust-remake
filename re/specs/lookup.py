@@ -1230,6 +1230,16 @@ def cmd_coverage():
         print("  缺（新增域忘了登记来源）：" + ", ".join(missing))
     if stale:
         print("  多（缓存里已删）：" + ", ".join(stale))
+    sides = {"dino": 0, "wof": 0, "both": 0}
+    for d in DOMAINS.values():
+        s = d.get("scope", "dino")
+        key = "both" if s == "both" else ("wof" if s.startswith("wof") else "dino")
+        sides[key] += 1
+    print(f"\n按游戏侧：dino {sides['dino']} / wof {sides['wof']} / "
+          f"两侧共用 {sides['both']} 个域。")
+    print("  这是证据边界，不是「哪边设计更简单」：wof 侧 C# 移植欠账见 notes/08，"
+          "原机多张表按上面 not_registered 的理由不转；别据此评优劣，"
+          "也别推断 wof 原机缺机制。")
     return 0
 
 
@@ -1757,6 +1767,12 @@ def cmd_selftest():
        "表数值 → 抽象意义：覆盖索引" in out
        and f"合计 {len(DOMAINS)} 个域" in out
        and "缺 0 个域、多 0 个域" in out)
+    ck("coverage 按游戏侧报出分布，并写明这是证据边界不是设计结论",
+       "按游戏侧" in out and "两侧共用" in out and "证据边界" in out
+       and "别据此评优劣" in out and "wof 原机缺机制" in out)
+    ck("coverage.note 也写了按游戏侧的证据边界",
+       "证据边界" in DB["coverage"]["note"]
+       and "别据此评优劣" in DB["coverage"]["note"])
 
     # 本轮转进来的四张表：抽查「取值 → 抽象意义」
     _, v = match_value(DOMAINS["sound_command"], "0xFF06")

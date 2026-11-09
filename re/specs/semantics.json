@@ -1159,7 +1159,7 @@
     }
   },
   "coverage": {
-    "note": "按回源 SPEC 列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么不转。给压缩恢复后用，不当待办清单。六份 re/specs/*/SPEC.md 的成表已正面核过一轮：not_registered 里写的是按纪律不转的理由，不是漏查，别再从头翻一遍。",
+    "note": "按回源 SPEC 列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么不转。给压缩恢复后用，不当待办清单。六份 re/specs/*/SPEC.md 的成表已正面核过一轮：not_registered 里写的是按纪律不转的理由，不是漏查，别再从头翻一遍。另按游戏侧切一刀：这些域里 dino 侧占绝大多数、wof 侧只有 6 个、两侧共用 1 个。这是证据边界，不是「哪边设计更简单」——wof 侧 C# 移植欠账见 notes/08，原机多张表按上面 not_registered 的理由不转；别据此评优劣，也别推断 wof 原机缺机制。",
     "unknown_note": "『还没弄明白』分两类，别混：一类是取值确实存在、域里也建了条目，但只写了『大概属于哪一类』、具体意义标 [U] 未登记；另一类是整张表按纪律不转成域，理由逐条写在 not_registered。两类都只是『我们没给它写意义』，不等于游戏里没有这个取值，也不等于没有证据——不少不转的表在 SPEC 里有 [O] 级代码观察，只是形态是量 / 条件分支 / 随机漂移，硬编成编号就会造假。查一个值先 `lookup.py <域> <取值>` 看是不是 [U]，再 `lookup.py collide <取值>` 看它在别的册子里是不是已经有意义；都没命中才回源各自的 source。别把『未登记』写成『不存在』，也别把 not_registered 当漏查再从头翻一遍。标 [U] 的每条另带 blocked_at：写清回源走到哪一行、为什么停——上游 SPEC 自己就标了 [U]，re/specs/anim/SPEC.md:503-510 还把其中几条集中列为待解，所以这是照抄上游并补了取证边界，不是我们漏查；blocked_at 里的路径与行号也进自测。",
     "registered": [
       { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "comp_extra", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id", "jack_anim_set0", "jack_anim_set1", "jack_anim_set2", "combo_counter", "jack_attack_record", "jack_box_example"] },
