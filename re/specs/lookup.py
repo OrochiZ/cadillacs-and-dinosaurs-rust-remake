@@ -351,12 +351,24 @@ def infer(kind, body, atk, dur, last, w0) -> list[str]:
     if kind in GRAB_KINDS and atk:
         out.append("非攻击帧却带攻击盒 → 抓投探测，目标限定在特定状态")
     if body == 0:
-        out.append("没有身体盒 → 这一帧自己不可被命中（必杀 / 无敌 / 演出帧）")
+        out.append("没有身体盒 → 这一帧自己不可被命中 [O 观察]")
     elif kind in SKIP_DEFEND_KINDS:
         out.append(f"有身体盒 #{body}，但受击 / 倒地身份被命中循环跳过"
                    " → 这一拍不会被连锁追打 [O 观察]（不是靠关盒实现的无敌）")
     else:
         out.append(f"有身体盒 #{body} → 自己仍可被反击，攻防同时成立")
+    # 两个盒索引要一起读才回答「这一拍谁有资格打谁」；四种组合的完整读法在缓存 note 里。
+    # 8 / 0xA 的身份跳过在上面已单独说过，这里不覆盖它。
+    if body == 0 and atk:
+        out.append("盒索引合起来读：攻击盒在、身体盒关 → 这一拍带着攻击手段、"
+                   "自己却不在被命中名单里 [O 观察]；这种攻防不对等的拍子常留给"
+                   "必杀 / 亮相 [I 推断]，kind 6 是否另走结算路径缓存没登记 [U 未登记]")
+    elif body and not atk and kind not in SKIP_DEFEND_KINDS:
+        out.append("盒索引合起来读：身体盒在、攻击盒关 → 这一拍打不着人、"
+                   "自己仍可能挨打 [O 观察]（收势 / 过渡）")
+    elif body and atk and kind not in SKIP_DEFEND_KINDS:
+        out.append("盒索引合起来读：两个盒都在 → 攻防同帧，"
+                   "出招的同时自己也站在被命中名单里 [O 观察]")
     if kind in GRAB_POSE_KINDS:
         out.append("抓住 / 被抓姿势 [O 观察]：不发起攻击，但 0xC / 0xE 仍在防守方"
                    "命中分派表里，这一拍自己仍可能挨打，别读成无敌")
@@ -910,6 +922,15 @@ def cmd_moment(tokens: list[str]):
             print(f"   {label} #0x{idx:02X}：索引有效，但本机只登记 Jack 示例盒；"
                   "别的角色 / 敌人按自己的盒表取同一索引，形状不同，不套")
     print("   前提：Jack 示例盒只见于 re/specs/anim/SPEC.md §4.1，不是通用规则")
+    if body == 0 and atk:
+        print("   两个盒索引合起来：攻击盒在、身体盒关 → 这一拍带着攻击手段、"
+              "自己却不在被命中名单里 [O 观察]；常留给必杀 / 亮相 [I 推断]")
+    elif body and not atk:
+        print("   两个盒索引合起来：身体盒在、攻击盒关 → 打不着人、"
+              "自己仍可能挨打 [O 观察]（收势 / 过渡）")
+    elif body and atk:
+        print("   两个盒索引合起来：两个盒都在 → 攻防同帧，"
+              "出招的同时自己也站在被命中名单里 [O 观察]")
     print("4) 后果 / 合起来才看得出的那条：")
     if rec is not None and not live:
         if kind in grab_kinds:
@@ -1069,7 +1090,7 @@ def cmd_anim(tokens: list[str]):
     print(f"ANI 段：{len(b)} 字节，按 {stride} 字节/帧切分")
     print("=" * 78)
     total, seen_last, identities = 0, False, []
-    live_normal = special_frames = closed_attack = invuln = 0
+    live_normal = special_frames = closed_attack = invuln = one_sided = 0
     link_desc = ""
     for i, off in enumerate(range(0, len(b) - stride + 1, stride)):
         rec = b[off:off + stride]
@@ -1084,6 +1105,9 @@ def cmd_anim(tokens: list[str]):
         if body == 0:
             invuln += 1
             marks.append("自己不可被命中 [O 观察]（身体盒关着）")
+        if body == 0 and atk:
+            one_sided += 1
+            marks.append("攻防不对等 [O 观察]：带攻击盒却自己挨不了打")
         if kind in ATTACK_KINDS:
             if not atk:
                 closed_attack += 1
@@ -1145,6 +1169,10 @@ def cmd_anim(tokens: list[str]):
     if invuln:
         print(f"  其中 {invuln} 帧身体盒关着：这几拍自己挨不了打"
               "（dino 侧 [O 观察]，命中循环要求防守方 +$48 != 0）")
+    if one_sided:
+        print(f"  其中 {one_sided} 拍攻防不对等：带着攻击盒、自己却不在被命中名单里"
+              "（dino 侧 [O 观察]）；出招和『还能被还手』被拆成两件事，"
+              "这种拍子常是编舞里留出来的亮相 / 必杀句读 [I 推断]")
     print("  其余帧是起势、受击、倒地、抓投姿势或被抓，不发起攻击结算")
     if seen_last:
         print(f"  段落在末帧结束，去向：{link_desc or '写在 link word 里'}"
@@ -1856,10 +1884,33 @@ def cmd_selftest():
     ck("moment 把身体盒关盒与攻击盒关盒分开说",
        "身体盒 关盒 [O 观察]：这一帧自己不可被命中" in mo2
        and "和『这一帧不打人』是两件事" in mo2)
+    ck("moment 也把两个盒索引合起来读，不只是分开说两个 0",
+       "两个盒索引合起来：攻击盒在、身体盒关" in mo2
+       and "常留给必杀 / 亮相 [I 推断]" in mo2)
     ck("frame 单帧里身体盒取 0 也说『自己不可被命中』，措辞不含混",
        "没有身体盒：这一帧自己不可被命中 [O 观察]" in
        capture(cmd_frame, ["10", "0A01", "8000", "0100", "0403", "0002"]))
     ol = capture(cmd_anim, _ANIM_BEAT)
+    # 两个盒索引合起来读：单独一个 0 只说「不打人」或「挨不了打」，
+    # 合起来才回答「这一拍谁有资格打谁」；四种组合的完整读法写在缓存 note 里。
+    ck("缓存 note 把两个盒索引的四种组合写成可查语义",
+       "四种组合" in DOMAINS["body_box_zero"]["note"]
+       and "攻防不对等" in DOMAINS["body_box_zero"]["note"]
+       and "攻防同帧" in DOMAINS["body_box_zero"]["note"]
+       and "两个盒索引" in DOMAINS["box_index_zero"]["note"])
+    f_pair = capture(cmd_frame, ["10", "0A01", "8000", "0100", "0604", "0005"])
+    ck("frame 把『攻击盒在 + 身体盒关』读成攻防不对等，推断不冒充观察",
+       "盒索引合起来读：攻击盒在、身体盒关" in f_pair
+       and "[O 观察]" in f_pair and "[I 推断]" in f_pair
+       and "[U 未登记]" in f_pair
+       and "（必杀 / 无敌 / 演出帧）" not in f_pair)
+    ck("frame 把『两个盒都在』读成攻防同帧、『只关攻击盒』读成收势",
+       "攻防同帧" in capture(cmd_frame, ["10", "0A01", "8000", "0100", "0405", "1A02"])
+       and "打不着人、自己仍可能挨打" in
+           capture(cmd_frame, ["10", "0A01", "8000", "0100", "0402", "1A00"]))
+    ck("ANI 时间线把攻防不对等的拍子数出来，并倒推成编舞里的句读",
+       "其中 1 拍攻防不对等" in ol and "亮相 / 必杀句读 [I 推断]" in ol
+       and "dino 侧 [O 观察]" in ol)
     ck("ANI 时间线把末帧后的 link word 解成相对偏移，并说清去向是推断",
        "i16 +17" in ol and "addr_of_link + link = 相对段首" in ol
        and "跳到本段之外 [I 推断]" in ol and "carry=1" in ol
