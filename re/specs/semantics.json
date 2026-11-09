@@ -1045,12 +1045,54 @@
         "$BC": { "meaning": "双击计时器（跑步 / 冲刺的前置检测）", "tag": "O" },
         "$F4/$F5": { "meaning": "指令搓招 FSM：一串方向跨几帧才凑成一招", "tag": "O" }
       }
+    },
+    "jack_attack_record": {
+      "label": "Jack 连段三拳的攻击属性记录（8 字节；键是 obj+$58 的值，k = $58/2）",
+      "scope": "dino / Jack only",
+      "source": "re/specs/anim/SPEC.md §4.5（Jack: k0 jab / k1 hook / k2 finisher，逐字节原值）；notes/03-frame.md §17 记录是各子系统的公共接口",
+      "note": "帧记录本身不带伤害，是状态代码把 +$58 设成偶数，指向这一条 8 字节记录；+0..+7 的字段语义在 attack_field 域。三拳的逐字节数值是 [O]；『reaction 6 = 击倒』是 SPEC 标的 [I]，别当观察值。只登记 Jack 这三条示例，其他角色 / 其他招的记录在 ROM 表里，本机不登记，也不要把这三拳的代价套到别人身上。",
+      "values": {
+        "0": {
+          "bytes": "0A01000903140000",
+          "alias": "k0",
+          "meaning": "刺拳（k0）：扣 10 血、削 1 点韧性、双方一起顿 9 帧、得 20 分（score_bcd 偏移）；反应 0，挨打的人还站着，火花 0。连段起手，代价最轻，留着接下一拳",
+          "tag": "O"
+        },
+        "2": {
+          "bytes": "0F03020906180000",
+          "alias": "k1",
+          "meaning": "勾拳（k1）：扣 15 血、削 3 点韧性、顿 9 帧、得 24 分；反应 2，开始把人打离原姿势，音效换成 6。中段加重，但顿帧不变，续拳窗口照旧",
+          "tag": "O"
+        },
+        "4": {
+          "bytes": "1D0B060D09201800",
+          "alias": "k2",
+          "meaning": "终结拳（k2）：扣 29 血、削 11 点韧性、双方顿 13 帧、得 32 分；反应 6 把人击倒 [I]，火花 24 才给视觉重音，音效 9。三拳里唯一收束的一拳：伤害 / 削韧 / 顿帧 / 得分 / 反应一起跳档",
+          "tag": "O"
+        }
+      }
+    },
+    "jack_box_example": {
+      "label": "Jack 的两个示例判定盒（键是帧记录里的盒索引；6 个 i16）",
+      "scope": "dino / Jack only",
+      "source": "re/specs/anim/SPEC.md §4.1 Example (Jack)；§4.2 盒表按角色选（玩家表 0x100000 = Jack）",
+      "note": "这两个是 SPEC 明写出来、能脱离 ROM 直接查到形状的示例盒，不是全表。盒索引要连同『谁的盒表』一起读：玩家按 char id 选表（Jack = 0x100000），敌人由各自 init 另设表，同一个索引在别的表里形状完全不同。索引 0 一律是『这一帧没盒』（见 box_index_zero）。",
+      "values": {
+        "0x02": {
+          "meaning": "刺拳攻击盒 (-1, 10, -68, 59, 29, 42)：X 从 -68 到 -9，朝面朝方向前伸约 59 像素，是探身短拳不是贴身撞；Y 从 29 到 71，打站立对手中上段，够不到贴地目标；Z 从 -1 到 9，与对方身体盒合成后纵深差在 -8..+8 才连得上",
+          "tag": "O"
+        },
+        "0x1A": {
+          "meaning": "全身身体盒 (1, 6, -12, 23, 0, 75)：X -12..11 只包住身体、Y 0..75 覆盖全身、Z 1..7。出拳同时自己整个可被打，攻防在同一帧成立；不是『发起攻击就无敌』",
+          "tag": "O"
+        }
+      }
     }
   },
   "coverage": {
     "note": "按回源 SPEC 列出哪些成表已转成可查语义，以及哪些按纪律不转、为什么不转。给压缩恢复后用，不当待办清单。六份 re/specs/*/SPEC.md 的成表已正面核过一轮：not_registered 里写的是按纪律不转的理由，不是漏查，别再从头翻一遍。",
     "registered": [
-      { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "comp_extra", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id", "jack_anim_set0", "jack_anim_set1", "jack_anim_set2", "combo_counter"] },
+      { "source": "re/specs/anim/SPEC.md；notes/03-frame.md", "domains": ["frame_type", "anim_set", "draw_flags", "box_mode", "facing", "sprite_attr", "comp_format", "comp_extra", "frame_timer", "box_index_zero", "attack_field", "box_field", "param_a", "sound_id", "jack_anim_set0", "jack_anim_set1", "jack_anim_set2", "combo_counter", "jack_attack_record", "jack_box_example"] },
       { "source": "notes/06-method.md §94.12–§94.18", "domains": ["wof_reaction", "wof_atk_field", "wof_player_reaction", "wof_hurt_book"] },
       { "source": "re/specs/player/SPEC.md", "domains": ["presence", "player_mode", "player_ground_state", "player_run_state", "player_air_state", "player_hurt_reaction", "attack_id", "weapon_kind", "weapon_attack_state", "input_buffer"] },
       { "source": "re/specs/enemy/SPEC.md", "domains": ["wave_terminator", "credit_player", "spawn_command", "spawn_flags", "spawn_pool", "wave_end", "kill_all", "entrance", "enemy_hurt_reaction", "enemy_ai_state", "pool_e_class", "pool_a_class", "item_kind", "drop_code", "container_variant", "wave_ctrl_r4", "wave_ctrl_r5"] },
@@ -1089,7 +1131,7 @@
         "key": "hit_logic",
         "label": "打击逻辑",
         "question": "这一下算不算打中、打哪儿、打出什么；两侧对『0』和反应编号的约定差在哪",
-        "domains": ["frame_type", "box_index_zero", "attack_field", "box_field", "attack_id", "wof_reaction", "wof_atk_field", "sound_id", "jack_anim_set1", "container_variant"]
+        "domains": ["frame_type", "box_index_zero", "attack_field", "box_field", "attack_id", "wof_reaction", "wof_atk_field", "sound_id", "jack_anim_set1", "container_variant", "jack_attack_record", "jack_box_example"]
       },
       {
         "key": "event_script",

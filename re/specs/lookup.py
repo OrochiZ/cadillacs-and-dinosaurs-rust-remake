@@ -22,6 +22,8 @@
     python re/specs/lookup.py spawn 04D0 0141 0008 0120 0040 0000 0000   解码 14 字节生成记录
     python re/specs/lookup.py spawn 16 04D0 0141 0008 0120 0040 0000 0000 0000
     python re/specs/lookup.py script 2C 00 05 01 000A   解码 6 字节过场脚本记录
+    python re/specs/lookup.py attack 0A 01 00 09 03 14 00 00
+                                                      8 字节攻击属性记录 -> 这一拳打完会怎样
     python re/specs/lookup.py chain                   ANI -> SPR -> 判定框 能推断什么
     python re/specs/lookup.py find 攻击                按意义关键词反查
     python re/specs/lookup.py collide 4               只给一个取值，列出它在各域的所有意义
@@ -265,6 +267,13 @@ def cmd_frame(tokens: list[str]):
         print(f"  · {line}")
     print("\n  看不到 GFX 仍能知道：打哪儿、打多久、这一帧算攻击还是受击、结束后往哪走。")
     print("  看不到 GFX 无法知道：这一帧画的是什么造型、素材好不好看 —— 那归 composition/code。")
+    for label, idx in (("攻击盒", atk), ("身体盒", body)):
+        if idx == 0:
+            continue
+        _, bv = match_value(DOMAINS["jack_box_example"], str(idx))
+        if bv:
+            print(f"  · {label} #{idx} 若属 Jack（盒表 0x100000）：{bv['meaning']}")
+            print("    别的角色 / 敌人按自己的盒表取同一个索引，形状不同，别套。")
     return 0
 
 
@@ -444,6 +453,60 @@ def cmd_script(tokens: list[str]):
     return 0
 
 
+def cmd_attack(tokens: list[str]):
+    """解码一条 8 字节攻击属性记录：把 +0..+7 合成「这一拳打完会怎样」。"""
+    if not tokens:
+        print("用法：attack <8 bytes...>   例：attack 0A 01 00 09 03 14 00 00")
+        print("      8 字节 = damage, stun, reaction, hit-stop, sound, score, spark, +$9A")
+        return 1
+    raw = "".join(t.replace("0x", "").replace(" ", "") for t in tokens)
+    try:
+        b = bytes.fromhex(raw)
+    except ValueError as e:
+        print(f"十六进制读不出：{e}")
+        return 1
+    if len(b) < 8:
+        print(f"字节不够：拿到 {len(b)}，一条攻击属性记录要 8 字节")
+        return 1
+    b = b[:8]
+    fields = DOMAINS["attack_field"]["values"]
+    print(f"攻击属性记录 8 字节：{' '.join(f'{x:02X}' for x in b)}  "
+          "（AttackRecord，obj+$58 指向；re/specs/anim/SPEC.md §4.5）")
+    print("-" * 78)
+    names = ["damage", "stun", "reaction", "hit-stop", "sound", "score", "spark", "+$9A"]
+    for key, name in zip(fields, names):
+        i = int(key.lstrip("+"))
+        print(f"  {key:>4} {name:<9} = {b[i]:3d} (0x{b[i]:02X})  → {fields[key]['meaning']}")
+    print("-" * 78)
+    print("这一拳打完会怎样（合起来看，不看 GFX）：")
+    dmg, stun, react, stop, snd, score, spark = b[0], b[1], b[2], b[3], b[4], b[5], b[6]
+    print(f"  · 扣 {dmg} 血、削 {stun} 点韧性；攻守双方一起顿 {stop} 帧，"
+          f"攻击方记 {score} 分（作为 score_bcd 的字节偏移）")
+    print(f"  · 受击反应 {react} 只是第一张门票：写进挨打者 +$7B / +$06，"
+          "后面还隔着受击手册、状态档位、按 ObjId 的动画链，"
+          "查 player_hurt_reaction / enemy_hurt_reaction 才知道他怎么演")
+    print(f"  · 音效 {snd}（0 = 无）、火花类型 {spark}（交给特效对象）；"
+          "帧记录本身不带伤害，是状态代码把 +$58 设成偶数才指到这条记录")
+    hit = None
+    for k, v in DOMAINS["jack_attack_record"]["values"].items():
+        if v.get("bytes", "").lower() == b.hex():
+            hit = (k, v)
+            break
+    if hit:
+        k, v = hit
+        print(f"\n  对照 Jack 连段：这条记录的 $58 = {k}。{v['meaning']}")
+        print("  三拳并排（10/15/29 伤害、9/9/13 顿帧、反应 0/2/6）：")
+        print("  伤害与削韧逐拳跳档；顿帧前两拳都是 9，只在收束那拳拉到 13；")
+        print("  反应 0 → 2 → 6（SPEC 把 6 标成击倒 [I]），火花也只在最后一拳给。")
+        print("  「连段是打出来的」不是手感形容词，是三行逐招数据里写好的代价递进；")
+        print("  按 input_buffer 的读法，前两拳不加重自己的停顿，续拳窗口照旧，")
+        print("  重的时间成本留给收尾那一下。")
+    else:
+        print("\n  这条不在 Jack 三条示例里：逐招数值表里还有别的招，本机不登记，"
+              "不替它猜名字（回源 re/specs/anim/SPEC.md §4.5）。")
+    return 0
+
+
 def cmd_chain():
     print("ANI → SPR → 判定框：不靠 GFX 能推断到哪一步")
     print("=" * 78)
@@ -475,6 +538,16 @@ ANI（帧记录 / 动画表）        SPR（composition）              判定�
   → 身体盒 Y 0..75 覆盖全身：出拳的同时自己整个可被打，攻防同帧成立
   这四条全是数字能说出来的，GFX 一个像素都不用看。
   现在也不必手算：`lookup.py box -1 10 -68 59 29 42` 会直接吐出三个区间与判定条件。
+  也不必手敲那六个 i16：帧记录读出 attack_box = 0x02 后，
+  `lookup.py jack_box_example 2` 直接给出「前伸 59 像素、打中上段、纵深 -8..+8」。
+  前提写清楚：这是 SPEC 明写的 Jack 示例盒，别的角色盒表不同，不能套。
+
+【打中之后会怎样，也在这层数据里】
+  帧记录不带伤害。状态代码把 obj+$58 设成偶数，指向一条 8 字节 AttackRecord：
+  `lookup.py attack 0A 01 00 09 03 14 00 00` 把八个字段合成一句人话，
+  并认出这是 Jack 连段的第几拳。三拳 10/15/29 伤害、9/9/13 顿帧、反应 0/2/6 ——
+  「连段是打出来的」不是手感形容词，是三行逐招数据写好的代价递进。
+  所以 ANI -> SPR -> 判定框 -> 这一拳的后果，四个环节都能不靠 GFX 读出来。
 
 【看不到 GFX 就不能说的】
   code 只是图块编号；没有 gfx.npy 就不知道画的是拳头、刀光还是衣服褶皱，
@@ -1100,6 +1173,43 @@ def cmd_selftest():
     ck("collide 3 现在也列出连段计数与 Jack 动画表",
        all(x in out for x in ("combo_counter", "jack_anim_set0", "jack_anim_set1")))
 
+    # 一招的完整后果：8 字节 AttackRecord + 可查的示例判定盒
+    out = capture(cmd_attack, ["0A", "01", "00", "09", "03", "14", "00", "00"])
+    ck("attack 喂 8 字节能翻出八个字段与这一拳的后果",
+       "攻击属性记录 8 字节" in out and "扣 10 血" in out and "顿 9 帧" in out)
+    ck("attack 认出这是 Jack 连段第几拳",
+       "k0" in out and "$58 = 0" in out and "刺拳" in out)
+    ck("attack 说清帧记录不带伤害、反应编号只是门票",
+       "帧记录本身不带伤害" in out and "第一张门票" in out)
+    ck("attack 把三拳代价递进倒推成设计判断",
+       "代价递进" in out and "10/15/29" in out and "续拳窗口" in out)
+    out = capture(cmd_attack, ["1D", "0B", "06", "0D", "09", "20", "18", "00"])
+    ck("attack 终结拳认成 k2 并说出击倒",
+       "k2" in out and "29 血" in out and "击倒" in out)
+    out = capture(cmd_attack, ["00", "00", "00", "00", "00", "00", "00", "00"])
+    ck("未登记的招不替它猜名字", "不替它猜名字" in out)
+    out = capture(cmd_attack, ["0A", "01"])
+    ck("attack 字节不够会直说", "字节不够" in out)
+    _, v = match_value(DOMAINS["jack_attack_record"], "k2")
+    ck("jack_attack_record 的 k2 别名能查", bool(v) and "终结拳" in v["meaning"])
+    _, v = match_value(DOMAINS["jack_attack_record"], "4")
+    ck("$58 = 4 查到终结拳", bool(v) and "29 血" in v["meaning"])
+    _, v = match_value(DOMAINS["jack_box_example"], "2")
+    ck("示例盒索引 2 翻出前伸与高度",
+       bool(v) and "59 像素" in v["meaning"] and "中上段" in v["meaning"])
+    _, v = match_value(DOMAINS["jack_box_example"], "0x1A")
+    ck("示例盒 0x1A 翻出攻防同帧",
+       bool(v) and "攻防在同一帧" in v["meaning"])
+    ck("两个新域都标了 Jack only 且带 source",
+       all("Jack only" in DOMAINS[x]["scope"] and DOMAINS[x]["source"]
+           for x in ("jack_attack_record", "jack_box_example")))
+    out = capture(cmd_frame, ["10", "0A01", "8000", "0100", "0405", "1A02"])
+    ck("喂帧记录时盒索引能接到可查示例盒",
+       "攻击盒 #2 若属 Jack" in out and "59 像素" in out)
+    out = capture(cmd_chain)
+    ck("chain 把四个环节串起来并指向新命令",
+       "attack 0A 01 00 09 03 14 00 00" in out and "这一拳的后果" in out)
+
     # wof 受击手册选择 + 玩家输入契约
     _, v = match_value(DOMAINS["wof_hurt_book"], "0x11878")
     ck("入口地址 0x11878 → 绝大多数敌人共用的受击手册",
@@ -1180,6 +1290,8 @@ def main(argv: list[str]) -> int:
         return cmd_spawn(rest)
     if cmd == "script":
         return cmd_script(rest)
+    if cmd == "attack":
+        return cmd_attack(rest)
     if len(rest) == 0:
         return cmd_domain(cmd)
     return cmd_lookup(cmd, rest[0], as_json)
