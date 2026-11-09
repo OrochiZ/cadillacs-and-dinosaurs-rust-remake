@@ -1400,6 +1400,9 @@ def cmd_legacy(tokens: list[str]):
                   f"  → 输出里应有「{pr['expect']}」（--selftest 会真跑一次）")
     print("\n  这是证据底座盘点，不是又九条设计判断；"
           "右栏「当代同类常见做法」是外推观察，不占域。")
+    used = {x for it in DB["legacy"]["list"] for x in it["domains"]}
+    print(f"  {len(DOMAINS)} 个域里 {len(used)} 个挂了判断；未挂的不是漏查——"
+          "覆盖全部域是 `lookup.py themes` 的事，这里只挂能回答该判断的域。")
     return 0
 
 
@@ -2005,6 +2008,18 @@ def cmd_selftest():
        all(x in DOMAINS for it in items for x in it["domains"]))
     ck("legacy 每条都写清能查与查不到",
        all(it["can_check"] and it["cannot_check"] for it in items))
+    used_legacy = {x for it in items for x in it["domains"]}
+    ck("legacy 不要求覆盖所有域：themes 才覆盖全部域，未挂判断的域不是漏查",
+       len(used_legacy) < len(DOMAINS)
+       and "不要求覆盖所有域" in DB["legacy"]["note"])
+    ck("legacy note 写清挂域标准是能否回答判断、不是凑覆盖率",
+       "凑覆盖率" in DB["legacy"]["note"]
+       and "字段偏移域" in DB["legacy"]["note"])
+    cont = next(x for x in items if x["key"] == "continuity")
+    ck("continuity 不把 camera_event（记录里第几格）当镜头证据硬挂",
+       "camera_event" not in cont["domains"] and "camera_lock" in cont["domains"])
+    ck("legacy 总览把「未挂不是漏查」直接打印出来",
+       "未挂的不是漏查" in capture(cmd_legacy, []))
     ck("难度条明写 rank 数值按纪律不转",
        any("rank / aggression" in it["cannot_check"] for it in items))
     out = capture(cmd_legacy, [])

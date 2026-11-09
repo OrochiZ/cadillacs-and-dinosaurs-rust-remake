@@ -5,15 +5,16 @@
 
 ## 本轮收尾（开工重建，收尾写回）
 
-- 开工核对：HEAD `b428873b`，工作区干净，临时提交信息文件不存在；`CODEBUDDY.md` / `CLAUDE.md` / `DRAFT.md` 都读过。上一格是「把敌人侧挨打演哪一段也接上，并补实悬空引用」，自测 282/282。
-- 本轮不再单纯扩表，做「细节倒推回架构」：前几格查明白的「挨打那一侧也有一串拍子」（倒地躺多久、搓招能不能提前起来、起身 / 眩晕分支）目前只在缓存和聊天里，没接回它支撑的设计判断。
-  - **先核正文**：`GAMEPLAY_LEGACY.md` 第 64 行明写「击飞、倒地、起身各有自己的时间」，第 137 行还专门区分「出拳那一侧的段落」与「被打倒那一侧的时间」——判断早就立住。按第 481 行停止条件**不改正文、不加节号、不回文档自洽循环**。
-  - **核出索引层缺口**：`legacy.beat` 的 `domains` 没有两张受击动画表，`can_check` 全在讲一拍几 tick、进场 / 站位 / 出手 / 收势、波次放行、镜头锁、wof `+0x62`，即只覆盖出拳 / 调度那一侧；`cannot_check` 还明写「句读是读法、没有逐帧 trace」。
-  - 补齐：`domains` 加 `player_hurt_anim` / `enemy_hurt_anim`；`can_check` 追加「玩家倒地躺 5 / 15 / 30 帧（按 rank）或搓招提前起身、起身走完可能转眩晕，敌人击倒姿态后同样走落地弹起 / 躺地计时 / 起身或死亡」——这几拍归谁、谁能提前结束都可查；`cannot_check` 保留「没有逐帧 trace」，补一句躺地逐档表与眩晕时间窗是量、只登记「有这一拍、由谁数完」不逐档登记意义；`probe` 加一条真跑样本 `player_hurt_anim 2`（expect `躺地`），三条 probe 逐条真跑全命中。
-  - 顺手补一个说明不一致：`player_hurt_anim.note` 原先没写「只列直接分派」，而 `enemy_hurt_anim.note` 写了。补上「正面轻击在背后命中时会被改写成反应 0x1A 再走 light_behind 分派到 #6，所以不把 0 / 2 也挂进 #6，免得读成同一拍同时播两段」。
-  - 自测新增 2 条（beat 挂上挨打那一侧且边界没写宽、玩家段表写明改判纪律）。282 → 285。`SMOKE_CASES` 仍是 40 条，没新增命令。
-- 验证：`--selftest` 285/285 exit 0、`py_compile` exit 0、`json.load` 通过、`git diff --check` exit 0；两个文件 `CR=0 BOM=False`，新增行 17、`over2000=[]`。
-- 本轮 0 次 ROM 取证、没碰产物层、没改 `check_docs.py`、没动任何设计文档正文（`DESIGN_DIFF_NOTES.md` / `GAMEPLAY_LEGACY.md` / `notes/*`）、没回改早期卷、没回查载具 / 特殊关卡换面；`GAMEPLAY_LEGACY.md` 第 481 行停止条件仍有效。wt1 仓库只读、未改。
+- 开工核对：HEAD `41863270`，工作区干净，临时提交信息文件不存在；`CODEBUDDY.md` / `CLAUDE.md` / `DRAFT.md` 都读过。上一格自测 285/285。
+- 本次压缩前停在「把『别把索引覆盖当缺口』写进耐久层」，尚未改盘。本轮先按真值层级用当前文件重核，再落盘。
+- **重核结果**：69 域、`legacy` 引用 53、未引用 16、没有「挂了却不在 domains 里」的多挂。未引用域按 themes：data_format 11 / state_machine 2 / event_script 2 / enemy_strategy 1，都是绘制位、声音编号、Jack 逐段动画、状态档位之类数据层。
+- **推翻了上一轮初稿**：原打算把「字段偏移域不该挂 legacy」写成机器断言，核完发现会误伤——`swing` 已挂 `attack_field` / `box_field` / `wof_atk_field`，它们是「把一拍拆开读」的解码入口，挂得合理；`continuity` 也挂了 `dino_script_record`。错的不是域的类型，而是**为凑覆盖率去挂一个不回答该判断的域**：`continuity` 讲演出不另立规则，能回答它的是 `camera_lock`（锁镜头 0/1/2，已在册），不是 `camera_event`（记录里第几格，按 themes 归 event_script 即可）。
+- **落盘三处**（结论已进 `semantics.json` 的 `legacy.note`，是耐久层，不用在 DRAFT 里长抄）：
+  - `legacy.note` 末尾补「不要求覆盖所有域；覆盖全部域是 themes 的事；按能否回答判断挂域，别为凑覆盖率硬挂」，并写正反例（swing 的解码入口 vs continuity / camera_event）。
+  - `cmd_legacy()` 末尾直接打印 `69 个域里 53 个挂了判断；未挂的不是漏查……`，数字当场从 `DB` 算、不会过期；单条视图也算全量，不用过滤后的 `items`。
+  - `--selftest` 新增 4 条断言：不要求覆盖所有域且 note 明写、note 写清挂域标准、continuity 没把 `camera_event` 当镜头证据、总览真把提示打印出来。
+- 验证：`--selftest` 285 → 289 全过 exit 0、`py_compile` exit 0、`json.load` 通过、`git diff --check` exit 0；两个文件 `CR=0 BOM=False`、`over2000=[]`；`legacy difficulty` 输出末尾实测读到新提示。
+- 本轮 0 次 ROM 取证、没碰产物层、没改 `check_docs.py`、没动任何设计文档正文（`DESIGN_DIFF_NOTES.md` / `GAMEPLAY_LEGACY.md` / `notes/*`）、没回改早期卷、没回查载具 / 特殊关卡换面；`GAMEPLAY_LEGACY.md` 第 481 行停止条件仍有效。wt1 只读、未改。
 
 ## 长期口径（每轮沿用，不是本轮新增任务）
 
@@ -21,7 +22,7 @@
 - 用户要的是「游戏设计本意」，交付一律说人话；不把内部编号、提交号、校验数字当主体；忽略 Rust / C#、typed struct / WRAM、端序、逐帧补偿等实现表相。
 - 用户的真实任务是把各类变量取值转成可查的「抽象意义」并缓存，ANI / SPR 只是举例；要能顺着 ANI → SPR → 判定框 → 后果 → 受击反应 → 挨打的人怎么演，在看不到 GFX 时推断这一帧在干嘛；**细节之后要倒推回设计架构和意图**（`legacy` 索引就是这条回路）。**缓存与脚本的落点：`re/specs/semantics.json`（机器可读语义）/`re/specs/lookup.py`（离线查询，不带参数打印全部用法）**；入口有三处：`CLAUDE.md` 指向的 `re/README.md` / `re/specs/CONTEXT.md` 路径清册、`DESIGN_DIFF_NOTES.md`「阅读顺序」第 7 条、以及 `lookup.py` 不带参数的用法说明。`unknown` 一次列出哪些还没弄明白（两类未登记分开说，未登记 ≠ 不存在，每条带 blocked_at）；`themes` 按玩法问题查数时带观察 / 推断 / 未登记的成色并指向 `unknown`。解码命令翻取值意义时也带 `[O]/[I]/[U]` 标签，字段 / 位偏移说明不挂（那是格子名不是取值）；后果环把反应门票并排翻到 dino 两本受击册子、**各自的下游紧跟自己那本册子**（玩家 set2 段号 / 敌人姿态槽），不串 wof、也不串两侧。新增域必须带 source / scope / tag，不从字段名猜；`coverage.registered` 与 `themes` 必须覆盖所有域且每域只归一处；`not_registered` 写清「为什么不转」；`legacy` 每条带 `can_check` / `cannot_check` / `probe`（probe 可单条或多条）；上下文相关域必须带 `note`，且要讲清「查之前先确认哪一侧 / 哪个对象 / 哪一层档位」——状态机四层（mode / 地面 / 跑动 / 空中）都在内。**多个键写同一句意义不算错**（武器段被特例切两段、多变体同规则、多段同标签），但要在 note 里讲清为什么，别让人当成抄重去「修正」。**新增或改动解码命令后，`SMOKE_CASES` 要跟着加**（现在 40 条）；每条命令必须 `return 0`，别让 `main() -> int` 拿到 `None`。
 - **`[U]` 不是漏查清单**：每条 `[U]` 必须带 `blocked_at`，写清回源走到哪一行 / 哪一段、为什么停（SPEC 自己标 [U]、上游 Open gaps 明列、只给 handler 没给逐项意义、编号合并成一类）。`blocked_at` 里的路径从仓库根写全、行号不越界，自测会扫。有充分证据的 `[U]` 要真升级成 `[O]` / `[I]` 并补条目级 `source`——升级时别忘 `unknown` 的条数与「该域是否还在 unknown 里」会跟着变；没证据的别硬答，也别反复回源翻同一批。当前 17 条 `[U]` 已逐条回源核过，别再从头翻。
-- **`legacy` 索引的挂法**：新查明白的取值要挂回它支撑的判断，但先核正文——正文已立住的判断只补可查落点，不改正文、不加节号。`legacy.beat` 现在三条 probe（帧记录 link word / wof `+0x62` 解锁 / 挨打那一侧躺地），`legacy.difficulty` 两条（波次 / 贴脸按档停顿）；`can_check` 只写缓存里真有取值或真有命令能翻出来的东西，「没有逐帧 trace」「逐档表是量」这类边界一律留在 `cannot_check`。
+- **`legacy` 索引的挂法**：新查明白的取值要挂回它支撑的判断，但先核正文——正文已立住的判断只补可查落点，不改正文、不加节号。**`legacy` 不要求覆盖所有域**：覆盖全部域是 `themes` 的职责，这里按「能否回答这条判断」挂域，别为凑覆盖率硬挂；字段偏移域可以作为「把一拍拆开读」的解码入口挂（swing 已挂 attack_field / box_field / wof_atk_field），但别把不回答问题的域塞进去（continuity 要的是 camera_lock，不是 camera_event）。这条纪律与正反例已写进 `semantics.json` 的 `legacy.note` 并由自测固化，别再从头审计一次覆盖。`legacy.beat` 现在三条 probe（帧记录 link word / wof `+0x62` 解锁 / 挨打那一侧躺地），`legacy.difficulty` 两条（波次 / 贴脸按档停顿）；`can_check` 只写缓存里真有取值或真有命令能翻出来的东西，「没有逐帧 trace」「逐档表是量」这类边界一律留在 `cannot_check`。
 - **动画编号有三层，别混**：`player_hurt_anim` 是 [O]「玩家受击代码播 set2 第几段」、四个角色通用；`enemy_hurt_anim` 是 [O]「敌人受击代码分派到哪个姿态槽」、跨兵种一致的槽位语义；`jack_anim_set2` 是 [I]「Jack 那一段长什么样」。敌人每槽具体图集要按 `e.w84` 查 `L[0x2E68C + e.w84]`，逐兵种内容按 `not_registered` 第 14 条不转；§3.6 只列到 #7，#8 / #9 只在 §5 受击代码里出现，#5 无调用点。两侧反应编号集合本就不同，别互套、别跨对象推全表。**两张 anim 域的 `reactions` 都只列直接分派**，运行时改判（玩家正面轻击背后命中改写成 0x1A、敌人轻击改判击倒）不挂进去，免得读成同一拍同时播两段。**note 里引用 `coverage.not_registered` 之前先确认真有对应条目**，别留悬空引用。
 - 回源路径一律从仓库根写全（如 `dino-rs/crates/dino-assets/...`），不留 `dino-assets/` 这类裸前缀、也不留纯文件名；`§N` 要指向真能翻到的标题（早期卷若只分 `N.1`–`N.k` 子节，就写子节范围，别写总节号）。`legacy.list[*].title` 与 `GAMEPLAY_LEGACY.md` 九节标题逐字对应、顺序一致，改标题两边同步。自测会查文件真实存在、行号范围与 `§号` 标题，白名单只放命令示例 `lookup.py` 与通配符 `/HANDOFF.md`。
 - **停止条件**：`GAMEPLAY_LEGACY.md` 第 481 行「不改总入口、不加新节号、不回文档自洽循环」；415–481 补层已闭合、`legacy` 九条索引只对应前九节，不补后半部底座。伪代码 / 流程图各卷已很多；总入口 153–157 行三个实际问题落点、`themes` 已是按玩法问题那条索引 —— 都核过，别再翻。`not_registered` 现在 14 条理由，逐条都有回源，别再从头翻。`notes/08` 是移植侧欠账清单、非原机缺机制，锚点与注释已核过与当前 wt1 源码一致。
