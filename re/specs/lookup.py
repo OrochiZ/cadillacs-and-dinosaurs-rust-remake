@@ -1278,6 +1278,18 @@ def cmd_selftest():
     bad = [str(i) for i, x in enumerate(DB["coverage"]["not_registered"])
            if not x.get("what") or not x.get("why")]
     ck("按纪律不转的每条都写了 what/why", not bad, ", ".join(bad))
+    path_re = r"[A-Za-z0-9_./-]+\.(?:md|rs|py|txt)"
+    bad = []
+    for name, dom in DOMAINS.items():
+        for p in re.findall(path_re, dom.get("source", "")):
+            if p.startswith(("dino-assets/", "dino-game/", "dino-extract/")):
+                bad.append(f"{name}:{p}")
+    for i, grp in enumerate(DB["coverage"]["registered"]):
+        for p in re.findall(path_re, grp.get("source", "")):
+            if p.startswith(("dino-assets/", "dino-game/", "dino-extract/")):
+                bad.append(f"coverage{i}:{p}")
+    ck("回源路径都从仓库根写全，不留 dino-assets/ 这类裸前缀",
+       not bad, ", ".join(bad))
     ck("域数量 >= 57（wof 受击手册选择、玩家输入契约也进了缓存）",
        len(DOMAINS) >= 57, str(len(DOMAINS)))
     for dn in ("player_ground_state", "player_run_state", "player_air_state"):

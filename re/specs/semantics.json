@@ -137,7 +137,7 @@
     "attack_field": {
       "label": "AttackRecord 8 字节逐字段语义（一招一行）",
       "scope": "dino",
-      "source": "re/specs/anim/SPEC.md §4.5；dino-assets/src/sprites.rs:149-158",
+      "source": "re/specs/anim/SPEC.md §4.5；dino-rs/crates/dino-assets/src/sprites.rs:149-158",
       "values": {
         "+0": { "meaning": "伤害基值（还要过反击 / 弱点 / 等级等多因子流水线）", "tag": "O" },
         "+1": { "meaning": "韧性削减量，扣防守方眩晕槽 +$78", "tag": "I" },
@@ -1136,7 +1136,7 @@
       { "source": "re/specs/sound/SPEC.md", "domains": ["sound_command", "sound_code", "sound_header_type", "seq_command", "pan_mode"] },
       { "source": "re/specs/CONTEXT.md", "domains": ["pool_tag"] },
       { "source": "notes/02-mid.md §27.2 / §27.3（指令技状态编码，两边对照）", "domains": ["dino_cmd_state", "wof_rkey1"] },
-      { "source": "dino-rs/crates/dino-game/src/game/script.rs；dino-assets/src/script.rs；notes/00-overview.md §9.4（过场脚本 41 action 与 6 字节记录）", "domains": ["dino_script_action", "dino_script_record"] },
+      { "source": "dino-rs/crates/dino-game/src/game/script.rs；dino-rs/crates/dino-assets/src/script.rs；notes/00-overview.md §9.4（过场脚本 41 action 与 6 字节记录）", "domains": ["dino_script_action", "dino_script_record"] },
       { "source": "notes/02-mid.md §37.3；notes/04-state.md:54（wof 对象头 +0x62 = ShakeLeft 一字节三用）", "domains": ["wof_shake_left"] }
     ],
     "not_registered": [
@@ -1197,7 +1197,7 @@
     ]
   },
   "legacy": {
-    "note": "GAMEPLAY_LEGACY.md 九条外推判断 → 缓存里哪些域是它的数据底座。与 themes 正交：themes 按玩法问题归域，这里按一句设计判断归域，并且必须写清「能查到什么」和「查不到什么、为什么」。只列本 rep 已登记的证据；右栏「当代同类常见做法」是外推观察，不占域。probe 可以挂一条或多条，每一条都是 --selftest 里真跑过的命令样本，不是又一份声明；判断讲到两侧的，两侧都得有各自的样本，别让 can_check 写宽了却只有半边有证明；哪些算「讲两侧」按外推文正文和它自己写下的边界判定，不按 can_check 的措辞——第二节明写 wof 那句不并成同一套因果、不放大成两款共同架构，别拿搓招状态域凑一条 wof 样本；第五节边界写明都是 dino 侧登记、第七节那句「两边调度层同构」的 wof 侧按边界不转，同样不算讲两侧。can_check 只写缓存里真有取值或真有命令能翻出来的东西；没有对应可查取值的说法一律放 cannot_check，并写明它是量、是未验命名、还是「有 [O] 回源但没转成域」的结构观察——后一类另带 source，别把「缓存没登记」写成「没有证据」。给压缩恢复后从一句判断走回可查数据用，不当待办清单。",
+    "note": "GAMEPLAY_LEGACY.md 九条外推判断 → 缓存里哪些域是它的数据底座。与 themes 正交：themes 按玩法问题归域，这里按一句设计判断归域，并且必须写清「能查到什么」和「查不到什么、为什么」。只列本 rep 已登记的证据；右栏「当代同类常见做法」是外推观察，不占域。probe 可以挂一条或多条，每一条都是 --selftest 里真跑过的命令样本，不是又一份声明；判断讲到两侧的，两侧都得有各自的样本，别让 can_check 写宽了却只有半边有证明；哪些算「讲两侧」按外推文正文和它自己写下的边界判定，不按 can_check 的措辞——第二节明写 wof 那句不并成同一套因果、不放大成两款共同架构，别拿搓招状态域凑一条 wof 样本；第五节边界写明都是 dino 侧登记、第七节那句「两边调度层同构」的 wof 侧按边界不转，同样不算讲两侧。can_check 只写缓存里真有取值或真有命令能翻出来的东西；没有对应可查取值的说法一律放 cannot_check，并写明它是量、是未验命名、还是「有 [O] 回源但没转成域」的结构观察——后一类另带 source，别把「缓存没登记」写成「没有证据」。list 里的 title 与 GAMEPLAY_LEGACY.md 九节标题逐字对应、顺序一致，改标题要两边同步；各条 source 与 coverage 回源里的文件路径都要从仓库根写全（如 dino-rs/crates/dino-assets/...），不留裸前缀。给压缩恢复后从一句判断走回可查数据用，不当待办清单。",
     "list": [
       {
         "key": "beat",
