@@ -1302,6 +1302,14 @@ def cmd_selftest():
     out = capture(cmd_collide, "0x0E")
     ck("collide 0x0E 同时列出 wof 两侧",
        "wof_player_reaction" in out and "wof_reaction" in out)
+    out = capture(cmd_collide, "4")
+    ck("collide 4 在 wof 半边也分叉：敌人侧 / 玩家侧 / 硬直字节各讲各的",
+       all(x in out for x in ("wof_reaction", "wof_player_reaction", "wof_shake_left"))
+       and "抓投弹飞族" in out and "DMGREACT_BURN" in out
+       and "较长生命周期" in out)
+    ck("同一个 4 在 wof 两侧不是同一个回答",
+       match_value(DOMAINS["wof_reaction"], "4")[1]["meaning"]
+       != match_value(DOMAINS["wof_player_reaction"], "4")[1]["meaning"])
     ck("wof 玩家侧未点名的 0x0A 不硬答",
        match_value(DOMAINS["wof_player_reaction"], "0x0A")[1] is None)
     nr = DB["coverage"]["not_registered"]
