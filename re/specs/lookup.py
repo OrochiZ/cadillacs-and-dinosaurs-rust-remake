@@ -21,6 +21,8 @@
     python re/specs/lookup.py spawn 16 04D0 0141 0008 0120 0040 0000 0000 0000
     python re/specs/lookup.py chain                   ANI -> SPR -> 判定框 能推断什么
     python re/specs/lookup.py find 攻击                按意义关键词反查
+    python re/specs/lookup.py collide 4               只给一个取值，列出它在各域的所有意义
+    python re/specs/lookup.py collide 0x1A            看同一编号在哪几张表里意思不同
     python re/specs/lookup.py --json frame_type 4     机器可读输出
     python re/specs/lookup.py --selftest              固化自测（不依赖 ROM）
 
@@ -43,6 +45,10 @@ if hasattr(sys.stdout, "reconfigure"):
 HERE = pathlib.Path(__file__).resolve().parent
 DB = json.loads((HERE / "semantics.json").read_text(encoding="utf-8"))
 DOMAINS = DB["domains"]
+
+# 这些域的「数字」是字节偏移或位编号，不是游戏里读到的取值；
+# 只给一个取值反查时必须排除，否则会把 "+4 字段" 当成 "取值 4"。
+OFFSET_KEY_DOMAINS = ("attack_field", "box_field", "wof_atk_field")
 
 
 # ---------- 取值解析 ----------
@@ -83,8 +89,13 @@ def match_value(dom: dict, token: str):
             if m and int(m.group(1)) <= n <= int(m.group(2)):
                 return k, v
         for fallback in ("nonzero", "other", "negative", "low7=n"):
-            if fallback in vals and (fallback != "nonzero" or n != 0):
-                return fallback, vals[fallback]
+            if fallback not in vals:
+                continue
+            if fallback == "nonzero" and n == 0:
+                continue
+            if fallback == "negative" and n >= 0:
+                continue
+            return fallback, vals[fallback]
     return None, None
 
 
@@ -499,6 +510,39 @@ def cmd_find(word: str):
     return 0
 
 
+def cmd_collide(token: str):
+    """只给一个取值，列出它在各域的所有意义 —— 确认「这个数得先知道谁在读」。"""
+    print(f"取值「{token}」在已登记域里的所有意义：")
+    print("=" * 78)
+    hits, skipped = [], []
+    for name, d in DOMAINS.items():
+        if d.get("bitfield") or name in OFFSET_KEY_DOMAINS:
+            skipped.append(name)
+            continue
+        k, v = match_value(d, token)
+        if v:
+            hits.append((name, k, v, d))
+    for name, k, v, d in hits:
+        ctx = " [上下文相关]" if d.get("context_dependent") else ""
+        generic = "  (兜底/参数化键，不是这个值的专门登记)" \
+            if k in ("nonzero", "other", "negative", "low7=n") else ""
+        print(f"  {name:24s} -> {v['meaning']} {fmt(v['tag'])}{ctx}{generic}")
+    if not hits:
+        print("  （没有域登记这个取值）")
+    print("=" * 78)
+    ctx_n = sum(1 for _, _, _, d in hits if d.get("context_dependent"))
+    exact_n = sum(1 for _, k, _, _ in hits
+                  if k not in ("nonzero", "other", "negative", "low7=n"))
+    print(f"命中 {len(hits)} 个域，其中 {exact_n} 个是这个值的专门登记、"
+          f"{ctx_n} 个标注上下文相关。")
+    print("这个数没有全局意义：先确定是哪张表 / 哪个对象在读，再谈它是什么。"
+          "只带数字不带域，等于让工具替你猜。")
+    if skipped:
+        print(f"（已跳过 {len(skipped)} 个位域 / 字段偏移域：它们的数字是位号或字节偏移，"
+              f"不是取值：{', '.join(skipped)}）")
+    return 0
+
+
 # ---------- 固化自测 ----------
 def capture(fn, *args) -> str:
     buf = io.StringIO()
@@ -552,6 +596,8 @@ def cmd_selftest():
     ck("两侧意义确实不同", bool(pv and ev) and pv["meaning"] != ev["meaning"])
     _, v = match_value(DOMAINS["player_hurt_reaction"], "15")
     ck("离散编号 0xF 没有被范围键误答", v is None, v["meaning"] if v else "")
+    _, v = match_value(DOMAINS["wave_terminator"], "4")
+    ck("正数不误答成负值 terminator", v is None, v["meaning"] if v else "")
 
     # 帧解码不把 +$49 格式化成 +$31，且 10/12 字节都能跑
     out = capture(cmd_frame, ["10", "0A01", "8000", "0100", "0405", "1A02"])
@@ -575,6 +621,14 @@ def cmd_selftest():
     out = capture(cmd_spawn, ["04D0", "0141", "0008", "0120", "0040", "0000", "0000"])
     ck("spawn 生成记录识别池与人数条件", "池 B" in out and "2 人以上" in out)
 
+    # 只给一个取值反查：不知道域名也能看出「得先确定谁在读」
+    out = capture(cmd_collide, "0x1A")
+    ck("collide 0x1A 同时列出两侧不同意义",
+       "背后" in out and "起身" in out and "没有全局意义" in out)
+    out = capture(cmd_collide, "4")
+    ck("collide 4 命中多个域且显式排除位域/字段偏移",
+       out.count(" -> ") >= 5 and "已跳过" in out)
+
     ok = sum(1 for _, good, _ in checks if good)
     for label, good, detail in checks:
         print(f"  {'PASS' if good else 'FAIL'}  {label}" + (f"   [{detail}]" if not good and detail else ""))
@@ -597,6 +651,8 @@ def main(argv: list[str]) -> int:
         return cmd_chain()
     if cmd == "find":
         return cmd_find(" ".join(rest)) if rest else (print("用法：find <词>") or 1)
+    if cmd == "collide":
+        return cmd_collide(rest[0]) if rest else (print("用法：collide <取值>") or 1)
     if cmd == "flags":
         return cmd_flags(rest[0], rest[1]) if len(rest) >= 2 else (print("用法：flags <位域> <值>") or 1)
     if cmd == "attr":
