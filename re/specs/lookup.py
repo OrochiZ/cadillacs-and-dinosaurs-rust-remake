@@ -1650,6 +1650,14 @@ def cmd_selftest():
     ck("讲到两侧的判断，两侧各有一条真跑样本",
        all(len(legacy_probes(next(x for x in items if x["key"] == k))) >= 2
            for k in ("beat", "swing")))
+    sw = next(x for x in items if x["key"] == "swing")
+    ck("swing 的底座接上「一拍也不是一条数据」的合成样本",
+       "合成一句" in sw["can_check"]
+       and any(pr["argv"][0] == "moment" for pr in legacy_probes(sw)))
+    ck("swing 的合成样本真跑出「两本册子要同一拍才对上」",
+       "两本册子" in capture(main, ["moment", "10", "0A01", "8000", "0100",
+                                    "0405", "1A02", "attack", "0A", "01",
+                                    "00", "09", "03", "14", "00", "00"]))
     ck("crowd 说清缺的是可查域、不是缺证据",
        any(it["key"] == "crowd" and "[O] 级回源" in it["cannot_check"]
            and "不是叙事" in it["cannot_check"] and "不硬编" in it["cannot_check"]
