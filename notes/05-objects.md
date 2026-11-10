@@ -1794,3 +1794,24 @@ flowchart TD
 
 回源（都是已核事实，不展开逐项表值）：`GAMEPLAY_LEGACY.md:260-266` / `:449-460` / `:481`、`plan/game/mechanics-seen.md:290`、`dino-rs/crates/dino-game/src/game/script.rs:218-245` / `:2121-2146`、`dino-rs/crates/dino-game/src/game/flow.rs:1228`、`dino-rs/crates/dino-game/src/game/combat.rs:70-99` / `:102-111`、`dino-rs/crates/dino-game/src/game/enemy_combat.rs:720-759`、
   `dino-rs/crates/dino-game/src/game/player.rs:572-615` / `:1051-1057` / `:1173-1175` / `:1980`、`dino-rs/crates/dino-game/src/game/player_combat.rs:141-142` / `:172-180`、`dino-rs/crates/dino-game/src/game/player_tag.rs:29-32`、`dino-rs/crates/dino-game/src/game/prop/b20.rs:56`、`dino-rs/crates/dino-game/src/game/prop/b31.rs:122`、`dino-rs/crates/dino-game/src/game/flow/cont.rs:110-113`、`dino-rs/crates/dino-game/src/game/rank.rs:156` / `:331` / `:359`，以及 `re/specs/semantics.json` 的 `dino_script_record` / `presence` / `legacy.continuity`。
+
+---
+**〔回源压力测试：打到一半有人投币进来，游戏不重排这一场〕**
+
+前面几格把「在场是每帧重新做一次的动作」立得很稳：敌人打玩家读的那份名单每帧清空重建，主角和桶一样是自己每帧 push 进去，没有谁被点名到场。这里拿它去撞一个从没验过的最剧烈事件——**一个正在打的场面，凭空多出一个会拿主意的人**（第二个 / 第三个玩家中途投币）。若「场上有谁」真是一份名册，这一下理应是一次全场广播加重排：通知 AI 换目标、重算波次、重设镜头包围盒、把已经出场的敌人重新摆一遍。源码里一件都没有。
+
+**先说人话**：新来的人是从画面上方按「复活落下」那条现成路走进来的——`dino-rs/crates/dino-game/src/game/flow/join.rs:207-242` 只把他的 `live` 置 1、记一笔已选人、把那份加入记录推到「游戏中」态，随后让早已写好的 `player_respawn`（`dino-rs/crates/dino-game/src/game/player.rs:707-734`）把他摆到机位上方、等几拍、落进画框。`flow_join_init`（`dino-rs/crates/dino-game/src/game/flow/join.rs:186-205`）初始化的是**他自己那一个对象**：`flow_boot_player`（`dino-rs/crates/dino-game/src/game/flow/boot.rs:340-352`）明写 `Player::default()` 后只赋 `self.players[i]`，取一次 RNG、给一条命、写状态字、置 `flow.started` 位。全场对象一个都没被遍历、没被重置、没被通知。
+
+改掉的确实有几处，但全是**本来就公开挂着、谁都能读的事实**：`flow_join_scores`（`dino-rs/crates/dino-game/src/game/flow/join.rs:260-265`）给三个人的分数各加一，`rank_join_time`（`dino-rs/crates/dino-game/src/game/rank.rs:387-390`）给波次预算补 600 帧、给关卡时钟补 3:30（卷 05 §75.5 表已登记为「三种把钟拨回去的路」之一），`player_count_players`（`dino-rs/crates/dino-game/src/game/player.rs:701-705`）是把活跃玩家**重新数一遍**写回人数轴（§94.22 已登记它是事件点重算，不是开局定死）。这些数改完就放在那儿，没有谁拿着它去挨家敲门；下一帧名单照旧清空重建，新来的人自己举手进去，敌人目标选择、波次阈值、镜头包围盒各按自己那一拍读新数、各自调整。`dino-rs/crates/dino-game/src/game/spawn.rs:253-257` 更直白：出怪记录按人数跳过某几档，**只对游标后面还没读到的记录生效**，已经走过的记录不回头重放。
+
+**倒推（[I]，说人话）**：**「场上有谁」不是一份需要维护的名册，是每一帧由在场的人自己报上来的；所以「多一个人」根本不是一次事件，只是从这一帧起多了一个自己举手的对象。** 这跟「演出里打不到不是另立一层规则」「没有一次总广播」是同一套因果，而它顶住了最难顶的一处——连参与者数量突变都不要求全场对齐，靠的还是「共享事实 + 各读者自己读」。做成游戏：别做 `PlayerJoined` 之后全场重算仇恨 / 重排波次 / 重建镜头包围盒 / 给 AI 广播，让每个关心人数的系统保留自己那一拍读公开事实的习惯；新角色只负责把自己演完入场。玩家看见的是有人从画框外翻进来接着打，不是导演喊卡重排机位——这正是武打编舞里「一个武行中途入画」的样子。
+
+**顺带把上一格那卷胶片接上**：加入不倒带、不重排，也不让机位往回走；谱照样往下读，连按人数分档的放怪门槛都是「下一条记录」才认新人数。于是「这一场是一卷只往前放的胶片」在人数突变这一处仍成立——**多一个人不等于这一幕重来**。别把它读成「加入没有代价」：新来的人要自己落下、自己闪烁一段无敌（`plan/game/mechanics-seen.md:273` P58 的 `[M]` 观察），这一场也真被拨快了预算、拨慢了时钟，只是代价记在公开数上，不记成对所有人的通知。
+
+**边界（别读成全称）**：
+- 不是「加入什么全局状态都不改」。上面那几处（分数 +1、`wave_timer` +600、关卡时间 +3:30、`flow.started` 位、人数轴重数）都真改了；本格说的是**改公开事实、不逐个通知对象**，不是「零改动」。这一句与卷 04 §55 的续关契约不冲突：续关是保留英雄 / 分数 / RNG、刻意不重置也不取 RNG（`notes/04-state.md:131`），本格讲的是中途加入，两条入口不同、别混成一条。
+- 不是「加入没有专用代码」。选人 / 投币门 / 加入四态与选人共用记录状态机（`notes/03-frame.md:141-147` 已写透）、投币边沿与 credit 扣减（`dino-rs/crates/dino-game/src/game/flow/join.rs:166-184`）、HUD 倒计时都是专有的；本格问的是**进行中的场面怎么接纳**，不是前台选人 UI 怎么组织，更不是「老游戏没有加入流程」。
+- 不是「敌人永远不重挑目标」。敌人本来就每次事件点重读活跃位图 / 上一帧人口（`notes/01-early.md §13.5` 已写透「没有计划，只有处境」）；本格说「没有因加入而专门重排全场」，不是说目标不变。
+- `notes/04-state.md:131` 那句「普通中途加入会重置对象」已就地收窄为「重置新加入者自己那一个对象」——`flow_boot_player` 只写 `self.players[i]`，原文在续关对照语境里容易被读成全场重置，按 A.13 只改这一句读法、不动该节结论。
+- wof 侧：`notes/08-wof-cs-gaps.md:56` 已登记 2P / 3P 加入在 C# 侧「已移植但运行期不可达」，那是**移植侧欠账、不进设计对照**；按 §11.0 不串共同架构、不评优劣、不写成「wof 没有中途加入」、不推断原机缺机制。
+- 证据成色：`flow/join.rs` / `flow/boot.rs` / `player.rs` / `rank.rs` / `spawn.rs` 是 [O] 源码；`plan/game/mechanics-seen.md:273` P58 与 `plan/game/mechanics-seen.md:260` F29 是仓库已有的 `[M]` 玩家可见观察（只用 `Mechanic` + `Source` 两列、`Port` 列不进对照，**不是新取证、0 次 ROM 取证**）。人数 / 帧数 / 分数 / 位图都是量或标志，按 `notes/06-method.md §94.3` 不转成「取值 → 意义」、不改 `re/specs/semantics.json` / `re/specs/lookup.py`。全 dino 侧、不写「老游戏都没有 PlayerJoined 事件」这类全称；`GAMEPLAY_LEGACY.md:481` 停止条件不改正文、不加节号、不改总入口、不回文档自洽循环；九条迁移清单不扩、§53.8 不填。

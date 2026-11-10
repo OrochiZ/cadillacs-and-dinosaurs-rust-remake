@@ -128,7 +128,7 @@ dino 把「引用」按用途拆成多个窄字段，每个字段只服务一个
 | **难度补偿** | `rank_speed_add(-2)`（续关降速度档） | `cont.rs:91` | §25 `rank_event_*` 把续关当降档事件 |
 | **投币 / 归属** | credits 饱和扣减、`flow.started` 位图、`flow_join_scores` | `cont.rs:73`、`:81`、`:90` | §26 / §40 分数与奖命归属；§33 玩家位图 |
 
-- 最值得单列的是 `cont.rs:92` 的注释：续关走的是**「without the ordinary join's object reset or RNG call」**——普通中途加入会重置对象并取 RNG，续关刻意两者都不做。同一份 `flow.join[i]` 记录状态机（§41）被两种入口复用，差别就在这一行。于是「取几次 RNG」和「不取」在整局流程层同样是可逐帧对拍的契约，与 §51 的结论一致。
+- 最值得单列的是 `cont.rs:92` 的注释：续关走的是**「without the ordinary join's object reset or RNG call」**——普通中途加入会重置**新加入者自己那一个对象**（`flow_boot_player` 只写 `self.players[i]`，不是全场重置）并取 RNG，续关刻意两者都不做。同一份 `flow.join[i]` 记录状态机（§41）被两种入口复用，差别就在这一行。于是「取几次 RNG」和「不取」在整局流程层同样是可逐帧对拍的契约，与 §51 的结论一致。
 
 ### 55.4 HUD 倒计时：什么时候**不走**
 
