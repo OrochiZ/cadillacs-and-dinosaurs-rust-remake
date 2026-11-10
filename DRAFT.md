@@ -5,10 +5,10 @@
 
 ## 本轮收尾（开工重建，收尾写回）
 
-- 开工核对：读 `CODEBUDDY.md`（= `CLAUDE.md`）/ `DRAFT.md`；HEAD `6bda9f13`（无敌票那一格），`git status --short` 空，临时提交信息文件不存在。接着按「回源压测刚写下的判断」这个动作形态往下做，不另起计划。
-- **本格实质产物（回源压测撞出概括缺口，就地收窄）**：拿 `re/specs/player/SPEC.md §5.9` 最后一行「frame classes 6, 8, 0xA | per frame | immune to enemy attacks」和 `:925-927` §5.1 完整命中条件，去压上一格写的「免挨打全靠各链 `== 1`」，发现把 `+$00` 说成了唯一的尺子。真相是「敌人能不能打中你」这一条链自己就要同时看 `+$00` bit1、玩家帧身份、`+$48` 身体盒、`+$49` 攻击盒与盒重叠；帧身份那路根本不读 `+$00`。缓存 `frame_type`（`re/specs/anim/SPEC.md §4.4`）与 `body_box_zero`（`+$48` 取 0，`note` 明写「哪一帧无敌要逐帧看这个字节、不从帧类型推」）**本就分路登记、措辞无误，这次不改缓存**。
-- 落盘：`notes/05-objects.md` 卷末补层就地三改——① 新增一条 [O]「回源压测：连这一把尺子都不是唯一的一把」，把第一条收窄成「说的只是『在场身份』这一档被谁认，不是免伤只有这一条路」；② 倒推段补「连会不会受伤都不止一处能拍板，免伤自己也被拆散到好几个字段里，复活有复活的长、必杀那一帧有那一帧的短，谁都不用向谁对齐」；③ 边界段补「别把 `+$00` 读成无敌唯一来源，逐帧免伤另两路缓存已登记、不重写不新增域」，并在「顺手修掉」段交代这次收窄只对正文、不动缓存。**没碰缓存 / 脚本 / 外推文九节 / 产物层 / wt1 / 总入口 / 节号**；压测没有推翻主判断，反而把它推得更彻底。
-- 验证：`notes/05-objects.md` `CR=0 BOM=False over2000=[]`；`git diff --check` rc=0 空（相对 `6bda9f13` 只有 `1 file changed, 4 insertions(+), 3 deletions(-)`）；`semantics.json` 相对 `6bda9f13` diff 为 0 字符（确认没顺手改缓存）；新增 3 组 `file:line` 引用 `OK=3 / UNRESOLVED=0 / BAD=0`；负向检查「全称已收窄、限定句在、边界句在、『无敌没用』反向提醒仍在、『这次不改缓存』声明在」五项全 True；`--selftest` **328/328、stderr 空**（本格没碰缓存/脚本，只兜底）；`json.load` 通过；第 1251 行 2064 字节仍是 HEAD 既有 `legacy.note`、内容未动。
+- 开工核对：读 `CODEBUDDY.md`（= `CLAUDE.md`）/ `DRAFT.md`；HEAD `5be73be3`（免伤不止一把尺那一格），`git status --short` 空，临时提交信息文件不存在。前两格都在 dino 侧「免伤」这条线上，按「别沉迷局部、换动作形态」的提醒，本格换到**另一侧、另一种证据层**：wof 移植侧取证边界。
+- **本格实质产物（换侧 + 用户点名要的 wof_cs 欠账边界）**：拿「刚立住的 dino 免伤判断谈 wof 时哪些 C# 证据不能用」去核 `g:/wof/wt1/wof_cs/src/`，撞出一条会被继承的词义陷阱：wof_cs 里 `invincible` 全指**敌人 `+0x78` 逐帧递减 byte 计时器**（`Cps1EnemyAI.cs:1141-1144`、`Cps1EnemySpawn.cs:2431-2433`、`:3145-3147`，注释明写「不能把 +78 当作 word 递减」）和**宿主调试锁**（`Sdl2MainWindow.cs:500-502`，`切换调试无敌锁定_无对应ASM()` 按 §0 剥掉），**没有一条**是 dino 玩家 `+$00 = 2` 那种「在场身份档位」；「关卡时间到 / 全队 HP 归零」在 C# 侧搜不到对应落地（命中的全是各对象自己的倒计时）。⇒ 这**不能**写成「wof 原机缺 TIME OVER / 缺无敌」——那是「搜不到≠不存在」+「从移植侧推原机」双重违规；wof 超时按 `notes/05-objects.md:1711` 已登记是「只把波次脚本指针拨到下一条、不清场」，与 dino 的 BCD 关卡时钟本就不是同一件事。
+- 落盘：`notes/08-wof-cs-gaps.md` 在「打击逻辑 / 受击反应」之后、「怪物策略」之前就地补一个小块「无敌 / 免伤 / 关卡时间到（词义与证据边界，不是『原机缺什么』）」，两条 [O] + 一段「→ 影响」（卷末那两格判断按 §11.0 **只登记 dino 侧**，别用 wof_cs 的 `invincible` 印证或反驳、别把 C# 没搜到读成原机、不串共同架构不评优劣、0 次 ROM）。措辞收紧过一次：初稿把 `+0x78` 归成「入场保护那一类」是直觉归类，源码只证明「敌人对象上逐帧递减的 byte 计时器」，已改成「具体用途按 wof 自身台账、本块不判」。**不动既有块、不改总入口、不加节号、没碰缓存 / 脚本 / 外推文九节 / 产物层 / dino 源码**；wt1 只读未改。
+- 验证：`notes/08` `CR=0 BOM=False over2000=[]`；`git diff --check` rc=0 空（相对 `5be73be3` 只有 `1 file changed`）；跨 `g:/wof/dino` 与 `g:/wof/wt1/wof_cs/src/` 的 5 组 `file:line` 引用 `OK=5 / UNRES=0 / BAD=0`；三条违规断言（「原机没有 TIME OVER」等）出现次数 0；四道护栏（搜不到不等于不存在 / 不从移植侧推原机 / 只登记 dino 侧 / 0 次 ROM）全在；`--selftest` **328/328、stderr 空**（本格没碰缓存/脚本，只兜底）。校验脚本第一次因 `sorted(refs)` 里混了 `None` 报 `TypeError`，是脚本用法不对，加 `key` 修掉后复验全绿，不是内容错。结果用 `python -X utf8` 写 UTF-8 临时文件再 `Read`（PowerShell stdout 显示中文会乱码，文件本身是 UTF-8）。
 
 ## 长期口径（每轮沿用，不是本轮新增任务）
 
@@ -59,7 +59,7 @@
 - 三块剩余 SPEC（stage / flow / sound）里能转的离散编号表都已登记，剩下是硬件映射、连续量与渲染细节，按纪律不转、不硬造新域；别再从头翻。
 - 「缓存没转成域」与「没有证据」是两种缺口；不把 [I] 写成 [O]，也不把 [O] 代码观察降成叙事；不从概括硬编假编号域；[O] 回源但形态是量 / 条件分支 / 随机漂移 / 未给逐项意义的查表，写进 `not_registered` + `source`。
 - 「讲两侧」按外推文正文与它自己写下的边界判定，不按 `can_check` 措辞。要求两侧各挂样本的是 `beat / swing / death / feel / values`；`combo / crowd / continuity` 不算，`difficulty` 正文没提 wof。
-- ROM 主要服务于 data 调查，只在 `wof_cs` 写得非常可疑时才触发核实；不恢复「以 ROM 审 repo」框架。**读仓库里已有的 `[M]` MAME 观察记录不算新做 ROM 取证**。wt1 仓库只读、不改；`_无对应ASM` / `可能对应ASM` 是宿主补偿标记，不等于移植欠账。
+- ROM 主要服务于 data 调查，只在 `wof_cs` 写得非常可疑时才触发核实；不恢复「以 ROM 审 repo」框架。**读仓库里已有的 `[M]` MAME 观察记录不算新做 ROM 取证**。wt1 仓库只读、不改；`_无对应ASM` / `可能对应ASM` 是宿主补偿标记，不等于移植欠账。 **别拿 `invincible` 这个英文词串两侧**：wof_cs 里它指敌人 `+0x78` 逐帧递减 byte 计时器（`Cps1EnemyAI.cs:1141-1144`、`Cps1EnemySpawn.cs:2431-2433`）与宿主调试锁（`Sdl2MainWindow.cs:500-502`），不是 dino 玩家 `+$00 = 2` 的在场身份档位；谈卷 05 那两格免伤判断时 wof 侧 C# 证据不能用，边界已记在 `notes/08-wof-cs-gaps.md`「无敌 / 免伤 / 关卡时间到」块。C# 侧搜不到 TIME OVER 链不等于 wof 原机没有，别从移植侧推原机、别串共同架构。
 - 特殊关卡、专属演出、单个 Boss 那一段的编排不构成通则；载具换面停止。第一关谱里的通用机制实例不算专属演出，但要写明边界。
 - 环境限制（不是缺口）：无 Rust 工具链、无 `dino.zip`、无 `re/rom` / `target`，做不了 `cargo build/test`、`regress.sh`、MAME 对拍；`lookup.py` 是 ROM-free 的离线脚本。
 - 写盘 LF 无 BOM；收尾校验 `CR=0 BOM=False`、新增行 `over2000=0`、`git diff --check`、`git status --short`；提交信息用 `git commit -F R:\Temp\dino_commit_msg.txt` 后清理临时文件。`semantics.json` 第 1249 行（`legacy.note`）是 HEAD 里就有的 2064 字节既有行，本轮未动；纪律只约束新增行，别为它制造改动。
