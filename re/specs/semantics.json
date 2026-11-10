@@ -72,11 +72,13 @@
     "presence": {
       "label": "玩家槽位状态（玩家对象 $00）",
       "scope": "dino",
-      "source": "re/specs/player/SPEC.md 对象字段表",
+      "source": "re/specs/player/SPEC.md 对象字段表 / §5.1 / §5.9 / §6.2；re/specs/enemy/SPEC.md:132 / §10；dino-rs/crates/dino-game/src/game/rank.rs:357-376",
+      "context_dependent": true,
+      "note": "查之前先分清两件事：这个 +$00 字节落在哪类对象上、眼下是哪条链在读它。玩家侧 0/1/2 = 槽位空闲 / 正常在场 / 受击保护；敌人侧同一个 2 却是『受击反应中』（命中代码把它置 2，使它对同一份命中名单免疫，re/specs/enemy/SPEC.md:132 / §10），两类对象意思几乎相反，别把玩家的无敌套到敌人身上。值 2 不是全局免死：只有要求 +$00 == 1 的读者会跳过它（敌人打玩家的命中条件 re/specs/player/SPEC.md §5.1、拾取候选与可击名单 item.rs:234/242、武器、剧情出场名单 flow/cards.rs、HUD 拾取消息）；关卡时钟 TIME OVER 只问 live != 0 && mode < 4，照样把 HP 归 0（rank.rs:372；玩家可见现象 plan/game/mechanics-seen.md:340 P65 / :349 P74）；还有反过来只认 2 的读者（复活火花 effect.rs:529 不是 2 就自我释放、过场 barrier script.rs:516 等到不是 2 才放行）。无敌也不是挂上就不管：受击全程、翻滚起身、投技、拾取、必杀、复活各有自己的计时器，谁到点且另一个也归零才写回 1（re/specs/player/SPEC.md §5.9、player.rs:842-860）。所以别把 2 读成『系统给玩家挂了一块全局免死金牌』——它是一条链一条链各自解释的公开取值，谁免谁不免取决于这一刻是谁在问、问的是哪类对象。全是 dino 侧；wof 侧按 §11.0 不推断。",
       "values": {
         "0": { "meaning": "槽位空闲", "tag": "O" },
-        "1": { "meaning": "活跃且可被命中", "tag": "O" },
-        "2": { "meaning": "活跃但无敌：bit1 令所有命中测试跳过", "tag": "O" }
+        "1": { "meaning": "正常在场：可被命中，也是拾取候选、目标选择、结算卡、HUD 等链唯一认的『在场』值（它们要求 == 1）", "tag": "O" },
+        "2": { "meaning": "活跃但无敌（受击保护）：要求 == 1 的命中 / 目标 / 拾取 / 结算读者会跳过它；但关卡时钟 TIME OVER 按 live != 0 && mode < 4 照常把 HP 归 0，所以不是全局免死。敌人对象上同一个 2 是『受击反应中』，见域 note", "tag": "O" }
       }
     },
     "sprite_attr": {
