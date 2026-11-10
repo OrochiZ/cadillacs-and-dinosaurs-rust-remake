@@ -2875,3 +2875,17 @@ wof 侧：`Cps1EventObjectRuntime.cs` 的 1C 剧情对象池有对白对象展�
 **按 §94.1 停**：本节闭合清册 1 格（拆成 `terrain` 已核 / `frontend` 留白）、补 1 条玩法层判断、钉住 1 处归属误认、交叉引用 §94.27 不重复计数。`shapes` 64 项逐条、跳表目标、`0x26AA` 各调用点逐条都只给已有结论举例（§94.2）；`frontend` / tile / 调色板组 / Boss 增援等仍标未核，不硬凑。0 次查 ROM（§11.6 未触发）；wof 侧只取标了 ROM 语义的常量与入口，宿主诊断与逐帧补偿按 §0 剥掉。
 
 ---
+
+**〔缓存回路核查：0x20 的一句全称被新判断顶偏，已就地收窄〕**
+
+这一格换到缓存侧做一次端到端一致性核查：拿本会话刚立住的「玩家能催的是拍与拍之间的间隔，不是这一镜有几拍」去核 `re/specs/semantics.json` 里脚本等待与计时相关域的措辞，看有没有同源误读。真查了 `lookup.py dino_script_action 0x2A` / `0x38` / `0x20`、`dino_script_record +4`、六字节 `script` 解码与 `legacy continuity`：`0x2A` / `0x38` 的「开镜首帧分档、之后不再重测、捡完不会让这一拍提前收」、`+4` 的「0xFFFF 是 wait-until」，都和本会话判断一致，**未改**。
+
+撞出的是 `dino_script_action.0x20`：`meaning` 末尾原写「也不是玩家能催的」。这是把「催不动条件」写成了「玩家不能催」的全称。回源：`dino-rs/crates/dino-game/src/game/script.rs:273` 的 `0x20` 等 `G.$4FC` 清掉，`script_wait_flag`（`:364-368`）在条件还在时把 `timer` 写成 `0xFFFF`、每帧重问、脚本自己没有任何帧数上限——这部分缓存原意没错，`notes/01-early.md:1034-1038` 也写透「长度整个托付给场上另一个正在收尾的对象」。但快进准入 `G.$4D8 bit0` 是**独立动作** `0x28` 置的（`script.rs:283-284`）、脚本结束清掉（`:375`）；`dino-rs/crates/dino-game/src/game/flow/skip.rs:43-55` 与本卷 §92 记着快进是「一个 vblank 里把同一轮任务多跑几遍」，于是「每帧重问」变成「每轮重问」。⇒ 玩家能催的是**重问之间的间隔**，不是**这一拍什么时候算完**；条件仍由那个 Boss / 场景对象自己演完才清。而 `0x20` 那段能不能快进，取决于脚本记录里有没有先跑过 `0x28`——由数据决定、源码不写死，所以既不能硬写成「一定能催」，也不能写成「一定不能催」。
+
+**改法**：只收窄 `re/specs/semantics.json` 这一条 `meaning` 的末尾一句，改成「玩家按住攻击键能催的是『每帧重问』之间的间隔（`0x9E38C` 让一个 vblank 多跑几轮），不是这一拍什么时候算完——条件仍由那个对象自己演完才清；能否快进还要看该段脚本有没有置 `G.$4D8 bit0`（动作 `0x28`）」，并显式排除两种反面误读：「玩家完全不能催」/「催一下就跳过 Boss 入场」。键、`tag`（仍 [O]）、`source`、`coverage` / `themes` / `legacy` 索引、`re/specs/lookup.py` 全都不动；`lookup.py --selftest` 仍 `328/328 通过`。
+
+**倒推（说人话）**：以后有人查 `0x20`，会直接看到——**这一拍既不归脚本掐表，也不归玩家掐表，归那个还在演的人**；玩家能催的只是「多久问一次」，不是「什么时候算完」。这正是「把原始取值转成抽象意义」该守的分寸：**别把「催不动结果」写成「玩家没有能动性」**。做成游戏也一样：别因为玩家加速不了某个演出条件，就把跳过按钮整个关掉、或写成「演出中禁止输入」；让他催得动等待的间隔，条件到了自然放行。
+
+**边界**：只改 `re/specs/semantics.json` 一条 `meaning` 文本，不新增域、不改键 / 标签 / 索引 / 脚本；`0x2A` / `0x38` / `dino_script_record.+4` 措辞经核查一致、未改；本格 0 次 ROM 取证、全 dino 侧，wof 按 §11.0 只登记并列事实、不串共同架构、不评优劣；`0x9E38C` / `G.$4D8` / 帧数 / 位图都是量或状态字，按 §94.3 不新增取值域；`GAMEPLAY_LEGACY.md:481` 停止条件不改正文、不加节号、不改总入口、不回文档自洽循环。`notes/04-state.md` 卷末「一镜的拍子 / 玩家能催的是间隔」、`notes/02-mid.md` 卷末「门档分层」、`notes/01-early.md:1034-1038`「上限住在谁身上」都不被推翻。
+
+回源（都是已核事实，不展开逐项表值）：`re/specs/semantics.json` 的 `dino_script_action.0x20` / `0x2A` / `0x38` 与 `dino_script_record.+4`、`dino-rs/crates/dino-game/src/game/script.rs:273` / `:283-284` / `:364-368` / `:375`、`dino-rs/crates/dino-game/src/game/flow/skip.rs:43-55`、`notes/06-method.md §92`、`notes/04-state.md` 卷末两格补层、`notes/01-early.md:1034-1038`、`GAMEPLAY_LEGACY.md:481`。
