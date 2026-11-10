@@ -5,10 +5,10 @@
 
 ## 本轮收尾（开工重建，收尾写回）
 
-- 开工核对：读 `CODEBUDDY.md`（= `CLAUDE.md`）/ `DRAFT.md`；HEAD `83bafdad`（G.$4FC 补层那一格），`git status --short` 空，临时提交信息文件不存在。本格按「回源修判断时顺手核缓存同源误读」这条纪律往下做，不另起计划。
-- **本格实质产物（缓存订正，用户真实需求「看到取值就知道抽象意义」）**：上一格回源查清脚本动作 `0x20` 是「0xFFFF 每帧重问、自己没有任何帧数上限、多长由清 `G.$4FC` 的那个 Boss / 场景对象演完决定」，核 `re/specs/semantics.json` 发现 `dino_script_action.0x20` 只写「等 Boss 登场标志 G.$4FC」六个字，读者会以为「等一段固定时长」。已就地改成「timer=0xFFFF 每帧重问、脚本自己没有任何帧数上限；这一拍多长由清标志的那个 Boss / 场景对象把自己的入场演完决定（落地姿势走完 / 对话说完 / 60 帧后等），不是脚本掐的表，也不是玩家能催的」；域 `note` 末尾补一条边界：0x20 是「等条件」最纯粹的形态，别把「等标志」读成「等一段固定时长」，也别和 `0x2A / 0x38` 的首帧分档混成一回事。
-- **没新增域、没动 `coverage` / `themes` / `legacy`、没碰脚本 / 外推文九节 / 产物层 / wt1**。验证：`CR=0 BOM=False over2000=[]`；`json.load` 70 域；「其余 69 域 + 三个索引全部 byte-identical against HEAD」「changed values 只有 0x20」逐项比对通过；`lookup.py dino_script_action 0x20` 与域查询都带 `[O 观察]` 且能读到「没有帧数上限」；`--selftest` **328/328、stderr 空**；`git diff --check` rc=0 空（相对 `83bafdad` 只有 `1 file changed, 2 insertions(+), 2 deletions(-)`）。这是把会被继承的抽象意义按回源码，与上一轮改 `0x2A / 0x38`、`presence` 同源，不是打磨输出。
-- 本格与上一格是同一个「改判断 → 核缓存」回路的两步，落点分别在 `notes/01-early.md`（耐久层设计判断）和 `re/specs/semantics.json`（机器可读语义），互不重复、互不冲突。
+- 开工核对：读 `CODEBUDDY.md`（= `CLAUDE.md`）/ `DRAFT.md`；HEAD `3e1d2f7f`（0x20 缓存订正），`git status --short` 空，临时提交信息文件不存在。本格换动作形态到「端到端引用完整性核查」，起因是这一轮在卷首附近插过补层，担心顶偏既有行号引用。
+- **本格实质产物（查出一处真回归并就地修掉）**：`notes/01-early.md:1026` 那一格插入 14 行补层后，该文件后半段所有行号 +14；`notes/04-state.md:1601`（倒地 mash 补层的边界段）里写的「两侧挣扎计时形状差异见 `notes/01-early.md:1773`、`:1784`」是**插入前**的行号，现在 `:1773` 已变成一行 `AniStat32 = 0...` 代码。对照 `git show 6507f946:notes/01-early.md` 与当前文件确认原文现落在 `:1787` / `:1798`，已就地改成新行号。
+- 全库复验：抽所有 `.md` 里指向 `notes/01-early.md` / `notes/04-state.md` / `notes/05-objects.md` 的 `file:line`，共 **9 处全部在范围内、0 越界**；`DRAFT.md` 长期口径里的 `:761` / `:288` 都在插入点 1026 之前、不受影响；`notes/06-method.md:1465`（§67.4）、`notes/08-wof-cs-gaps.md:1711` 也各自在插入点之前。修正后 `:1787` / `:1798` 指向的确是「wof 两个 RNG 计时字节 vs dino `+$73` 逃脱计时」那段原文，旧行号已清零。
+- 验证：`git diff --check` rc=0 空（相对 `3e1d2f7f` 只有 `1 file changed, 1 insertion(+), 1 deletion(-)`）；`notes/04-state.md` `CR=0 BOM=False`；`--selftest` **328/328、stderr 空**（本格没碰缓存/脚本，只兜底）。临时脚本 `R:\Temp\dino_ref_shift.py` / `dino_ref_all.py` 不进 git。这是回源修错就地改，不算打磨局部；没有新增设计判断、没动缓存 / 脚本 / 外推文九节 / 产物层 / wt1。
 
 ## 长期口径（每轮沿用，不是本轮新增任务）
 
@@ -65,5 +65,6 @@
 - ROM 主要服务于 data 调查，只在 `wof_cs` 写得非常可疑时才触发核实；不恢复「以 ROM 审 repo」框架。**读仓库里已有的 `[M]` MAME 观察记录不算新做 ROM 取证**。wt1 仓库只读、不改；`_无对应ASM` / `可能对应ASM` 是宿主补偿标记，不等于移植欠账。 **别拿 `invincible` 这个英文词串两侧**：wof_cs 里它指敌人 `+0x78` 逐帧递减 byte 计时器（`Cps1EnemyAI.cs:1141-1144`、`Cps1EnemySpawn.cs:2431-2433`）与宿主调试锁（`Sdl2MainWindow.cs:500-502`），不是 dino 玩家 `+$00 = 2` 的在场身份档位；谈卷 05 那两格免伤判断时 wof 侧 C# 证据不能用，边界已记在 `notes/08-wof-cs-gaps.md`「无敌 / 免伤 / 关卡时间到」块。C# 侧搜不到 TIME OVER 链不等于 wof 原机没有，别从移植侧推原机、别串共同架构。
 - 特殊关卡、专属演出、单个 Boss 那一段的编排不构成通则；载具换面停止。第一关谱里的通用机制实例不算专属演出，但要写明边界。
 - 环境限制（不是缺口）：无 Rust 工具链、无 `dino.zip`、无 `re/rom` / `target`，做不了 `cargo build/test`、`regress.sh`、MAME 对拍；`lookup.py` 是 ROM-free 的离线脚本。
+- **在卷首附近插补层会顶偏该文件后半段所有 `file:line` 引用**（本轮踩到，会被继承）：`notes/01-early.md:1026` 插 14 行后，全库指向它 `>1026` 的行号都得 +14；`notes/04-state.md:1601` 的 `notes/01-early.md:1773 / :1784` 就是这么失效的，已按 `git show <插入前提交>:<文件>` 对照原文改成 `:1787 / :1798`。⇒ **每轮在卷中插完补层，收尾花一次全库 grep 抽 `notes/0[145]-*.md:\d+` 并核行号范围 + 抽查指向内容**；临时脚本不进 git。别只核本格新增引用、忘了既有引用被顶偏。本轮已全库复验 9 处 0 越界、DRAFT 里 `:761 / :288` 在插入点之前不受影响。
 - 写盘 LF 无 BOM；收尾校验 `CR=0 BOM=False`、新增行 `over2000=0`、`git diff --check`、`git status --short`；提交信息用 `git commit -F R:\Temp\dino_commit_msg.txt` 后清理临时文件。`semantics.json` 第 1249 行（`legacy.note`）是 HEAD 里就有的 2064 字节既有行，本轮未动；纪律只约束新增行，别为它制造改动。
 - 用补丁脚本改 `lookup.py` 时，短锚点可能是更长行的子串（4 空格 vs 8 空格缩进），断言 `count==1` 会挡住；用带前后换行符的完整行锚点。生成脚本里的正则要用单引号 here-string 原样传，避免外层字符串把 `\s` 当转义。PowerShell 里没有 `py` 别名，用 `python`；ripgrep 不支持前瞻 `(?!...)`，扫裸短标签用 Python `re` 或在输出层做。搜索语义缓存域名时用下划线关键词（`pool_e_class`），别用带空格的 `"pool e"`。摘 JSON 结构或自测结果用 `python -X utf8` 写 UTF-8 临时文件再 `Read`，别靠 PowerShell stdout 显示中文（会乱码）。`plan/game/` 是英文资料，搜现象词要用英文关键词，中文词零命中不代表没有。DRAFT 那条超长长期口径按 4 个语义锚点拆成续行（两空格缩进），整体 Write 时照抄拆好的形态，别合并回一行。**校验脚本里做「旧句已移除」的负向检查时，别忘别的补层里会引述旧句一次，判据要用完整原句并分文件统计**（踩过两次）。
